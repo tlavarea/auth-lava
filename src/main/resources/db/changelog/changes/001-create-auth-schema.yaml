@@ -1,0 +1,454 @@
+databaseChangeLog:
+  - changeSet:
+      id: "1"
+      author: tlavarea
+      comment: >
+        USERS - password_hash is nullable: a user who only ever signs in
+        via a social provider will have no local password. Case-insensitive
+        email matching and status-value validation are handled in
+        application code, not the database.
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_users_email
+              - column:
+                  name: password_hash
+                  type: VARCHAR
+              - column:
+                  name: email_verified
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR
+                  defaultValue: active
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_login_at
+                  type: TIMESTAMPTZ
+        - addAutoIncrement:
+            tableName: users
+            columnName: id
+            columnDataType: BIGINT
+            generationType: ALWAYS
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS users CASCADE;
+
+  - changeSet:
+      id: "2"
+      author: tlavarea
+      comment: >
+        OAUTH_ACCOUNTS - links a user to one or more external identity
+        providers. A user can have multiple linked providers; a given
+        provider account can only ever map to one user.
+      changes:
+        - createTable:
+            tableName: oauth_accounts
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: provider
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: provider_user_id
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: access_token_enc
+                  type: VARCHAR
+              - column:
+                  name: refresh_token_enc
+                  type: VARCHAR
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addAutoIncrement:
+            tableName: oauth_accounts
+            columnName: id
+            columnDataType: BIGINT
+            generationType: ALWAYS
+        - addForeignKeyConstraint:
+            constraintName: fk_oauth_accounts_user_id
+            baseTableName: oauth_accounts
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            constraintName: uq_oauth_accounts_provider_provider_user_id
+            tableName: oauth_accounts
+            columnNames: provider, provider_user_id
+        - createIndex:
+            indexName: idx_oauth_accounts_user_id
+            tableName: oauth_accounts
+            columns:
+              - column:
+                  name: user_id
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS oauth_accounts CASCADE;
+
+  - changeSet:
+      id: "3"
+      author: tlavarea
+      comment: >
+        MFA_METHODS + MFA_BACKUP_CODES - a user can enroll multiple MFA
+        methods (e.g. TOTP + backup codes). Secrets must be encrypted at
+        rest, not just hashed. Backup codes get their own table since each
+        code is single-use (one-to-many, not a column on mfa_methods).
+        Allowed method-type values are validated in application code.
+      changes:
+        - createTable:
+            tableName: mfa_methods
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: secret_encrypted
+                  type: VARCHAR
+              - column:
+                  name: phone_number
+                  type: VARCHAR
+              - column:
+                  name: is_enabled
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: verified_at
+                  type: TIMESTAMPTZ
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addAutoIncrement:
+            tableName: mfa_methods
+            columnName: id
+            columnDataType: BIGINT
+            generationType: ALWAYS
+        - addForeignKeyConstraint:
+            constraintName: fk_mfa_methods_user_id
+            baseTableName: mfa_methods
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createIndex:
+            indexName: idx_mfa_methods_user_id
+            tableName: mfa_methods
+            columns:
+              - column:
+                  name: user_id
+        - createTable:
+            tableName: mfa_backup_codes
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: code_hash
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: used_at
+                  type: TIMESTAMPTZ
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addAutoIncrement:
+            tableName: mfa_backup_codes
+            columnName: id
+            columnDataType: BIGINT
+            generationType: ALWAYS
+        - addForeignKeyConstraint:
+            constraintName: fk_mfa_backup_codes_user_id
+            baseTableName: mfa_backup_codes
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - createIndex:
+            indexName: idx_mfa_backup_codes_user_id
+            tableName: mfa_backup_codes
+            columns:
+              - column:
+                  name: user_id
+      rollback:
+        - sql:
+            sql: |
+              DROP TABLE IF EXISTS mfa_backup_codes CASCADE;
+              DROP TABLE IF EXISTS mfa_methods CASCADE;
+
+  - changeSet:
+      id: "4"
+      author: tlavarea
+      comment: >
+        ROLES + USER_ROLES - many-to-many: a user can hold multiple roles,
+        a role applies to many users. Seed a few sensible defaults.
+      changes:
+        - createTable:
+            tableName: roles
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_roles_name
+              - column:
+                  name: description
+                  type: VARCHAR
+        - addAutoIncrement:
+            tableName: roles
+            columnName: id
+            columnDataType: BIGINT
+            generationType: ALWAYS
+        - createTable:
+            tableName: user_roles
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: assigned_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: user_roles
+            columnNames: user_id, role_id
+            constraintName: pk_user_roles
+        - addForeignKeyConstraint:
+            constraintName: fk_user_roles_user_id
+            baseTableName: user_roles
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            constraintName: fk_user_roles_role_id
+            baseTableName: user_roles
+            baseColumnNames: role_id
+            referencedTableName: roles
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - insert:
+            tableName: roles
+            columns:
+              - column:
+                  name: name
+                  value: admin
+              - column:
+                  name: description
+                  value: Full administrative access
+        - insert:
+            tableName: roles
+            columns:
+              - column:
+                  name: name
+                  value: member
+              - column:
+                  name: description
+                  value: Standard authenticated user
+      rollback:
+        - sql:
+            sql: |
+              DROP TABLE IF EXISTS user_roles CASCADE;
+              DROP TABLE IF EXISTS roles CASCADE;
+
+  - changeSet:
+      id: "5"
+      author: tlavarea
+      comment: >
+        PERMISSIONS + ROLE_PERMISSIONS - fine-grained access control units,
+        e.g. 'users:read'. A role is just a named bundle of permissions;
+        app code checks permissions, not role names, so who-has-what can be
+        reshuffled without touching business logic.
+      changes:
+        - createTable:
+            tableName: permissions
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_permissions_name
+              - column:
+                  name: description
+                  type: VARCHAR
+        - addAutoIncrement:
+            tableName: permissions
+            columnName: id
+            columnDataType: BIGINT
+            generationType: ALWAYS
+        - createTable:
+            tableName: role_permissions
+            columns:
+              - column:
+                  name: role_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: permission_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: role_permissions
+            columnNames: role_id, permission_id
+            constraintName: pk_role_permissions
+        - addForeignKeyConstraint:
+            constraintName: fk_role_permissions_role_id
+            baseTableName: role_permissions
+            baseColumnNames: role_id
+            referencedTableName: roles
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            constraintName: fk_role_permissions_permission_id
+            baseTableName: role_permissions
+            baseColumnNames: permission_id
+            referencedTableName: permissions
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - insert:
+            tableName: permissions
+            columns:
+              - column:
+                  name: name
+                  value: "users:read"
+              - column:
+                  name: description
+                  value: View user accounts
+        - insert:
+            tableName: permissions
+            columns:
+              - column:
+                  name: name
+                  value: "users:write"
+              - column:
+                  name: description
+                  value: Create, update, or deactivate user accounts
+        - insert:
+            tableName: permissions
+            columns:
+              - column:
+                  name: name
+                  value: "roles:manage"
+              - column:
+                  name: description
+                  value: Assign or revoke roles and permissions
+        # Wiring seeded permissions to seeded roles requires a dynamic SELECT
+        # join on just-inserted ids, which the "insert" change type can't express.
+        - sql:
+            sql: |
+              INSERT INTO role_permissions (role_id, permission_id)
+              SELECT r.id, p.id FROM roles r, permissions p
+              WHERE r.name = 'admin';
+
+              INSERT INTO role_permissions (role_id, permission_id)
+              SELECT r.id, p.id FROM roles r, permissions p
+              WHERE r.name = 'member' AND p.name = 'users:read';
+      rollback:
+        - sql:
+            sql: |
+              DROP TABLE IF EXISTS role_permissions CASCADE;
+              DROP TABLE IF EXISTS permissions CASCADE;

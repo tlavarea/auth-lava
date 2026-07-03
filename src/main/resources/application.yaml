@@ -1,3 +1,23 @@
+logging:
+  level:
+    com.lava: debug
+    org.springframework: debug
+    org.springframework.jndi: error
+    root: info
+  pattern:
+    console: "%d{yyyy-MM-dd} %d{HH:mm:ss.SSS} | %clr(%.-1p) | %-30.30logger{30} | %clr(%replace(%m){'[\n\r\t]', '_'}%n)"
+  structured:
+    format:
+      file: gelf
+
 spring:
   application:
     name: auth-lava
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    url: jdbc:postgresql://${SPRING_DATASOURCE_HOST:localhost}:${SPRING_DATASOURCE_PORT:5432}/${SPRING_DATASOURCE_DB:}
+    username: ${SPRING_DATASOURCE_USERNAME:}
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    enabled: true
