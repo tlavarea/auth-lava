@@ -6,4 +6,10 @@ import jakarta.validation.constraints.Size;
 
 public record RegisterRequest(
         @NotBlank @Email String email,
-        @NotBlank @Size(min = 8, max = 32) String password) {}
+        @NotBlank @Size(min = 8, max = 32) String password) {
+
+    @Override
+    public String toString() {
+        return String.format("RegisterRequest{email='%s'}", email);
+    }
+}

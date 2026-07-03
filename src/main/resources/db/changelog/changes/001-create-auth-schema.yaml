@@ -3,13 +3,13 @@ databaseChangeLog:
       id: "1"
       author: tlavarea
       comment: >
-        USERS - password_hash is nullable: a user who only ever signs in
+        USER - password_hash is nullable: a user who only ever signs in
         via a social provider will have no local password. Case-insensitive
         email matching and status-value validation are handled in
         application code, not the database.
       changes:
         - createTable:
-            tableName: users
+            tableName: user
             columns:
               - column:
                   name: id
@@ -23,7 +23,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                     unique: true
-                    uniqueConstraintName: uq_users_email
+                    uniqueConstraintName: uq_user_email
               - column:
                   name: password_hash
                   type: VARCHAR
@@ -55,24 +55,24 @@ databaseChangeLog:
                   name: last_login_at
                   type: TIMESTAMPTZ
         - addAutoIncrement:
-            tableName: users
+            tableName: user
             columnName: id
             columnDataType: BIGINT
             generationType: ALWAYS
       rollback:
         - sql:
-            sql: DROP TABLE IF EXISTS users CASCADE;
+            sql: DROP TABLE IF EXISTS user CASCADE;
 
   - changeSet:
       id: "2"
       author: tlavarea
       comment: >
-        OAUTH_ACCOUNTS - links a user to one or more external identity
+        OAUTH_ACCOUNT - links a user to one or more external identity
         providers. A user can have multiple linked providers; a given
         provider account can only ever map to one user.
       changes:
         - createTable:
-            tableName: oauth_accounts
+            tableName: oauth_account
             columns:
               - column:
                   name: id
@@ -108,43 +108,43 @@ databaseChangeLog:
                   constraints:
                     nullable: false
         - addAutoIncrement:
-            tableName: oauth_accounts
+            tableName: oauth_account
             columnName: id
             columnDataType: BIGINT
             generationType: ALWAYS
         - addForeignKeyConstraint:
-            constraintName: fk_oauth_accounts_user_id
-            baseTableName: oauth_accounts
+            constraintName: fk_oauth_account_user_id
+            baseTableName: oauth_account
             baseColumnNames: user_id
-            referencedTableName: users
+            referencedTableName: user
             referencedColumnNames: id
             onDelete: CASCADE
         - addUniqueConstraint:
-            constraintName: uq_oauth_accounts_provider_provider_user_id
-            tableName: oauth_accounts
+            constraintName: uq_oauth_account_provider_provider_user_id
+            tableName: oauth_account
             columnNames: provider, provider_user_id
         - createIndex:
-            indexName: idx_oauth_accounts_user_id
-            tableName: oauth_accounts
+            indexName: idx_oauth_account_user_id
+            tableName: oauth_account
             columns:
               - column:
                   name: user_id
       rollback:
         - sql:
-            sql: DROP TABLE IF EXISTS oauth_accounts CASCADE;
+            sql: DROP TABLE IF EXISTS oauth_account CASCADE;
 
   - changeSet:
       id: "3"
       author: tlavarea
       comment: >
-        MFA_METHODS + MFA_BACKUP_CODES - a user can enroll multiple MFA
+        MFA_METHOD + MFA_BACKUP_CODE - a user can enroll multiple MFA
         methods (e.g. TOTP + backup codes). Secrets must be encrypted at
         rest, not just hashed. Backup codes get their own table since each
-        code is single-use (one-to-many, not a column on mfa_methods).
+        code is single-use (one-to-many, not a column on mfa_method).
         Allowed method-type values are validated in application code.
       changes:
         - createTable:
-            tableName: mfa_methods
+            tableName: mfa_method
             columns:
               - column:
                   name: id
@@ -184,25 +184,25 @@ databaseChangeLog:
                   constraints:
                     nullable: false
         - addAutoIncrement:
-            tableName: mfa_methods
+            tableName: mfa_method
             columnName: id
             columnDataType: BIGINT
             generationType: ALWAYS
         - addForeignKeyConstraint:
-            constraintName: fk_mfa_methods_user_id
-            baseTableName: mfa_methods
+            constraintName: fk_mfa_method_user_id
+            baseTableName: mfa_method
             baseColumnNames: user_id
-            referencedTableName: users
+            referencedTableName: user
             referencedColumnNames: id
             onDelete: CASCADE
         - createIndex:
-            indexName: idx_mfa_methods_user_id
-            tableName: mfa_methods
+            indexName: idx_mfa_method_user_id
+            tableName: mfa_method
             columns:
               - column:
                   name: user_id
         - createTable:
-            tableName: mfa_backup_codes
+            tableName: mfa_backup_code
             columns:
               - column:
                   name: id
@@ -230,38 +230,38 @@ databaseChangeLog:
                   constraints:
                     nullable: false
         - addAutoIncrement:
-            tableName: mfa_backup_codes
+            tableName: mfa_backup_code
             columnName: id
             columnDataType: BIGINT
             generationType: ALWAYS
         - addForeignKeyConstraint:
-            constraintName: fk_mfa_backup_codes_user_id
-            baseTableName: mfa_backup_codes
+            constraintName: fk_mfa_backup_code_user_id
+            baseTableName: mfa_backup_code
             baseColumnNames: user_id
-            referencedTableName: users
+            referencedTableName: user
             referencedColumnNames: id
             onDelete: CASCADE
         - createIndex:
-            indexName: idx_mfa_backup_codes_user_id
-            tableName: mfa_backup_codes
+            indexName: idx_mfa_backup_code_user_id
+            tableName: mfa_backup_code
             columns:
               - column:
                   name: user_id
       rollback:
         - sql:
             sql: |
-              DROP TABLE IF EXISTS mfa_backup_codes CASCADE;
-              DROP TABLE IF EXISTS mfa_methods CASCADE;
+              DROP TABLE IF EXISTS mfa_backup_code CASCADE;
+              DROP TABLE IF EXISTS mfa_method CASCADE;
 
   - changeSet:
       id: "4"
       author: tlavarea
       comment: >
-        ROLES + USER_ROLES - many-to-many: a user can hold multiple roles,
+        ROLE + USER_ROLE - many-to-many: a user can hold multiple roles,
         a role applies to many users. Seed a few sensible defaults.
       changes:
         - createTable:
-            tableName: roles
+            tableName: role
             columns:
               - column:
                   name: id
@@ -275,17 +275,17 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                     unique: true
-                    uniqueConstraintName: uq_roles_name
+                    uniqueConstraintName: uq_role_name
               - column:
                   name: description
                   type: VARCHAR
         - addAutoIncrement:
-            tableName: roles
+            tableName: role
             columnName: id
             columnDataType: BIGINT
             generationType: ALWAYS
         - createTable:
-            tableName: user_roles
+            tableName: user_role
             columns:
               - column:
                   name: user_id
@@ -304,25 +304,25 @@ databaseChangeLog:
                   constraints:
                     nullable: false
         - addPrimaryKey:
-            tableName: user_roles
+            tableName: user_role
             columnNames: user_id, role_id
-            constraintName: pk_user_roles
+            constraintName: pk_user_role
         - addForeignKeyConstraint:
-            constraintName: fk_user_roles_user_id
-            baseTableName: user_roles
+            constraintName: fk_user_role_user_id
+            baseTableName: user_role
             baseColumnNames: user_id
-            referencedTableName: users
+            referencedTableName: user
             referencedColumnNames: id
             onDelete: CASCADE
         - addForeignKeyConstraint:
-            constraintName: fk_user_roles_role_id
-            baseTableName: user_roles
+            constraintName: fk_user_role_role_id
+            baseTableName: user_role
             baseColumnNames: role_id
-            referencedTableName: roles
+            referencedTableName: role
             referencedColumnNames: id
             onDelete: CASCADE
         - insert:
-            tableName: roles
+            tableName: role
             columns:
               - column:
                   name: name
@@ -331,7 +331,7 @@ databaseChangeLog:
                   name: description
                   value: Full administrative access
         - insert:
-            tableName: roles
+            tableName: role
             columns:
               - column:
                   name: name
@@ -342,20 +342,20 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: |
-              DROP TABLE IF EXISTS user_roles CASCADE;
-              DROP TABLE IF EXISTS roles CASCADE;
+              DROP TABLE IF EXISTS user_role CASCADE;
+              DROP TABLE IF EXISTS role CASCADE;
 
   - changeSet:
       id: "5"
       author: tlavarea
       comment: >
-        PERMISSIONS + ROLE_PERMISSIONS - fine-grained access control units,
+        PERMISSION + ROLE_PERMISSION - fine-grained access control units,
         e.g. 'users:read'. A role is just a named bundle of permissions;
         app code checks permissions, not role names, so who-has-what can be
         reshuffled without touching business logic.
       changes:
         - createTable:
-            tableName: permissions
+            tableName: permission
             columns:
               - column:
                   name: id
@@ -369,17 +369,17 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                     unique: true
-                    uniqueConstraintName: uq_permissions_name
+                    uniqueConstraintName: uq_permission_name
               - column:
                   name: description
                   type: VARCHAR
         - addAutoIncrement:
-            tableName: permissions
+            tableName: permission
             columnName: id
             columnDataType: BIGINT
             generationType: ALWAYS
         - createTable:
-            tableName: role_permissions
+            tableName: role_permission
             columns:
               - column:
                   name: role_id
@@ -392,25 +392,25 @@ databaseChangeLog:
                   constraints:
                     nullable: false
         - addPrimaryKey:
-            tableName: role_permissions
+            tableName: role_permission
             columnNames: role_id, permission_id
-            constraintName: pk_role_permissions
+            constraintName: pk_role_permission
         - addForeignKeyConstraint:
-            constraintName: fk_role_permissions_role_id
-            baseTableName: role_permissions
+            constraintName: fk_role_permission_role_id
+            baseTableName: role_permission
             baseColumnNames: role_id
-            referencedTableName: roles
+            referencedTableName: role
             referencedColumnNames: id
             onDelete: CASCADE
         - addForeignKeyConstraint:
-            constraintName: fk_role_permissions_permission_id
-            baseTableName: role_permissions
+            constraintName: fk_role_permission_permission_id
+            baseTableName: role_permission
             baseColumnNames: permission_id
-            referencedTableName: permissions
+            referencedTableName: permission
             referencedColumnNames: id
             onDelete: CASCADE
         - insert:
-            tableName: permissions
+            tableName: permission
             columns:
               - column:
                   name: name
@@ -419,7 +419,7 @@ databaseChangeLog:
                   name: description
                   value: View user accounts
         - insert:
-            tableName: permissions
+            tableName: permission
             columns:
               - column:
                   name: name
@@ -428,7 +428,7 @@ databaseChangeLog:
                   name: description
                   value: Create, update, or deactivate user accounts
         - insert:
-            tableName: permissions
+            tableName: permission
             columns:
               - column:
                   name: name
@@ -440,15 +440,15 @@ databaseChangeLog:
         # join on just-inserted ids, which the "insert" change type can't express.
         - sql:
             sql: |
-              INSERT INTO role_permissions (role_id, permission_id)
-              SELECT r.id, p.id FROM roles r, permissions p
+              INSERT INTO role_permission (role_id, permission_id)
+              SELECT r.id, p.id FROM role r, permission p
               WHERE r.name = 'admin';
 
-              INSERT INTO role_permissions (role_id, permission_id)
-              SELECT r.id, p.id FROM roles r, permissions p
+              INSERT INTO role_permission (role_id, permission_id)
+              SELECT r.id, p.id FROM role r, permission p
               WHERE r.name = 'member' AND p.name = 'users:read';
       rollback:
         - sql:
             sql: |
-              DROP TABLE IF EXISTS role_permissions CASCADE;
-              DROP TABLE IF EXISTS permissions CASCADE;
+              DROP TABLE IF EXISTS role_permission CASCADE;
+              DROP TABLE IF EXISTS permission CASCADE;

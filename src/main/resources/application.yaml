@@ -1,6 +1,7 @@
 logging:
   level:
     com.lava: debug
+    org.jooq.tools.LoggerListener: debug
     org.springframework: debug
     org.springframework.jndi: error
     root: info

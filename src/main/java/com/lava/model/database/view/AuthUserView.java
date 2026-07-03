@@ -1,7 +1,7 @@
 package com.lava.model.database.view;
 
 import io.soabase.recordbuilder.core.RecordBuilder;
-import java.util.List;
+import java.util.Set;
 
 @RecordBuilder
 public record AuthUserView(
@@ -10,6 +10,6 @@ public record AuthUserView(
         String passwordHash,
         String status,
         boolean emailVerified,
-        List<String> roles,
-        List<String> permissions)
+        Set<String> roles,
+        Set<String> permissions)
         implements AuthUserViewBuilder.With {}

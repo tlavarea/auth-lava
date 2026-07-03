@@ -309,20 +309,45 @@
                   <value>!test</value>
                 </property>
               </properties>
-            </database>
+            </database>z
             <generate>
-              <deprecated>false</deprecated>
-              <fluentSetters>true</fluentSetters>
-              <immutablePojos>true</immutablePojos>
+              <interfaces>false</interfaces>
               <javaTimeTypes>true</javaTimeTypes>
-              <records>true</records>
-              <relations>true</relations>
+              <pojos>true</pojos>
+              <pojosAsJavaRecordClasses>true</pojosAsJavaRecordClasses>
+              <pojosEqualsAndHashCode>false</pojosEqualsAndHashCode>
+              <pojosToString>false</pojosToString>
+              <springAnnotations>true</springAnnotations>
+              <springDao>true</springDao>
+              <validationAnnotations>true</validationAnnotations>
             </generate>
             <target>
               <packageName>com.lava.model.database</packageName>
               <directory>target/generated-sources/jooq</directory>
             </target>
           </generator>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>com.lava</groupId>
+        <artifactId>maven-generate-annotations-plugin</artifactId>
+        <version>1.0</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>generate-annotations</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <annotations>
+            <field>@RecordBuilder</field>
+          </annotations>
+          <imports>
+            <field>io.soabase.recordbuilder.core.RecordBuilder</field>
+          </imports>
+          <javaType>record</javaType>
+          <sourceDirectory>${project.build.directory}/generated-sources/jooq/com/lava/model/database/tables/pojos</sourceDirectory>
         </configuration>
       </plugin>
     </plugins>

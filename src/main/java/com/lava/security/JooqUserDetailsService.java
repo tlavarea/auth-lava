@@ -1,7 +1,7 @@
 package com.lava.security;
 
 import com.lava.model.database.view.AuthUserView;
-import com.lava.repository.UserRepository;
+import com.lava.repository.UserRepositoryImpl;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -15,9 +15,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class JooqUserDetailsService implements UserDetailsService {
 
-    private final UserRepository userRepository;
+    private final UserRepositoryImpl userRepository;
 
-    public JooqUserDetailsService(UserRepository userRepository) {
+    public JooqUserDetailsService(UserRepositoryImpl userRepository) {
         this.userRepository = userRepository;
     }
 
