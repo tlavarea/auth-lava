@@ -1,0 +1,78 @@
+databaseChangeLog:
+  - changeSet:
+      id: "6"
+      author: tlavarea
+      comment: >
+        REFRESH_TOKEN - opaque, high-entropy tokens issued alongside a JWT
+        access token. Only a SHA-256 hash of the token is stored, never the
+        raw value. Rotated on every use (old row marked revoked and pointed
+        at its replacement via replaced_by_id); presenting an already-revoked
+        token is treated as reuse of a rotated-away token and triggers
+        revocation of all of that user's active sessions.
+      changes:
+        - createTable:
+            tableName: refresh_token
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: token_hash
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_refresh_token_token_hash
+              - column:
+                  name: expires_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false
+              - column:
+                  name: revoked_at
+                  type: TIMESTAMPTZ
+              - column:
+                  name: replaced_by_id
+                  type: BIGINT
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addAutoIncrement:
+            tableName: refresh_token
+            columnName: id
+            columnDataType: BIGINT
+            generationType: ALWAYS
+        - addForeignKeyConstraint:
+            constraintName: fk_refresh_token_user_id
+            baseTableName: refresh_token
+            baseColumnNames: user_id
+            referencedTableName: user
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            constraintName: fk_refresh_token_replaced_by_id
+            baseTableName: refresh_token
+            baseColumnNames: replaced_by_id
+            referencedTableName: refresh_token
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - createIndex:
+            indexName: idx_refresh_token_user_id
+            tableName: refresh_token
+            columns:
+              - column:
+                  name: user_id
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS refresh_token CASCADE;

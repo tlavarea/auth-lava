@@ -334,6 +334,7 @@
         <version>1.0</version>
         <executions>
           <execution>
+            <phase>process-sources</phase>
             <goals>
               <goal>generate-annotations</goal>
             </goals>

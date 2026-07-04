@@ -1,21 +1,22 @@
 package com.lava.service;
 
 import com.lava.exception.EmailAlreadyRegisteredException;
+import com.lava.exception.InvalidRefreshTokenException;
 import com.lava.logging.LogSanitizer;
-import com.lava.repository.UserRepositoryImpl;
+import com.lava.model.auth.Issued;
+import com.lava.model.auth.TokenPair;
+import com.lava.model.auth.TokenPairBuilder;
+import com.lava.model.database.tables.pojos.RefreshToken;
+import com.lava.model.database.view.AuthUserView;
+import com.lava.repository.UserRepository;
 import com.lava.security.AuthUserPrincipal;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
-import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,29 +26,62 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class AuthServiceImpl implements AuthService {
 
-    private final UserRepositoryImpl userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final SecurityContextRepository securityContextRepository;
+    private final JwtService jwtService;
+    private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
+    private final UserRepository userRepository;
 
     @Override
-    public AuthUserPrincipal login(
-            String email, String rawPassword, HttpServletRequest request, HttpServletResponse response) {
-        Authentication authRequest = UsernamePasswordAuthenticationToken.unauthenticated(email, rawPassword);
-        Authentication authResult = this.authenticationManager.authenticate(authRequest);
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
+    @Transactional
+    public TokenPair login(String email, String rawPassword) {
+        Authentication authResult = this.authenticationManager.authenticate(
+                UsernamePasswordAuthenticationToken.unauthenticated(email, rawPassword));
+        AuthUserPrincipal principal = (AuthUserPrincipal) authResult.getPrincipal();
+        String accessToken = this.jwtService.generateAccessToken(principal);
+        Issued refresh = this.refreshTokenService.issue(principal.getUserId());
 
-        context.setAuthentication(authResult);
-        SecurityContextHolder.setContext(context);
-        this.securityContextRepository.saveContext(context, request, response);
-
-        return (AuthUserPrincipal) authResult.getPrincipal();
+        return TokenPairBuilder.builder()
+                .accessToken(accessToken)
+                .expiresInSeconds(this.jwtService.getAccessTokenTtlSeconds())
+                .principal(principal)
+                .refreshToken(refresh.rawToken())
+                .build();
     }
 
     @Override
-    public void logout(HttpServletRequest request, HttpServletResponse response) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        new SecurityContextLogoutHandler().logout(request, response, authentication);
+    @Transactional
+    public void logout(AuthUserPrincipal principal, Optional<String> rawRefreshToken) {
+        if (rawRefreshToken.isPresent()) {
+            this.refreshTokenService
+                    .findForLogout(rawRefreshToken.get())
+                    .filter(token -> token.userId().equals(principal.getUserId()))
+                    .ifPresent(token -> this.refreshTokenService.revoke(token.id()));
+        } else {
+            this.refreshTokenService.revokeAllForUser(principal.getUserId());
+        }
+
+        log.info("logout::userId: {}", LogSanitizer.sanitize(principal.getUserId()));
+    }
+
+    @Override
+    @Transactional
+    public TokenPair refresh(String rawRefreshToken) {
+        RefreshToken current = this.refreshTokenService.validateForRotation(rawRefreshToken);
+        AuthUserView freshUser = this.userRepository
+                .findAuthUserById(current.userId())
+                .filter(user -> "active".equals(user.status()))
+                .orElseThrow(InvalidRefreshTokenException::new);
+        AuthUserPrincipal principal = AuthUserPrincipal.from(freshUser);
+        String accessToken = this.jwtService.generateAccessToken(principal);
+        Issued rotated = this.refreshTokenService.rotate(current);
+
+        return TokenPairBuilder.builder()
+                .accessToken(accessToken)
+                .expiresInSeconds(this.jwtService.getAccessTokenTtlSeconds())
+                .principal(principal)
+                .refreshToken(rotated.rawToken())
+                .build();
     }
 
     @Override

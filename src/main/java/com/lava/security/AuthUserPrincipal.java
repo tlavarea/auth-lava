@@ -1,11 +1,19 @@
 package com.lava.security;
 
+import com.lava.model.database.view.AuthUserView;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+@AllArgsConstructor
+@Builder
 @Getter
 public class AuthUserPrincipal implements UserDetails {
 
@@ -16,19 +24,25 @@ public class AuthUserPrincipal implements UserDetails {
     private final boolean emailVerified;
     private final Set<GrantedAuthority> authorities;
 
-    public AuthUserPrincipal(
-            Long userId,
-            String email,
-            String passwordHash,
-            String status,
-            boolean emailVerified,
-            Set<GrantedAuthority> authorities) {
-        this.userId = userId;
-        this.email = email;
-        this.passwordHash = passwordHash;
-        this.status = status;
-        this.emailVerified = emailVerified;
-        this.authorities = authorities;
+    public static AuthUserPrincipal from(AuthUserView view) {
+        Set<GrantedAuthority> authorities = new HashSet<>();
+
+        for (String role : view.roles()) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase(Locale.ROOT)));
+        }
+
+        for (String permission : view.permissions()) {
+            authorities.add(new SimpleGrantedAuthority(permission));
+        }
+
+        return AuthUserPrincipal.builder()
+                .authorities(authorities)
+                .email(view.email())
+                .emailVerified(view.emailVerified())
+                .passwordHash(view.passwordHash())
+                .status(view.status())
+                .userId(view.id())
+                .build();
     }
 
     @Override

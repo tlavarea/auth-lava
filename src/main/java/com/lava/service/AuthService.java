@@ -1,14 +1,16 @@
 package com.lava.service;
 
+import com.lava.model.auth.TokenPair;
 import com.lava.security.AuthUserPrincipal;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.util.Optional;
 
 public interface AuthService {
 
-    AuthUserPrincipal login(String email, String rawPassword, HttpServletRequest request, HttpServletResponse response);
+    TokenPair login(String email, String rawPassword);
 
-    void logout(HttpServletRequest request, HttpServletResponse response);
+    void logout(AuthUserPrincipal principal, Optional<String> rawRefreshToken);
+
+    TokenPair refresh(String rawRefreshToken);
 
     void register(String email, String rawPassword);
 }

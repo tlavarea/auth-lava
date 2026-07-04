@@ -131,6 +131,27 @@ SELECT r.id, p.id FROM roles r, permissions p
 WHERE r.name = 'member' AND p.name = 'users:read';
 
 -- ---------------------------------------------------------
+-- REFRESH_TOKEN
+-- Opaque, high-entropy tokens issued alongside a JWT access
+-- token. Only a SHA-256 hash of the token is stored, never
+-- the raw value. Rotated on every use; presenting an
+-- already-revoked token is treated as reuse of a
+-- rotated-away token and revokes all of that user's
+-- active sessions.
+-- ---------------------------------------------------------
+CREATE TABLE refresh_token (
+    id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash      TEXT NOT NULL UNIQUE,
+    expires_at      TIMESTAMPTZ NOT NULL,
+    revoked_at      TIMESTAMPTZ,
+    replaced_by_id  BIGINT REFERENCES refresh_token(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_refresh_token_user_id ON refresh_token(user_id);
+
+-- ---------------------------------------------------------
 -- Helpful trigger: keep updated_at current on users
 -- ---------------------------------------------------------
 CREATE OR REPLACE FUNCTION set_updated_at()

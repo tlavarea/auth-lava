@@ -10,5 +10,7 @@ public interface UserRepository {
 
     Optional<AuthUserView> findAuthUserByEmail(String email);
 
+    Optional<AuthUserView> findAuthUserById(Long id);
+
     Optional<User> insert(String email, String passwordHash);
 }

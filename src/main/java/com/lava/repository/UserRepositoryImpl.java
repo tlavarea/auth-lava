@@ -13,6 +13,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record7;
 import org.springframework.stereotype.Repository;
@@ -25,18 +26,50 @@ public class UserRepositoryImpl extends AbstractSpringDAOImpl<UserRecord, User, 
     private final DSLContext dsl;
 
     public UserRepositoryImpl(DSLContext dsl) {
-        super(com.lava.model.database.tables.User.USER, User.class);
+        super(USER, User.class);
         this.dsl = dsl;
     }
 
     @Override
     public boolean existsByEmail(String email) {
-        return dsl.fetchExists(dsl.selectFrom(USER).where(USER.EMAIL.eq(normalize(email))));
+        return this.dsl.fetchExists(dsl.selectFrom(USER).where(USER.EMAIL.eq(normalize(email))));
     }
 
     @Override
     public Optional<AuthUserView> findAuthUserByEmail(String email) {
-        List<Record7<Long, String, String, String, Boolean, String, String>> records = dsl.select(
+        return this.fetchAuthUserView(USER.EMAIL.eq(normalize(email)));
+    }
+
+    @Override
+    public Optional<AuthUserView> findAuthUserById(Long id) {
+        return this.fetchAuthUserView(USER.ID.eq(id));
+    }
+
+    @Override
+    public Long getId(User object) {
+        return object.id();
+    }
+
+    @Override
+    @Transactional
+    public Optional<User> insert(String email, String passwordHash) {
+        return this.dsl
+                .insertInto(USER)
+                .set(USER.EMAIL, normalize(email))
+                .set(USER.PASSWORD_HASH, passwordHash)
+                .returning()
+                .fetchOptionalInto(User.class);
+    }
+
+    /**
+     * Creates the {@link AuthUserView} object from the user, role, and permission tables.
+     *
+     * @param condition - the where condition for the query.
+     * @return the {@link AuthUserView} object.
+     */
+    private Optional<AuthUserView> fetchAuthUserView(Condition condition) {
+        List<Record7<Long, String, String, String, Boolean, String, String>> records = this.dsl
+                .select(
                         USER.ID,
                         USER.EMAIL,
                         USER.PASSWORD_HASH,
@@ -47,7 +80,7 @@ public class UserRepositoryImpl extends AbstractSpringDAOImpl<UserRecord, User, 
                 .from(USER)
                 .leftOuterJoin(USER.role())
                 .leftOuterJoin(USER.role().permission())
-                .where(USER.EMAIL.eq(normalize(email)))
+                .where(condition)
                 .fetch();
 
         if (records.isEmpty()) {
@@ -72,21 +105,6 @@ public class UserRepositoryImpl extends AbstractSpringDAOImpl<UserRecord, User, 
                 .roles(roles)
                 .status(records.getFirst().get(USER.STATUS))
                 .build());
-    }
-
-    @Override
-    public Long getId(com.lava.model.database.tables.pojos.User object) {
-        return object.id();
-    }
-
-    @Override
-    @Transactional
-    public Optional<User> insert(String email, String passwordHash) {
-        return dsl.insertInto(USER)
-                .set(USER.EMAIL, normalize(email))
-                .set(USER.PASSWORD_HASH, passwordHash)
-                .returning()
-                .fetchOptionalInto(User.class);
     }
 
     // Emails are stored lower-cased so the plain UNIQUE constraint on the column
