@@ -3,19 +3,21 @@ package com.lava.web.filter;
 import com.lava.logging.LogSanitizer;
 import com.lava.security.AuthUserPrincipal;
 import com.lava.service.JwtService;
+import com.lava.web.AuthCookieFactory;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -28,18 +30,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String BEARER_PREFIX = "Bearer ";
-
     private final JwtService jwtService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-
-        if (header != null && header.startsWith(BEARER_PREFIX)) {
+        this.extractAccessToken(request).ifPresent(token -> {
             try {
-                Claims claims = this.jwtService.parseAndValidate(header.substring(BEARER_PREFIX.length()));
+                Claims claims = this.jwtService.parseAndValidate(token);
                 AuthUserPrincipal principal = this.buildPrincipal(claims);
                 Authentication authentication =
                         UsernamePasswordAuthenticationToken.authenticated(principal, null, principal.getAuthorities());
@@ -51,11 +49,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 log.error("jwt::rejected: {}", LogSanitizer.sanitize(e.getMessage()), e);
                 SecurityContextHolder.clearContext();
             }
-        }
+        });
 
         chain.doFilter(request, response);
     }
 
+    /**
+     * Builds the {@link AuthUserPrincipal} object from the JWT claims.
+     *
+     * @param claims - the JWT claims.
+     * @return - the {@link AuthUserPrincipal} object with data from the JWT claims.
+     */
     @SuppressWarnings("unchecked")
     private AuthUserPrincipal buildPrincipal(Claims claims) {
         Long userId = Long.valueOf(claims.getSubject());
@@ -74,5 +78,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 .status(status)
                 .userId(userId)
                 .build();
+    }
+
+    /**
+     * Grabs the access token from the request cookies.
+     *
+     * @param request - the {@link HttpServletRequest} object.
+     * @return - the value of the access token cookie.
+     */
+    private Optional<String> extractAccessToken(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+
+        if (cookies == null) {
+            return Optional.empty();
+        }
+
+        for (Cookie cookie : cookies) {
+            if (AuthCookieFactory.ACCESS_TOKEN_COOKIE.equals(cookie.getName())) {
+                return Optional.of(cookie.getValue());
+            }
+        }
+
+        return Optional.empty();
     }
 }

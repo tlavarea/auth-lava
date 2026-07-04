@@ -1,21 +1,25 @@
 package com.lava.controller;
 
+import com.lava.exception.InvalidRefreshTokenException;
 import com.lava.logging.LogSanitizer;
+import com.lava.model.auth.TokenPair;
 import com.lava.model.web.request.LoginRequest;
 import com.lava.model.web.request.LogoutRequest;
-import com.lava.model.web.request.RefreshRequest;
 import com.lava.model.web.request.RegisterRequest;
-import com.lava.model.web.response.TokenResponse;
 import com.lava.model.web.response.UserResponse;
 import com.lava.security.AuthUserPrincipal;
 import com.lava.service.AuthService;
+import com.lava.web.AuthCookieFactory;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,19 +33,31 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthCookieFactory cookieFactory;
 
     @PostMapping("/login")
-    public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<UserResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
         log.info("login::request: {}", LogSanitizer.sanitize(request));
-        return ResponseEntity.ok(TokenResponse.from(this.authService.login(request.email(), request.password())));
+        TokenPair pair = this.authService.login(request.email(), request.password());
+        this.setAuthCookies(response, pair);
+        return ResponseEntity.ok(UserResponse.from(pair.principal()));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             @AuthenticationPrincipal AuthUserPrincipal principal,
-            @RequestBody(required = false) LogoutRequest request) {
+            @CookieValue(name = AuthCookieFactory.REFRESH_TOKEN_COOKIE, required = false) String refreshTokenCookie,
+            @RequestBody(required = false) LogoutRequest request,
+            HttpServletResponse response) {
+        boolean allDevices = request != null && request.allDevices();
         log.info("logout::userId: {}", LogSanitizer.sanitize(principal.getUserId()));
-        this.authService.logout(principal, Optional.ofNullable(request).map(LogoutRequest::refreshToken));
+        this.authService.logout(principal, allDevices ? Optional.empty() : Optional.ofNullable(refreshTokenCookie));
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                this.cookieFactory.clearedAccessTokenCookie().toString());
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                this.cookieFactory.clearedRefreshTokenCookie().toString());
         return ResponseEntity.noContent().build();
     }
 
@@ -56,9 +72,17 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+    public ResponseEntity<UserResponse> refresh(
+            @CookieValue(name = AuthCookieFactory.REFRESH_TOKEN_COOKIE, required = false) String refreshTokenCookie,
+            HttpServletResponse response) {
+        if (refreshTokenCookie == null) {
+            throw new InvalidRefreshTokenException();
+        }
+
         log.info("refresh::request received");
-        return ResponseEntity.ok(TokenResponse.from(this.authService.refresh(request.refreshToken())));
+        TokenPair pair = this.authService.refresh(refreshTokenCookie);
+        this.setAuthCookies(response, pair);
+        return ResponseEntity.ok(UserResponse.from(pair.principal()));
     }
 
     @PostMapping("/register")
@@ -66,5 +90,20 @@ public class AuthController {
         log.info("register::request: {}", LogSanitizer.sanitize(request));
         this.authService.register(request.email(), request.password());
         return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    /**
+     * Sets the access token and refresh token cookies on the response.
+     *
+     * @param response - the {@link HttpServletResponse}.
+     * @param pair - the {@link TokenPair} object which contains both JWT's.
+     */
+    private void setAuthCookies(HttpServletResponse response, TokenPair pair) {
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                this.cookieFactory.accessTokenCookie(pair.accessToken()).toString());
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                this.cookieFactory.refreshTokenCookie(pair.refreshToken()).toString());
     }
 }
