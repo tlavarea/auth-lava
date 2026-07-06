@@ -53,7 +53,7 @@ public class OAuthAuthenticationSuccessHandler implements AuthenticationSuccessH
                     LogSanitizer.sanitize(pair.principal().getUsername()));
             response.sendRedirect(this.oAuthProperties.successRedirectUri());
         } catch (UnverifiedOAuthEmailException | InvalidOAuthUserStateException e) {
-            log.error("onAuthenticationSuccess::rejected: {}", LogSanitizer.sanitize(e.getMessage()));
+            log.error("onAuthenticationSuccess::rejected: {}", LogSanitizer.sanitize(e.getMessage()), e);
             response.sendRedirect(this.oAuthProperties.failureRedirectUri());
         }
     }

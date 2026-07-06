@@ -30,6 +30,7 @@
   <properties>
     <bouncycastle.version>1.84</bouncycastle.version>
     <git-build-hook-plugin.version>3.6.0</git-build-hook-plugin.version>
+    <jacoco.version>0.8.14</jacoco.version>
     <java.version>25</java.version>
     <jjwt.version>0.13.0</jjwt.version>
     <owasp-encoder.version>1.4.0</owasp-encoder.version>
@@ -149,6 +150,11 @@
     <!-- Test dependencies start -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-jooq-test</artifactId>
       <scope>test</scope>
     </dependency>
@@ -170,6 +176,21 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
       <scope>test</scope>
     </dependency>
     <!-- Test dependencies end -->
@@ -361,6 +382,71 @@
           </imports>
           <javaType>record</javaType>
           <sourceDirectory>${project.build.directory}/generated-sources/jooq/com/lava/model/database/tables/pojos</sourceDirectory>
+        </configuration>
+      </plugin>
+      <plugin>
+        <!-- 0.8.14 is the minimum version supporting Java 25 class files (major version 69) -->
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>check</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <rule>
+                  <element>BUNDLE</element>
+                  <limits>
+                    <limit>
+                      <counter>LINE</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>0.80</minimum>
+                    </limit>
+                    <limit>
+                      <counter>BRANCH</counter>
+                      <value>COVEREDRATIO</value>
+                      <minimum>0.80</minimum>
+                    </limit>
+                  </limits>
+                </rule>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+        <configuration>
+          <excludes>
+            <!-- jOOQ-generated code directly under com.lava.model.database -->
+            <exclude>com/lava/model/database/Tables.class</exclude>
+            <exclude>com/lava/model/database/Indexes.class</exclude>
+            <exclude>com/lava/model/database/Keys.class</exclude>
+            <exclude>com/lava/model/database/DefaultCatalog.class</exclude>
+            <exclude>com/lava/model/database/DefaultSchema.class</exclude>
+            <exclude>com/lava/model/database/AbstractSpringDAOImpl.class</exclude>
+            <!-- jOOQ-generated tables/records/pojos -->
+            <exclude>com/lava/model/database/tables/**</exclude>
+            <!-- record-builder + Lombok generated builder classes -->
+            <exclude>**/*Builder.class</exclude>
+            <exclude>**/*Builder$*.class</exclude>
+            <!-- application bootstrap, no logic -->
+            <exclude>com/lava/Application.class</exclude>
+          </excludes>
         </configuration>
       </plugin>
     </plugins>

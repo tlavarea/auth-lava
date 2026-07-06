@@ -1,0 +1,33 @@
+cors:
+  allowed-origins: http://localhost:4200
+
+logging:
+  level:
+    com.lava: info
+    org.jooq.tools.LoggerListener: warn
+    org.springframework: warn
+    root: warn
+
+jwt:
+  secret: dGVzdC1zZWNyZXQtdGVzdC1zZWNyZXQtdGVzdC1zZWNyZXQtdGVzdC1zZWNyZXQ=
+  issuer: auth-lava-test
+  access-token-ttl: 15m
+  refresh-token-ttl: 30d
+
+oauth:
+  success-redirect-uri: http://localhost:4200/
+  failure-redirect-uri: http://localhost:4200/login?error=oauth
+
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-client-id
+            client-secret: test-client-secret
+            scope: openid,email,profile
+          github:
+            client-id: test-client-id
+            client-secret: test-client-secret
+            scope: read:user,user:email
