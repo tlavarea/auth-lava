@@ -23,6 +23,10 @@ logging:
     format:
       file: gelf
 
+oauth:
+  success-redirect-uri: ${OAUTH_SUCCESS_REDIRECT_URI:http://localhost:4200/oauth/callback}
+  failure-redirect-uri: ${OAUTH_FAILURE_REDIRECT_URI:http://localhost:4200/login?error=oauth}
+
 spring:
   application:
     name: auth-lava
@@ -34,3 +38,15 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
     enabled: true
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
+            scope: openid,email,profile
+          github:
+            client-id: ${GITHUB_CLIENT_ID:}
+            client-secret: ${GITHUB_CLIENT_SECRET:}
+            scope: read:user,user:email

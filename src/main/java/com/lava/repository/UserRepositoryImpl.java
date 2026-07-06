@@ -61,6 +61,17 @@ public class UserRepositoryImpl extends AbstractSpringDAOImpl<UserRecord, User, 
                 .fetchOptionalInto(User.class);
     }
 
+    @Override
+    @Transactional
+    public Optional<User> insertVerifiedFromOAuth(String email) {
+        return this.dsl
+                .insertInto(USER)
+                .set(USER.EMAIL, normalize(email))
+                .set(USER.EMAIL_VERIFIED, true)
+                .returning()
+                .fetchOptionalInto(User.class);
+    }
+
     /**
      * Creates the {@link AuthUserView} object from the user, role, and permission tables.
      *

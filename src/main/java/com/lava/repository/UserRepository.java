@@ -13,4 +13,6 @@ public interface UserRepository {
     Optional<AuthUserView> findAuthUserById(Long id);
 
     Optional<User> insert(String email, String passwordHash);
+
+    Optional<User> insertVerifiedFromOAuth(String email);
 }

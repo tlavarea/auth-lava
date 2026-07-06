@@ -1,8 +1,11 @@
 package com.lava.configuration;
 
 import com.lava.boot.autoconfigure.app.CorsProperties;
+import com.lava.security.oauth.GithubEmailBackfillOAuth2UserService;
 import com.lava.service.JwtService;
 import com.lava.web.filter.JwtAuthenticationFilter;
+import com.lava.web.oauth.OAuthAuthenticationFailureHandler;
+import com.lava.web.oauth.OAuthAuthenticationSuccessHandler;
 import java.time.Duration;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
@@ -45,15 +48,29 @@ public class SecurityConfiguration {
 
     @Bean
     public SecurityFilterChain securityFilterChain(
-            HttpSecurity http, JwtService jwtService, CorsConfigurationSource corsConfigurationSource)
+            HttpSecurity http,
+            JwtService jwtService,
+            CorsConfigurationSource corsConfigurationSource,
+            GithubEmailBackfillOAuth2UserService githubEmailBackfillOAuth2UserService,
+            OAuthAuthenticationSuccessHandler oAuthAuthenticationSuccessHandler,
+            OAuthAuthenticationFailureHandler oAuthAuthenticationFailureHandler)
             throws Exception {
         http.addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
 
-        http.authorizeHttpRequests(
-                auth -> auth.requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh")
-                        .permitAll()
-                        .anyRequest()
-                        .authenticated());
+        http.authorizeHttpRequests(auth -> auth.requestMatchers(
+                        "/api/auth/login",
+                        "/api/auth/register",
+                        "/api/auth/refresh",
+                        "/oauth2/authorization/**",
+                        "/login/oauth2/code/**")
+                .permitAll()
+                .anyRequest()
+                .authenticated());
+
+        http.oauth2Login(
+                oauth2 -> oauth2.userInfoEndpoint(info -> info.userService(githubEmailBackfillOAuth2UserService))
+                        .successHandler(oAuthAuthenticationSuccessHandler)
+                        .failureHandler(oAuthAuthenticationFailureHandler));
 
         http.cors(cors -> cors.configurationSource(corsConfigurationSource));
 
