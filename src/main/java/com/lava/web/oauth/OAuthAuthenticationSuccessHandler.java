@@ -48,9 +48,12 @@ public class OAuthAuthenticationSuccessHandler implements AuthenticationSuccessH
             response.addHeader(
                     HttpHeaders.SET_COOKIE,
                     this.cookieFactory.refreshTokenCookie(pair.refreshToken()).toString());
+            log.info(
+                    "onAuthenticationSuccess::success::user: {}",
+                    LogSanitizer.sanitize(pair.principal().getUsername()));
             response.sendRedirect(this.oAuthProperties.successRedirectUri());
-        } catch (UnverifiedOAuthEmailException | InvalidOAuthUserStateException ex) {
-            log.warn("onAuthenticationSuccess::rejected: {}", LogSanitizer.sanitize(ex.getMessage()));
+        } catch (UnverifiedOAuthEmailException | InvalidOAuthUserStateException e) {
+            log.error("onAuthenticationSuccess::rejected: {}", LogSanitizer.sanitize(e.getMessage()));
             response.sendRedirect(this.oAuthProperties.failureRedirectUri());
         }
     }

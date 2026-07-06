@@ -26,7 +26,7 @@ public class OAuthAuthenticationFailureHandler implements AuthenticationFailureH
     public void onAuthenticationFailure(
             HttpServletRequest request, HttpServletResponse response, AuthenticationException exception)
             throws IOException {
-        log.warn("onAuthenticationFailure::{}", LogSanitizer.sanitize(exception.getMessage()));
+        log.error("onAuthenticationFailure::error: {}", LogSanitizer.sanitize(exception.getMessage()), exception);
         response.sendRedirect(this.oAuthProperties.failureRedirectUri());
     }
 }

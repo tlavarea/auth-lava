@@ -24,7 +24,7 @@ logging:
       file: gelf
 
 oauth:
-  success-redirect-uri: ${OAUTH_SUCCESS_REDIRECT_URI:http://localhost:4200/oauth/callback}
+  success-redirect-uri: ${OAUTH_SUCCESS_REDIRECT_URI:http://localhost:4200/}
   failure-redirect-uri: ${OAUTH_FAILURE_REDIRECT_URI:http://localhost:4200/login?error=oauth}
 
 spring:

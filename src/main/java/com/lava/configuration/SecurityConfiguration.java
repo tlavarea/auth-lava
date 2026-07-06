@@ -67,11 +67,6 @@ public class SecurityConfiguration {
                 .anyRequest()
                 .authenticated());
 
-        http.oauth2Login(
-                oauth2 -> oauth2.userInfoEndpoint(info -> info.userService(githubEmailBackfillOAuth2UserService))
-                        .successHandler(oAuthAuthenticationSuccessHandler)
-                        .failureHandler(oAuthAuthenticationFailureHandler));
-
         http.cors(cors -> cors.configurationSource(corsConfigurationSource));
 
         // csrf.spa() gives sensible defaults for a single-page-app frontend: a cookie-based
@@ -85,6 +80,11 @@ public class SecurityConfiguration {
 
         http.exceptionHandling(handling ->
                 handling.authenticationEntryPoint((request, response, authException) -> response.sendError(401)));
+
+        http.oauth2Login(
+                oauth2 -> oauth2.userInfoEndpoint(info -> info.userService(githubEmailBackfillOAuth2UserService))
+                        .successHandler(oAuthAuthenticationSuccessHandler)
+                        .failureHandler(oAuthAuthenticationFailureHandler));
 
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
