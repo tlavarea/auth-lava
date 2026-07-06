@@ -1,10 +1,10 @@
 package com.lava.repository;
 
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 final class PostgresTestContainer {
 
-    static final PostgreSQLContainer<?> INSTANCE = new PostgreSQLContainer<>("postgres:18-alpine");
+    static final PostgreSQLContainer INSTANCE = new PostgreSQLContainer("postgres:18-alpine");
 
     static {
         INSTANCE.start();
