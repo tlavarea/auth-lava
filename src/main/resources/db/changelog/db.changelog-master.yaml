@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/changes/002-create-refresh-token.yaml
   - include:
       file: db/changelog/changes/003-add-refresh-token-mfa-verified.yaml
+  - include:
+      file: db/changelog/changes/004-create-pending-registration.yaml

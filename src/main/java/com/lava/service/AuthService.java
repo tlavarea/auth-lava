@@ -13,6 +13,4 @@ public interface AuthService {
     void logout(AuthUserPrincipal principal, Optional<String> rawRefreshToken);
 
     TokenPair refresh(String rawRefreshToken);
-
-    void register(String email, String rawPassword);
 }

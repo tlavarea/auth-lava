@@ -10,7 +10,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.lava.exception.EmailAlreadyRegisteredException;
 import com.lava.exception.InvalidRefreshTokenException;
 import com.lava.model.auth.Issued;
 import com.lava.model.auth.IssuedBuilder;
@@ -227,26 +226,6 @@ class AuthServiceImplTest {
         when(this.userRepository.findAuthUserById(2L)).thenReturn(Optional.of(authUserView(2L, "suspended")));
 
         assertThatThrownBy(() -> this.service.refresh("raw")).isInstanceOf(InvalidRefreshTokenException.class);
-    }
-
-    @Test
-    void register_emailNotRegistered_encodesPasswordAndInserts() {
-        when(this.userRepository.existsByEmail("new@example.com")).thenReturn(false);
-        when(this.passwordEncoder.encode("password")).thenReturn("hashed");
-
-        this.service.register("new@example.com", "password");
-
-        verify(this.userRepository).insert("new@example.com", "hashed");
-    }
-
-    @Test
-    void register_emailAlreadyRegistered_throwsAndDoesNotInsert() {
-        when(this.userRepository.existsByEmail("existing@example.com")).thenReturn(true);
-
-        assertThatThrownBy(() -> this.service.register("existing@example.com", "password"))
-                .isInstanceOf(EmailAlreadyRegisteredException.class);
-
-        verify(this.userRepository, never()).insert(any(), any());
     }
 
     private static AuthUserPrincipal principal(Long userId, String status) {

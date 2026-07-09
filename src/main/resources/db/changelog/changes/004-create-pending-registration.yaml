@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: "8"
+      author: tlavarea
+      comment: >
+        PENDING_REGISTRATION - holds the state of an in-progress email+password
+        signup before a user row exists: the emailed verification code (hashed,
+        never stored raw) and, once verified, gates the final password-setting
+        step. Keyed by email rather than user_id since no user exists yet.
+        A fresh /register/start call overwrites any existing row for that
+        email (see PendingRegistrationRepository#upsertCode), which naturally
+        invalidates a stale bridge token from an abandoned attempt - its
+        /register/complete call re-checks verified_at against whatever row
+        currently exists, not just the token's own signature/expiry.
+      changes:
+        - createTable:
+            tableName: pending_registration
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: email
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_pending_registration_email
+              - column:
+                  name: code_hash
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attempt_count
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: verified_at
+                  type: TIMESTAMPTZ
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addAutoIncrement:
+            tableName: pending_registration
+            columnName: id
+            columnDataType: BIGINT
+            generationType: ALWAYS
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS pending_registration CASCADE;
