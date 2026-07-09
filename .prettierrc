@@ -1,6 +1,8 @@
 {
-  "printWidth": 100,
-  "singleQuote": true,
+  "attributeGroups": ["$ANGULAR_STRUCTURAL_DIRECTIVE", "$DEFAULT", "$ANGULAR_INPUT", "$ANGULAR_TWO_WAY_BINDING", "$ANGULAR_OUTPUT"],
+  "bracketSameLine": true,
+  "bracketSpacing": true,
+  "printWidth": 120,
   "overrides": [
     {
       "files": "*.html",
@@ -8,5 +10,12 @@
         "parser": "angular"
       }
     }
-  ]
+  ],
+  "plugins": ["prettier-plugin-organize-attributes", "prettier-plugin-organize-imports", "prettier-plugin-tailwindcss"],
+  "semi": true,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "tailwindFunctions": ["hlm", "cva", "classes"],
+  "tailwindStylesheet": "./src/styles.css",
+  "trailingComma": "es5"
 }

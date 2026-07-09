@@ -1,5 +1,12 @@
-
 You are an expert in TypeScript, Angular, and scalable web application development. You write functional, maintainable, performant, and accessible code following Angular and TypeScript best practices.
+
+## Tooling
+
+- Package manager: **pnpm**. Never use `npm` or `yarn` — always `pnpm install`, `pnpm add`, `pnpm exec`, etc.
+- Use the **angular-developer** skill for Angular architecture, reactivity, forms, DI, routing, SSR, accessibility, styling, and testing guidance.
+- Use the **angular-cli** MCP server (not raw shell commands) for CLI operations: discovering the workspace (`list_projects`), loading version-specific best practices (`get_best_practices`), running builds/tests/serve (`run_target`), and documentation lookups (`search_documentation`).
+- Use the **spartan** skill for anything involving spartan/ui components (Brain headless primitives or Helm styled layer), and the **@spartan-ng/mcp** server for component APIs, generators, and usage examples.
+- New UI components are generated via the `@spartan-ng/cli` (see `components.json`) into `libs/ui/<component>`, using the `@spartan-ng/helm` import alias.
 
 ## TypeScript Best Practices
 
@@ -35,12 +42,22 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Do NOT use `ngStyle`, use `style` bindings instead
 - When using external templates/styles, use paths relative to the component TS file.
 
+## Styling
+
+- Use Tailwind CSS utility classes for styling; avoid hand-written CSS unless Tailwind can't express it.
+- Prefer spartan/ui (`@spartan-ng/brain` + Helm components in `libs/ui`) over building custom UI primitives from scratch.
+- Use `class-variance-authority` (`cva`) for variant-driven component styling, and `tailwind-merge`/`clsx` (via `libs/ui/utils`) for conditional/merged class composition, consistent with existing Helm components.
+
 ## State Management
 
 - Use signals for local component state
 - Use `computed()` for derived state
 - Keep state transformations pure and predictable
 - Do NOT use `mutate` on signals, use `update` or `set` instead
+- For shared/feature-level state, use `@ngrx/signals` (SignalStore) rather than services with plain signals or NgRx Store/Effects.
+  - Compose stores with `withState`, `withComputed`, `withMethods`, and feature slices (`withEntities`, etc.) instead of one monolithic store.
+  - Keep `withMethods` updaters pure and use `patchState` rather than mutating state directly.
+  - Provide stores with `providedIn: 'root'` for app-wide state, or at the route/component level for feature-scoped state.
 
 ## Templates
 
@@ -55,3 +72,9 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Use the `providedIn: 'root'` option for singleton services
 - Prefer the `@Service` decorator over `@Injectable({providedIn: 'root'})` for new singleton services (Angular v22+)
 - Use the `inject()` function instead of constructor injection
+
+## Testing
+
+- Unit tests run on **Vitest** via the Angular CLI (`@angular/build:unit-test`), invoked with `pnpm test` / `ng test` — do not add Jasmine/Karma or a separate Vitest config.
+- Use Vitest globals (`describe`, `it`, `expect`, `vi`) as configured in `tsconfig.spec.json`; don't import them manually.
+- Test SignalStores by reading their signals/computed properties directly rather than mocking internals.
