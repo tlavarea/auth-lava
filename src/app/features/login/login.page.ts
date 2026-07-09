@@ -10,6 +10,7 @@ import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
 import { AuthStore } from '../../core/auth/auth.store';
 import { extractErrorMessage } from '../../core/auth/extract-error-message';
+import { OauthProviders } from '../../core/auth/oauth-providers/oauth-providers';
 
 @Component({
   selector: 'app-login',
@@ -23,6 +24,7 @@ import { extractErrorMessage } from '../../core/auth/extract-error-message';
     HlmFieldImports,
     HlmInput,
     HlmSpinnerImports,
+    OauthProviders,
   ],
   template: `
     <div class="flex min-h-dvh items-center justify-center p-4">
@@ -81,12 +83,7 @@ import { extractErrorMessage } from '../../core/auth/extract-error-message';
             </button>
           </form>
 
-          <hlm-field-separator>OR</hlm-field-separator>
-
-          <div class="flex flex-col gap-2">
-            <button hlmBtn variant="outline" type="button" (click)="signInWithGoogle()">Continue with Google</button>
-            <button hlmBtn variant="outline" type="button" (click)="signInWithGithub()">Continue with GitHub</button>
-          </div>
+          <app-oauth-providers />
         </div>
         <div class="justify-center" hlmCardFooter>
           <p class="text-sm text-muted-foreground">
@@ -136,12 +133,4 @@ export class LoginPage {
   protected readonly registeredMessage = signal(
     this.route.snapshot.queryParamMap.get('registered') === '1' ? 'Account created. Sign in to continue.' : null
   );
-
-  protected signInWithGoogle(): void {
-    window.location.href = '/oauth2/authorization/google';
-  }
-
-  protected signInWithGithub(): void {
-    window.location.href = '/oauth2/authorization/github';
-  }
 }
