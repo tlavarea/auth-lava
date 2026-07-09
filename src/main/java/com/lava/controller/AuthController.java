@@ -5,7 +5,6 @@ import com.lava.logging.LogSanitizer;
 import com.lava.model.auth.TokenPair;
 import com.lava.model.web.request.LoginRequest;
 import com.lava.model.web.request.LogoutRequest;
-import com.lava.model.web.request.RegisterRequest;
 import com.lava.model.web.response.UserResponse;
 import com.lava.security.AuthUserPrincipal;
 import com.lava.service.AuthService;
@@ -16,7 +15,6 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -83,13 +81,6 @@ public class AuthController {
         TokenPair pair = this.authService.refresh(refreshTokenCookie);
         this.setAuthCookies(response, pair);
         return ResponseEntity.ok(UserResponse.from(pair.principal()));
-    }
-
-    @PostMapping("/register")
-    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest request) {
-        log.info("register::request: {}", LogSanitizer.sanitize(request));
-        this.authService.register(request.email(), request.password());
-        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     /**

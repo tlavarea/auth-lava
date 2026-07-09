@@ -2,8 +2,15 @@ package com.lava.service;
 
 import com.lava.security.AuthUserPrincipal;
 import io.jsonwebtoken.Claims;
+import java.time.Duration;
 
 public interface JwtService {
+
+    // Distinguishes a registration bridge token (see #generateRegistrationToken) from a real
+    // access token at parse time - both are signed with the same key, so RegistrationServiceImpl
+    // checks this claim defensively before trusting a token's subject as a verified email.
+    String REGISTRATION_TOKEN_PURPOSE_CLAIM = "purpose";
+    String REGISTRATION_TOKEN_PURPOSE = "registration";
 
     /**
      * Generates a signed access token for the given principal.
@@ -17,6 +24,18 @@ public interface JwtService {
     String generateAccessToken(AuthUserPrincipal principal, boolean mfaEnrolled, boolean totpVerified);
 
     long getAccessTokenTtlSeconds();
+
+    /**
+     * Generates a short-lived, purpose-scoped bridge token used to prove that the caller of {@code /register/complete}
+     * is the same session that already verified the given email during registration - no {@code user} row exists yet at
+     * this point, so this carries an email subject rather than a user id and none of the role/authority claims a real
+     * access token has.
+     *
+     * @param email - the email address that was just verified.
+     * @param ttl - how long the token remains valid.
+     * @return the signed JWT.
+     */
+    String generateRegistrationToken(String email, Duration ttl);
 
     Claims parseAndValidate(String token);
 }

@@ -6,12 +6,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 @RecordBuilder
-public record RegisterRequest(
+public record VerifyRegistrationCodeRequest(
         @NotBlank @Email String email,
-        @NotBlank @Size(min = 8, max = 32) String password) implements RegisterRequestBuilder.With {
-
-    @Override
-    public String toString() {
-        return String.format("RegisterRequest{email='%s'}", email);
-    }
-}
+        @NotBlank @Size(min = 6, max = 6) String code) implements VerifyRegistrationCodeRequestBuilder.With {}

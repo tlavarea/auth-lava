@@ -63,6 +63,10 @@
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-oauth2-client</artifactId>
     </dependency>
     <dependency>
@@ -359,7 +363,7 @@
                   <value>!test</value>
                 </property>
               </properties>
-            </database>z
+            </database>
             <generate>
               <interfaces>false</interfaces>
               <javaTimeTypes>true</javaTimeTypes>
@@ -376,29 +380,6 @@
               <directory>target/generated-sources/jooq</directory>
             </target>
           </generator>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>com.lava</groupId>
-        <artifactId>maven-generate-annotations-plugin</artifactId>
-        <version>1.0</version>
-        <executions>
-          <execution>
-            <phase>process-sources</phase>
-            <goals>
-              <goal>generate-annotations</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <annotations>
-            <field>@RecordBuilder</field>
-          </annotations>
-          <imports>
-            <field>io.soabase.recordbuilder.core.RecordBuilder</field>
-          </imports>
-          <javaType>record</javaType>
-          <sourceDirectory>${project.build.directory}/generated-sources/jooq/com/lava/model/database/tables/pojos</sourceDirectory>
         </configuration>
       </plugin>
       <plugin>
