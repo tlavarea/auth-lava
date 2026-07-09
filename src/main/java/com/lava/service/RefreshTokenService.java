@@ -10,6 +10,8 @@ public interface RefreshTokenService {
 
     Issued issue(Long userId);
 
+    void markMfaVerified(String rawToken);
+
     void revoke(Long refreshTokenId);
 
     void revokeAllForUser(Long userId);

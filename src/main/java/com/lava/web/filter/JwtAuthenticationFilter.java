@@ -12,7 +12,10 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -21,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -68,7 +72,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String status = claims.get("status", String.class);
         List<String> authorityNames = claims.get("authorities", List.class);
         Set<GrantedAuthority> authorities =
-                authorityNames.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toSet());
+                authorityNames.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toCollection(HashSet::new));
+        List<Map<String, Object>> factors = claims.get("factors", List.class);
+
+        if (factors != null) {
+            for (Map<String, Object> factor : factors) {
+                authorities.add(FactorGrantedAuthority.withAuthority((String) factor.get("authority"))
+                        .issuedAt(Instant.parse((String) factor.get("issuedAt")))
+                        .build());
+            }
+        }
 
         return AuthUserPrincipal.builder()
                 .authorities(authorities)

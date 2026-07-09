@@ -32,11 +32,13 @@
     <git-build-hook-plugin.version>3.6.0</git-build-hook-plugin.version>
     <jacoco.version>0.8.14</jacoco.version>
     <java.version>25</java.version>
+    <jcommander.version>1.82</jcommander.version>
     <jjwt.version>0.13.0</jjwt.version>
     <owasp-encoder.version>1.4.0</owasp-encoder.version>
     <palantir.version>2.91.0</palantir.version>
     <record-builder.version>53</record-builder.version>
     <spotless.version>3.6.0</spotless.version>
+    <totp.version>1.7.1</totp.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -99,6 +101,22 @@
 
     <!-- 3rd party dependencies start -->
     <dependency>
+      <groupId>com.beust</groupId>
+      <artifactId>jcommander</artifactId>
+      <version>${jcommander.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>dev.samstevens.totp</groupId>
+      <artifactId>totp</artifactId>
+      <version>${totp.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.beust</groupId>
+          <artifactId>jcommander</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
       <groupId>io.jsonwebtoken</groupId>
       <artifactId>jjwt-api</artifactId>
       <version>${jjwt.version}</version>
@@ -126,7 +144,6 @@
       <artifactId>commons-lang3</artifactId>
     </dependency>
     <dependency>
-      <!-- Argon2PasswordEncoder delegates its hashing to Bouncy Castle at runtime -->
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcprov-jdk18on</artifactId>
       <version>${bouncycastle.version}</version>

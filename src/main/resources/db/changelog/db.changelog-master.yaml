@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/changes/001-create-auth-schema.yaml
   - include:
       file: db/changelog/changes/002-create-refresh-token.yaml
+  - include:
+      file: db/changelog/changes/003-add-refresh-token-mfa-verified.yaml

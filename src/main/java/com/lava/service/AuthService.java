@@ -6,6 +6,8 @@ import java.util.Optional;
 
 public interface AuthService {
 
+    String completeMfaVerification(AuthUserPrincipal principal, String rawRefreshToken, String code);
+
     TokenPair login(String email, String rawPassword);
 
     void logout(AuthUserPrincipal principal, Optional<String> rawRefreshToken);

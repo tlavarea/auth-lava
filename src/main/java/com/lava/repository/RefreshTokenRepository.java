@@ -8,7 +8,9 @@ public interface RefreshTokenRepository {
 
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
-    RefreshToken insert(Long userId, String tokenHash, LocalDateTime expiresAt);
+    RefreshToken insert(Long userId, String tokenHash, LocalDateTime expiresAt, boolean mfaVerified);
+
+    void markMfaVerified(Long id);
 
     void revoke(Long id, LocalDateTime revokedAt);
 

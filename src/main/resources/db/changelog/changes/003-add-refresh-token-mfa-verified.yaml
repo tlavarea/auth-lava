@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: "7"
+      author: tlavarea
+      comment: >
+        REFRESH_TOKEN.MFA_VERIFIED - tracks whether the second MFA factor has
+        already been satisfied for this refresh-token chain, so a session
+        that completed TOTP once isn't re-prompted every time its short-lived
+        access token is silently reissued via rotation.
+      changes:
+        - addColumn:
+            tableName: refresh_token
+            columns:
+              - column:
+                  name: mfa_verified
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: refresh_token
+            columnName: mfa_verified

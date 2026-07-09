@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.crypto.SecretKey;
 import org.junit.jupiter.api.Test;
@@ -48,7 +49,7 @@ class JwtServiceImplTest {
         JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
         AuthUserPrincipal principal = principal();
 
-        String token = service.generateAccessToken(principal);
+        String token = service.generateAccessToken(principal, false, false);
         Claims claims = service.parseAndValidate(token);
 
         assertThat(claims.getSubject()).isEqualTo("42");
@@ -57,6 +58,52 @@ class JwtServiceImplTest {
         assertThat(claims.get("status", String.class)).isEqualTo("active");
         assertThat(claims.get("authorities", List.class)).containsExactlyInAnyOrder("ROLE_MEMBER");
         assertThat(claims.getIssuer()).isEqualTo("auth-lava-test");
+    }
+
+    @Test
+    void generateAccessToken_mfaEnrolled_addsMfaEnrolledAuthorityButNotTotpFactor() {
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
+        AuthUserPrincipal principal = principal();
+
+        String token = service.generateAccessToken(principal, true, false);
+        Claims claims = service.parseAndValidate(token);
+
+        assertThat(claims.get("authorities", List.class)).contains("MFA_ENROLLED");
+        List<Map<String, Object>> factors = claims.get("factors", List.class);
+        assertThat(factors).hasSize(1);
+        assertThat(factors.getFirst().get("authority")).isEqualTo("FACTOR_PASSWORD");
+    }
+
+    @Test
+    void generateAccessToken_totpVerified_addsTotpFactorClaim() {
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
+        AuthUserPrincipal principal = principal();
+
+        String token = service.generateAccessToken(principal, true, true);
+        Claims claims = service.parseAndValidate(token);
+
+        List<Map<String, Object>> factors = claims.get("factors", List.class);
+        assertThat(factors)
+                .extracting(factor -> factor.get("authority"))
+                .containsExactlyInAnyOrder("FACTOR_PASSWORD", "FACTOR_TOTP");
+        assertThat(factors)
+                .allSatisfy(
+                        factor -> assertThat((String) factor.get("issuedAt")).isNotBlank());
+    }
+
+    @Test
+    void generateAccessToken_totpVerifiedButNotEnrolled_factorsAndAuthoritiesAreIndependent() {
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
+        AuthUserPrincipal principal = principal();
+
+        String token = service.generateAccessToken(principal, false, true);
+        Claims claims = service.parseAndValidate(token);
+
+        assertThat(claims.get("authorities", List.class)).doesNotContain("MFA_ENROLLED");
+        List<Map<String, Object>> factors = claims.get("factors", List.class);
+        assertThat(factors)
+                .extracting(factor -> factor.get("authority"))
+                .containsExactlyInAnyOrder("FACTOR_PASSWORD", "FACTOR_TOTP");
     }
 
     @Test
@@ -70,7 +117,7 @@ class JwtServiceImplTest {
     @Test
     void parseAndValidate_roundTripsGeneratedToken() {
         JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
-        String token = service.generateAccessToken(principal());
+        String token = service.generateAccessToken(principal(), false, false);
 
         Claims claims = service.parseAndValidate(token);
 
@@ -81,7 +128,7 @@ class JwtServiceImplTest {
     void parseAndValidate_wrongIssuer_throwsJwtException() {
         JwtServiceImpl issuerA = new JwtServiceImpl(properties(VALID_SECRET, "issuer-a"));
         JwtServiceImpl issuerB = new JwtServiceImpl(properties(VALID_SECRET, "issuer-b"));
-        String token = issuerA.generateAccessToken(principal());
+        String token = issuerA.generateAccessToken(principal(), false, false);
 
         assertThatThrownBy(() -> issuerB.parseAndValidate(token)).isInstanceOf(JwtException.class);
     }
@@ -113,7 +160,7 @@ class JwtServiceImplTest {
     void parseAndValidate_signedWithDifferentKey_throwsSignatureException() {
         JwtServiceImpl serviceA = new JwtServiceImpl(properties(VALID_SECRET));
         JwtServiceImpl serviceB = new JwtServiceImpl(properties(randomBase64Secret()));
-        String token = serviceA.generateAccessToken(principal());
+        String token = serviceA.generateAccessToken(principal(), false, false);
 
         assertThatThrownBy(() -> serviceB.parseAndValidate(token)).isInstanceOf(SignatureException.class);
     }

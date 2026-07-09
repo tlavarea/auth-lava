@@ -2,6 +2,9 @@ package com.lava.controller;
 
 import com.lava.exception.EmailAlreadyRegisteredException;
 import com.lava.exception.InvalidRefreshTokenException;
+import com.lava.exception.InvalidTotpCodeException;
+import com.lava.exception.MfaAlreadyEnabledException;
+import com.lava.exception.MfaEnrollmentNotFoundException;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,18 +15,20 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class AuthExceptionHandler {
 
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<Map<String, String>> handleAuthenticationException(AuthenticationException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid email or password"));
+    @ExceptionHandler({AuthenticationException.class, InvalidRefreshTokenException.class, InvalidTotpCodeException.class
+    })
+    public ResponseEntity<Map<String, String>> handleAuthenticationException(RuntimeException e) {
+        String message = e instanceof AuthenticationException ? "Invalid email or password" : e.getMessage();
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", message));
     }
 
-    @ExceptionHandler(EmailAlreadyRegisteredException.class)
-    public ResponseEntity<Map<String, String>> handleEmailAlreadyRegistered(EmailAlreadyRegisteredException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", ex.getMessage()));
+    @ExceptionHandler({EmailAlreadyRegisteredException.class, MfaAlreadyEnabledException.class})
+    public ResponseEntity<Map<String, String>> handleAlreadyEnrolledException(RuntimeException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
     }
 
-    @ExceptionHandler(InvalidRefreshTokenException.class)
-    public ResponseEntity<Map<String, String>> handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", ex.getMessage()));
+    @ExceptionHandler(MfaEnrollmentNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleMfaEnrollmentNotFound(MfaEnrollmentNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
     }
 }

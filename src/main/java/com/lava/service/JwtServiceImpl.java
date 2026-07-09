@@ -2,15 +2,20 @@ package com.lava.service;
 
 import com.lava.boot.autoconfigure.app.JwtProperties;
 import com.lava.security.AuthUserPrincipal;
+import com.lava.security.MfaAuthorities;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
 import javax.crypto.SecretKey;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -32,24 +37,47 @@ public class JwtServiceImpl implements JwtService {
     }
 
     @Override
-    public String generateAccessToken(AuthUserPrincipal principal) {
+    public String generateAccessToken(AuthUserPrincipal principal, boolean mfaEnrolled, boolean totpVerified) {
         Instant now = Instant.now();
+
+        List<String> authorities = new ArrayList<>(principal.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList());
+
+        if (mfaEnrolled) {
+            authorities.add(MfaAuthorities.MFA_ENROLLED_AUTHORITY);
+        }
+
+        List<Map<String, Object>> factors = new ArrayList<>();
+        factors.add(factorClaim(FactorGrantedAuthority.PASSWORD_AUTHORITY, now));
+
+        if (totpVerified) {
+            factors.add(factorClaim(MfaAuthorities.TOTP_FACTOR_AUTHORITY, now));
+        }
 
         return Jwts.builder()
                 .subject(String.valueOf(principal.getUserId()))
                 .claim("email", principal.getEmail())
                 .claim("emailVerified", principal.isEmailVerified())
                 .claim("status", principal.getStatus())
-                .claim(
-                        "authorities",
-                        principal.getAuthorities().stream()
-                                .map(GrantedAuthority::getAuthority)
-                                .toList())
+                .claim("authorities", authorities)
+                .claim("factors", factors)
                 .issuer(properties.issuer())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(properties.accessTokenTtl())))
                 .signWith(signingKey, Jwts.SIG.HS256)
                 .compact();
+    }
+
+    /**
+     * Builds a single {@code factors} claim entry representing one verified authentication factor.
+     *
+     * @param authority - the factor's authority string, e.g. {@code FACTOR_PASSWORD}.
+     * @param issuedAt - when the factor was satisfied.
+     * @return the claim entry.
+     */
+    private static Map<String, Object> factorClaim(String authority, Instant issuedAt) {
+        return Map.of("authority", authority, "issuedAt", issuedAt.toString());
     }
 
     @Override

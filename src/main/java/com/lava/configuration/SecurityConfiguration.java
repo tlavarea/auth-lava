@@ -1,6 +1,7 @@
 package com.lava.configuration;
 
 import com.lava.boot.autoconfigure.app.CorsProperties;
+import com.lava.security.MfaAuthorities;
 import com.lava.security.oauth.GithubEmailBackfillOAuth2UserService;
 import com.lava.service.JwtService;
 import com.lava.web.filter.JwtAuthenticationFilter;
@@ -12,10 +13,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authorization.AuthorizationManagerFactories;
+import org.springframework.security.authorization.AuthorizationManagerFactory;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -57,15 +61,45 @@ public class SecurityConfiguration {
             throws Exception {
         http.addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
 
+        // Layers an additional "both factors present" requirement on top of the normal
+        // authenticated() check, but only for principals whose token carries the MFA_ENROLLED
+        // marker authority (i.e. only for users who actually enrolled TOTP) - see
+        // AuthorizationManagerFactories.multiFactor()'s conditional-MFA support. Deliberately kept
+        // as a local variable rather than a @Bean: registering an AuthorizationManagerFactory as a
+        // bean makes Spring Security wire it in as the GLOBAL default for every plain
+        // authenticated()/hasRole() DSL call in the filter chain, not just calls made explicitly
+        // through this instance - which would silently gate /api/auth/mfa/verify too.
+        AuthorizationManagerFactory<Object> mfaAuthorizationManagerFactory =
+                AuthorizationManagerFactories.<Object>multiFactor()
+                        .requireFactors(FactorGrantedAuthority.PASSWORD_AUTHORITY, MfaAuthorities.TOTP_FACTOR_AUTHORITY)
+                        .when(authentication -> authentication.getAuthorities().stream()
+                                .anyMatch(authority ->
+                                        MfaAuthorities.MFA_ENROLLED_AUTHORITY.equals(authority.getAuthority())))
+                        .build();
+
         http.authorizeHttpRequests(auth -> auth.requestMatchers(
                         "/api/auth/login",
                         "/api/auth/register",
                         "/api/auth/refresh",
                         "/oauth2/authorization/**",
-                        "/login/oauth2/code/**")
+                        "/login/oauth2/code/**",
+                        // Spring Boot's default error handling forwards internally to /error when
+                        // a filter calls response.sendError(...), and Spring Security re-runs the
+                        // filter chain for that forwarded dispatch. Without this, a denial (e.g.
+                        // the MFA anyRequest() rule below returning 403) reaches /error as an
+                        // anonymous request, gets denied there too, and our authenticationEntryPoint
+                        // overwrites the still-uncommitted response with 401 - masking the real
+                        // status. /error must stay permitAll so it only ever renders whatever
+                        // status was already set, never reprocesses authorization itself.
+                        "/error")
                 .permitAll()
+                // Reachable on the password-only-factor token /login issues for an MFA-enrolled
+                // user - this endpoint is precisely how that token is upgraded to carry the TOTP
+                // factor, so it must not itself require that factor already be present.
+                .requestMatchers("/api/auth/mfa/verify")
+                .authenticated()
                 .anyRequest()
-                .authenticated());
+                .access(mfaAuthorizationManagerFactory.authenticated()));
 
         http.cors(cors -> cors.configurationSource(corsConfigurationSource));
 

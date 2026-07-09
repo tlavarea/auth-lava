@@ -38,18 +38,16 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
     @Override
     public Issued issue(Long userId) {
-        byte[] randomBytes = new byte[TOKEN_BYTE_LENGTH];
-        this.secureRandom.nextBytes(randomBytes);
-        String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
-        LocalDateTime expiresAt = LocalDateTime.now().plus(jwtProperties.refreshTokenTtl());
-        RefreshToken row = this.refreshTokenRepository.insert(userId, hash(rawToken), expiresAt);
+        return this.issue(userId, false);
+    }
 
-        return IssuedBuilder.builder()
-                .expiresAt(expiresAt)
-                .id(row.id())
-                .rawToken(rawToken)
-                .userId(userId)
-                .build();
+    @Override
+    @Transactional
+    public void markMfaVerified(String rawToken) {
+        RefreshToken row = this.refreshTokenRepository
+                .findByTokenHash(hash(rawToken))
+                .orElseThrow(InvalidRefreshTokenException::new);
+        this.refreshTokenRepository.markMfaVerified(row.id());
     }
 
     @Override
@@ -65,7 +63,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Override
     @Transactional
     public Issued rotate(RefreshToken old) {
-        Issued next = issue(old.userId());
+        Issued next = this.issue(old.userId(), Boolean.TRUE.equals(old.mfaVerified()));
         this.refreshTokenRepository.revokeAndReplace(old.id(), next.id(), LocalDateTime.now());
         return next;
     }
@@ -89,6 +87,29 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         }
 
         return row;
+    }
+
+    /**
+     * Issues a new refresh token, carrying forward whether the MFA factor has already been satisfied for this session
+     * so rotation doesn't force re-verification.
+     *
+     * @param userId - the user to issue the token for.
+     * @param mfaVerified - whether the second MFA factor has already been satisfied for this session.
+     * @return the {@link Issued} refresh token.
+     */
+    private Issued issue(Long userId, boolean mfaVerified) {
+        byte[] randomBytes = new byte[TOKEN_BYTE_LENGTH];
+        this.secureRandom.nextBytes(randomBytes);
+        String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+        LocalDateTime expiresAt = LocalDateTime.now().plus(jwtProperties.refreshTokenTtl());
+        RefreshToken row = this.refreshTokenRepository.insert(userId, hash(rawToken), expiresAt, mfaVerified);
+
+        return IssuedBuilder.builder()
+                .expiresAt(expiresAt)
+                .id(row.id())
+                .rawToken(rawToken)
+                .userId(userId)
+                .build();
     }
 
     /**

@@ -39,15 +39,26 @@ public class RefreshTokenRepositoryImpl extends AbstractSpringDAOImpl<RefreshTok
 
     @Override
     @Transactional
-    public RefreshToken insert(Long userId, String tokenHash, LocalDateTime expiresAt) {
+    public RefreshToken insert(Long userId, String tokenHash, LocalDateTime expiresAt, boolean mfaVerified) {
         return this.dsl
                 .insertInto(REFRESH_TOKEN)
                 .set(REFRESH_TOKEN.USER_ID, userId)
                 .set(REFRESH_TOKEN.TOKEN_HASH, tokenHash)
                 .set(REFRESH_TOKEN.EXPIRES_AT, expiresAt)
+                .set(REFRESH_TOKEN.MFA_VERIFIED, mfaVerified)
                 .returning()
                 .fetchOptionalInto(RefreshToken.class)
                 .orElseThrow(() -> new IllegalStateException("insert into refresh_token did not return a row"));
+    }
+
+    @Override
+    @Transactional
+    public void markMfaVerified(Long id) {
+        this.dsl
+                .update(REFRESH_TOKEN)
+                .set(REFRESH_TOKEN.MFA_VERIFIED, true)
+                .where(REFRESH_TOKEN.ID.eq(id))
+                .execute();
     }
 
     @Override

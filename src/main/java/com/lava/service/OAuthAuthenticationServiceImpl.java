@@ -38,7 +38,10 @@ public class OAuthAuthenticationServiceImpl implements OAuthAuthenticationServic
                 .filter(user -> "active".equals(user.status()))
                 .orElseThrow(InvalidOAuthUserStateException::new);
         AuthUserPrincipal principal = AuthUserPrincipal.from(view);
-        String accessToken = this.jwtService.generateAccessToken(principal);
+        // MFA gating for OAuth logins is deliberately out of scope for now (see plan) - password
+        // login is the only path currently gated, so OAuth-issued tokens never carry the
+        // MFA_ENROLLED marker or a TOTP factor.
+        String accessToken = this.jwtService.generateAccessToken(principal, false, false);
         Issued refresh = this.refreshTokenService.issue(principal.getUserId());
 
         return TokenPairBuilder.builder()

@@ -158,6 +158,60 @@ class AuthControllerTest {
     }
 
     @Test
+    void me_notEnrolledInMfa_reachableOnPasswordFactorAlone() throws Exception {
+        AuthUserPrincipal principal = AuthUserPrincipal.builder()
+                .userId(7L)
+                .email("user@example.com")
+                .passwordHash("hash")
+                .status("active")
+                .emailVerified(true)
+                .authorities(Set.of(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("FACTOR_PASSWORD")))
+                .build();
+
+        this.mockMvc
+                .perform(get("/api/auth/me").with(authentication(authToken(principal))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void me_mfaEnrolledWithoutTotpFactor_returns403() throws Exception {
+        AuthUserPrincipal principal = AuthUserPrincipal.builder()
+                .userId(7L)
+                .email("user@example.com")
+                .passwordHash("hash")
+                .status("active")
+                .emailVerified(true)
+                .authorities(Set.of(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("MFA_ENROLLED"),
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("FACTOR_PASSWORD")))
+                .build();
+
+        this.mockMvc
+                .perform(get("/api/auth/me").with(authentication(authToken(principal))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void me_mfaEnrolledWithBothFactors_returnsOk() throws Exception {
+        AuthUserPrincipal principal = AuthUserPrincipal.builder()
+                .userId(7L)
+                .email("user@example.com")
+                .passwordHash("hash")
+                .status("active")
+                .emailVerified(true)
+                .authorities(Set.of(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("MFA_ENROLLED"),
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("FACTOR_PASSWORD"),
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("FACTOR_TOTP")))
+                .build();
+
+        this.mockMvc
+                .perform(get("/api/auth/me").with(authentication(authToken(principal))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void refresh_noCookie_returns401() throws Exception {
         this.mockMvc.perform(post("/api/auth/refresh").with(csrf())).andExpect(status().isUnauthorized());
     }

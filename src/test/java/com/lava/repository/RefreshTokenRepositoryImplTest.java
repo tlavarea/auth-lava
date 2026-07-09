@@ -25,19 +25,45 @@ class RefreshTokenRepositoryImplTest extends AbstractRepositoryIntegrationTest {
         User user = this.userRepository.insert("refresh-1@example.com", "hash").orElseThrow();
         LocalDateTime expiresAt = LocalDateTime.now().plusDays(30).withNano(0);
 
-        RefreshToken inserted = this.refreshTokenRepository.insert(user.id(), "hash-value-1", expiresAt);
+        RefreshToken inserted = this.refreshTokenRepository.insert(user.id(), "hash-value-1", expiresAt, false);
 
         Optional<RefreshToken> found = this.refreshTokenRepository.findByTokenHash("hash-value-1");
         assertThat(found).contains(inserted);
         assertThat(found.get().userId()).isEqualTo(user.id());
         assertThat(found.get().revokedAt()).isNull();
+        assertThat(found.get().mfaVerified()).isFalse();
+    }
+
+    @Test
+    void insert_mfaVerifiedTrue_persistsFlag() {
+        User user =
+                this.userRepository.insert("refresh-mfa@example.com", "hash").orElseThrow();
+
+        RefreshToken inserted = this.refreshTokenRepository.insert(
+                user.id(), "hash-value-mfa", LocalDateTime.now().plusDays(30), true);
+
+        assertThat(inserted.mfaVerified()).isTrue();
+    }
+
+    @Test
+    void markMfaVerified_setsFlagToTrue() {
+        User user =
+                this.userRepository.insert("refresh-mark@example.com", "hash").orElseThrow();
+        RefreshToken inserted = this.refreshTokenRepository.insert(
+                user.id(), "hash-value-mark", LocalDateTime.now().plusDays(30), false);
+
+        this.refreshTokenRepository.markMfaVerified(inserted.id());
+
+        RefreshToken updated =
+                this.refreshTokenRepository.findByTokenHash("hash-value-mark").orElseThrow();
+        assertThat(updated.mfaVerified()).isTrue();
     }
 
     @Test
     void revoke_setsRevokedAt() {
         User user = this.userRepository.insert("refresh-2@example.com", "hash").orElseThrow();
         RefreshToken inserted = this.refreshTokenRepository.insert(
-                user.id(), "hash-value-2", LocalDateTime.now().plusDays(30));
+                user.id(), "hash-value-2", LocalDateTime.now().plusDays(30), false);
 
         this.refreshTokenRepository.revoke(inserted.id(), LocalDateTime.now());
 
@@ -51,11 +77,11 @@ class RefreshTokenRepositoryImplTest extends AbstractRepositoryIntegrationTest {
         User userA = this.userRepository.insert("refresh-a@example.com", "hash").orElseThrow();
         User userB = this.userRepository.insert("refresh-b@example.com", "hash").orElseThrow();
         RefreshToken tokenA1 = this.refreshTokenRepository.insert(
-                userA.id(), "hash-a1", LocalDateTime.now().plusDays(30));
+                userA.id(), "hash-a1", LocalDateTime.now().plusDays(30), false);
         RefreshToken tokenA2 = this.refreshTokenRepository.insert(
-                userA.id(), "hash-a2", LocalDateTime.now().plusDays(30));
+                userA.id(), "hash-a2", LocalDateTime.now().plusDays(30), false);
         RefreshToken tokenB = this.refreshTokenRepository.insert(
-                userB.id(), "hash-b1", LocalDateTime.now().plusDays(30));
+                userB.id(), "hash-b1", LocalDateTime.now().plusDays(30), false);
         this.refreshTokenRepository.revoke(tokenA1.id(), LocalDateTime.now());
 
         // revokeAllForUser runs in its own REQUIRES_NEW transaction, so the setup above must be
@@ -82,9 +108,9 @@ class RefreshTokenRepositoryImplTest extends AbstractRepositoryIntegrationTest {
     void revokeAndReplace_setsRevokedAtAndReplacedById() {
         User user = this.userRepository.insert("refresh-3@example.com", "hash").orElseThrow();
         RefreshToken oldToken = this.refreshTokenRepository.insert(
-                user.id(), "hash-old", LocalDateTime.now().plusDays(30));
+                user.id(), "hash-old", LocalDateTime.now().plusDays(30), false);
         RefreshToken newToken = this.refreshTokenRepository.insert(
-                user.id(), "hash-new", LocalDateTime.now().plusDays(30));
+                user.id(), "hash-new", LocalDateTime.now().plusDays(30), false);
 
         this.refreshTokenRepository.revokeAndReplace(oldToken.id(), newToken.id(), LocalDateTime.now());
 

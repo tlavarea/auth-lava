@@ -28,9 +28,27 @@ public class AuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final MfaService mfaService;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
+
+    @Override
+    @Transactional
+    public String completeMfaVerification(AuthUserPrincipal principal, String rawRefreshToken, String code) {
+        this.mfaService.verifyCode(principal.getUserId(), code);
+        this.refreshTokenService.markMfaVerified(rawRefreshToken);
+
+        // principal here is reconstructed from the password-only-factor JWT's claims, so its
+        // authority set already carries MFA_ENROLLED/FACTOR_PASSWORD markers alongside the real
+        // role/permission authorities. Re-deriving a clean principal from the DB (same as
+        // refresh()) avoids baking those markers into the fresh token a second time.
+        AuthUserView freshUser = this.userRepository
+                .findAuthUserById(principal.getUserId())
+                .filter(user -> "active".equals(user.status()))
+                .orElseThrow(InvalidRefreshTokenException::new);
+        return this.jwtService.generateAccessToken(AuthUserPrincipal.from(freshUser), true, true);
+    }
 
     @Override
     @Transactional
@@ -38,7 +56,8 @@ public class AuthServiceImpl implements AuthService {
         Authentication authResult = this.authenticationManager.authenticate(
                 UsernamePasswordAuthenticationToken.unauthenticated(email, rawPassword));
         AuthUserPrincipal principal = (AuthUserPrincipal) authResult.getPrincipal();
-        String accessToken = this.jwtService.generateAccessToken(principal);
+        boolean mfaEnrolled = this.mfaService.isEnrolled(principal.getUserId());
+        String accessToken = this.jwtService.generateAccessToken(principal, mfaEnrolled, false);
         Issued refresh = this.refreshTokenService.issue(principal.getUserId());
 
         return TokenPairBuilder.builder()
@@ -73,7 +92,9 @@ public class AuthServiceImpl implements AuthService {
                 .filter(user -> "active".equals(user.status()))
                 .orElseThrow(InvalidRefreshTokenException::new);
         AuthUserPrincipal principal = AuthUserPrincipal.from(freshUser);
-        String accessToken = this.jwtService.generateAccessToken(principal);
+        boolean mfaEnrolled = this.mfaService.isEnrolled(principal.getUserId());
+        String accessToken =
+                this.jwtService.generateAccessToken(principal, mfaEnrolled, Boolean.TRUE.equals(current.mfaVerified()));
         Issued rotated = this.refreshTokenService.rotate(current);
 
         return TokenPairBuilder.builder()

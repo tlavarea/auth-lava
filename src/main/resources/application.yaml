@@ -23,6 +23,14 @@ logging:
     format:
       file: gelf
 
+mfa:
+  encryption-key: ${MFA_ENCRYPTION_KEY:}
+  encryption-salt: ${MFA_ENCRYPTION_SALT:}
+  backup-code-count: ${MFA_BACKUP_CODE_COUNT:10}
+  backup-code-length: ${MFA_BACKUP_CODE_LENGTH:10}
+  totp-issuer: ${MFA_TOTP_ISSUER:auth-lava}
+  totp-allowed-discrepancy: ${MFA_TOTP_ALLOWED_DISCREPANCY:1}
+
 oauth:
   success-redirect-uri: ${OAUTH_SUCCESS_REDIRECT_URI:http://localhost:4200/}
   failure-redirect-uri: ${OAUTH_FAILURE_REDIRECT_URI:http://localhost:4200/login?error=oauth}

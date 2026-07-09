@@ -46,15 +46,32 @@ class RefreshTokenServiceImplTest {
 
     @Test
     void issue_hashesTheRawTokenBeforePersisting() {
-        when(this.refreshTokenRepository.insert(eq(1L), any(), any())).thenAnswer(invocation -> row(9L, 1L));
+        when(this.refreshTokenRepository.insert(eq(1L), any(), any(), eq(false)))
+                .thenAnswer(invocation -> row(9L, 1L));
 
         Issued issued = this.service.issue(1L);
 
         ArgumentCaptor<String> hashCaptor = ArgumentCaptor.forClass(String.class);
-        verify(this.refreshTokenRepository).insert(eq(1L), hashCaptor.capture(), any());
+        verify(this.refreshTokenRepository).insert(eq(1L), hashCaptor.capture(), any(), eq(false));
         assertThat(hashCaptor.getValue()).isEqualTo(sha256Hex(issued.rawToken()));
         assertThat(issued.id()).isEqualTo(9L);
         assertThat(issued.userId()).isEqualTo(1L);
+    }
+
+    @Test
+    void markMfaVerified_delegatesToRepositoryWithHashedToken() {
+        when(this.refreshTokenRepository.findByTokenHash(sha256Hex("raw"))).thenReturn(Optional.of(row(9L, 1L)));
+
+        this.service.markMfaVerified("raw");
+
+        verify(this.refreshTokenRepository).markMfaVerified(9L);
+    }
+
+    @Test
+    void markMfaVerified_tokenNotFound_throwsInvalidRefreshTokenException() {
+        when(this.refreshTokenRepository.findByTokenHash(any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> this.service.markMfaVerified("raw")).isInstanceOf(InvalidRefreshTokenException.class);
     }
 
     @Test
@@ -84,12 +101,30 @@ class RefreshTokenServiceImplTest {
     @Test
     void rotate_issuesNewTokenAndRevokesOldOne() {
         RefreshToken old = row(1L, 3L);
-        when(this.refreshTokenRepository.insert(eq(3L), any(), any())).thenAnswer(invocation -> row(2L, 3L));
+        when(this.refreshTokenRepository.insert(eq(3L), any(), any(), eq(false)))
+                .thenAnswer(invocation -> row(2L, 3L));
 
         Issued next = this.service.rotate(old);
 
         assertThat(next.id()).isEqualTo(2L);
         verify(this.refreshTokenRepository).revokeAndReplace(eq(1L), eq(2L), any(LocalDateTime.class));
+    }
+
+    @Test
+    void rotate_oldTokenWasMfaVerified_carriesFlagForwardToNewToken() {
+        RefreshToken old = RefreshTokenBuilder.builder()
+                .id(1L)
+                .userId(3L)
+                .tokenHash("hash")
+                .expiresAt(LocalDateTime.now().plusDays(30))
+                .mfaVerified(true)
+                .build();
+        when(this.refreshTokenRepository.insert(eq(3L), any(), any(), eq(true))).thenAnswer(invocation -> row(2L, 3L));
+
+        Issued next = this.service.rotate(old);
+
+        assertThat(next.id()).isEqualTo(2L);
+        verify(this.refreshTokenRepository).insert(eq(3L), any(), any(), eq(true));
     }
 
     @Test
