@@ -30,6 +30,7 @@
     "@angular/platform-browser": "^22.0.0",
     "@angular/router": "^22.0.0",
     "@ng-icons/core": "^32.5.0",
+    "@ng-icons/font-awesome": "^33.4.0",
     "@ng-icons/lucide": "^32.5.0",
     "@ng-icons/material-file-icons": "^33.4.0",
     "@ngrx/signals": "^21.1.1",

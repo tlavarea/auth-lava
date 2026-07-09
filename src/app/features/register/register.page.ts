@@ -3,10 +3,10 @@ import { email, form, FormField, FormRoot, maxLength, minLength, required, valid
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { BrnInputOtp } from '@spartan-ng/brain/input-otp';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
-import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
-import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmInputImports } from '@spartan-ng/helm/input';
 import { HlmInputOtpImports } from '@spartan-ng/helm/input-otp';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
@@ -27,10 +27,10 @@ const RESEND_COOLDOWN_SECONDS = 60;
     FormRoot,
     RouterLink,
     HlmAlertImports,
-    HlmButton,
+    HlmButtonImports,
     HlmCardImports,
     HlmFieldImports,
-    HlmInput,
+    HlmInputImports,
     HlmInputOtpImports,
     HlmSpinnerImports,
     OauthProviders,
@@ -39,8 +39,8 @@ const RESEND_COOLDOWN_SECONDS = 60;
     <div class="flex min-h-dvh items-center justify-center p-4">
       <div class="w-full max-w-sm" hlmCard>
         <div hlmCardHeader>
-          <h1 hlmCardTitle>Create an account</h1>
-          <p hlmCardDescription>
+          <h1 class="text-center" hlmCardTitle>Create an account</h1>
+          <p class="text-center" hlmCardDescription>
             @switch (step()) {
               @case ('email') {
                 Enter your email to get started.
@@ -55,6 +55,8 @@ const RESEND_COOLDOWN_SECONDS = 60;
           </p>
         </div>
         <div class="flex flex-col gap-4" hlmCardContent>
+          <app-oauth-providers />
+
           @if (oauthErrorMessage()) {
             <div hlmAlert variant="destructive">
               <p hlmAlertDescription>{{ oauthErrorMessage() }}</p>
@@ -92,8 +94,6 @@ const RESEND_COOLDOWN_SECONDS = 60;
                   }
                 </button>
               </form>
-
-              <app-oauth-providers />
             }
             @case ('code') {
               <div hlmField class="items-center">

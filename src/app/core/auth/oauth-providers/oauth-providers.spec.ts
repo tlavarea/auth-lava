@@ -23,7 +23,7 @@ describe('OauthProviders', () => {
   it('should render a button for each OAuth provider', () => {
     const buttons: HTMLButtonElement[] = fixture.nativeElement.querySelectorAll('button');
     const labels = Array.from(buttons).map((button) => button.textContent?.trim());
-    expect(labels).toContain('Continue with Google');
-    expect(labels).toContain('Continue with GitHub');
+    expect(labels).toContain('Google');
+    expect(labels).toContain('GitHub');
   });
 });
