@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -84,10 +85,11 @@ public class GithubEmailBackfillOAuth2UserService implements OAuth2UserService<O
                     .sorted(Comparator.comparing(GithubEmail::primary).reversed())
                     .map(GithubEmail::email)
                     .findFirst();
-        } catch (RuntimeException ex) {
+        } catch (RuntimeException e) {
             log.warn(
                     "findVerifiedPrimaryEmail::failed to fetch github user emails: {}",
-                    LogSanitizer.sanitize(ex.getMessage()));
+                    LogSanitizer.sanitize(ExceptionUtils.getMessage(e)),
+                    e);
             return Optional.empty();
         }
     }

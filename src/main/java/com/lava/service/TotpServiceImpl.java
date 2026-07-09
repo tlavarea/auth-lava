@@ -14,6 +14,7 @@ import dev.samstevens.totp.secret.SecretGenerator;
 import dev.samstevens.totp.time.SystemTimeProvider;
 import dev.samstevens.totp.util.Utils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -44,7 +45,7 @@ public class TotpServiceImpl implements TotpService {
             byte[] png = this.qrGenerator.generate(this.buildQrData(accountEmail, secret));
             return Utils.getDataUriForImage(png, this.qrGenerator.getImageMimeType());
         } catch (QrGenerationException e) {
-            log.error("generateQrCodeDataUri::failed: {}", LogSanitizer.sanitize(e.getMessage()), e);
+            log.error("generateQrCodeDataUri::failed: {}", LogSanitizer.sanitize(ExceptionUtils.getMessage(e)), e);
             throw new IllegalStateException("Failed to generate MFA enrollment QR code", e);
         }
     }

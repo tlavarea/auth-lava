@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -50,7 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 context.setAuthentication(authentication);
                 SecurityContextHolder.setContext(context);
             } catch (JwtException | IllegalArgumentException e) {
-                log.error("jwt::rejected: {}", LogSanitizer.sanitize(e.getMessage()), e);
+                log.error("jwt::rejected: {}", LogSanitizer.sanitize(ExceptionUtils.getMessage(e)), e);
                 SecurityContextHolder.clearContext();
             }
         });

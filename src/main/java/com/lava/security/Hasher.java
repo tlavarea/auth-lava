@@ -1,13 +1,17 @@
 package com.lava.security;
 
+import com.lava.logging.LogSanitizer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
+@Slf4j
 public final class Hasher {
 
     /**
@@ -33,6 +37,7 @@ public final class Hasher {
             MessageDigest digest = MessageDigest.getInstance(algorithm.jdkName());
             return HexFormat.of().formatHex(digest.digest(rawValue.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException e) {
+            log.error("hash::error: {}", LogSanitizer.sanitize(ExceptionUtils.getMessage(e)), e);
             throw new IllegalStateException(algorithm.jdkName() + " not available", e);
         }
     }

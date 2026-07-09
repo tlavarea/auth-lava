@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
@@ -53,7 +54,7 @@ public class OAuthAuthenticationSuccessHandler implements AuthenticationSuccessH
                     LogSanitizer.sanitize(pair.principal().getUsername()));
             response.sendRedirect(this.oAuthProperties.successRedirectUri());
         } catch (UnverifiedOAuthEmailException | InvalidOAuthUserStateException e) {
-            log.error("onAuthenticationSuccess::rejected: {}", LogSanitizer.sanitize(e.getMessage()), e);
+            log.error("onAuthenticationSuccess::rejected: {}", LogSanitizer.sanitize(ExceptionUtils.getMessage(e)), e);
             response.sendRedirect(this.oAuthProperties.failureRedirectUri());
         }
     }
