@@ -1,6 +1,6 @@
-import { Component, ElementRef, inject, viewChild } from '@angular/core';
+import { Component, ElementRef, inject, Signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { Event, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 
 @Component({
@@ -10,15 +10,16 @@ import { filter } from 'rxjs';
   styleUrl: './app.css',
 })
 export class App {
-  private readonly router = inject(Router);
-  private readonly mainContent = viewChild.required<ElementRef<HTMLElement>>('mainContent');
+  private readonly router: Router = inject(Router);
+  private readonly mainContent: Signal<ElementRef<HTMLElement>> =
+    viewChild.required<ElementRef<HTMLElement>>('mainContent');
 
   constructor() {
     this.router.events
       .pipe(
-        filter((event) => event instanceof NavigationEnd),
+        filter((event: Event): boolean => event instanceof NavigationEnd),
         takeUntilDestroyed()
       )
-      .subscribe(() => this.mainContent().nativeElement.focus());
+      .subscribe((): void => this.mainContent().nativeElement.focus());
   }
 }

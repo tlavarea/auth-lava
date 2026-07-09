@@ -98,3 +98,5 @@ export const AuthStore = signalStore(
     };
   })
 );
+
+export type AuthStoreType = InstanceType<typeof AuthStore>;

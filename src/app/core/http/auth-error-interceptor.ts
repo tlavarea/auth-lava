@@ -3,10 +3,10 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, switchMap, throwError } from 'rxjs';
 
-import { AuthApi } from '../auth/auth-api';
-import { AuthStore } from '../auth/auth.store';
+import { AuthApi } from '@core/auth/auth-api';
+import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
 
-const REFRESH_EXEMPT_PATHS = [
+const REFRESH_EXEMPT_PATHS: string[] = [
   '/api/auth/login',
   '/api/auth/register/start',
   '/api/auth/register/verify-code',
@@ -16,13 +16,13 @@ const REFRESH_EXEMPT_PATHS = [
 ];
 
 export const authErrorInterceptor: HttpInterceptorFn = (req, next) => {
-  const authApi = inject(AuthApi);
-  const authStore = inject(AuthStore);
-  const router = inject(Router);
+  const authApi: AuthApi = inject(AuthApi);
+  const authStore: AuthStoreType = inject(AuthStore);
+  const router: Router = inject(Router);
 
   return next(req).pipe(
     catchError((error: unknown) => {
-      const isRetryableUnauthorized =
+      const isRetryableUnauthorized: boolean =
         error instanceof HttpErrorResponse &&
         error.status === 401 &&
         !REFRESH_EXEMPT_PATHS.some((path) => req.url.includes(path));

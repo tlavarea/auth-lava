@@ -1,11 +1,11 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateFn, Router, UrlTree } from '@angular/router';
 
-import { AuthStore } from '../auth/auth.store';
+import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
 
-export const mfaPendingGuard: CanActivateFn = () => {
-  const authStore = inject(AuthStore);
-  const router = inject(Router);
+export const mfaPendingGuard: CanActivateFn = (): boolean | UrlTree => {
+  const authStore: AuthStoreType = inject(AuthStore);
+  const router: Router = inject(Router);
 
   switch (authStore.status()) {
     case 'mfa-pending':

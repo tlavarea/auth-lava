@@ -1,15 +1,29 @@
-import { Component, inject, signal } from '@angular/core';
-import { form, FormField, FormRoot, maxLength, minLength, required } from '@angular/forms/signals';
+import { Component, inject, signal, WritableSignal } from '@angular/core';
+import {
+  FieldTree,
+  form,
+  FormField,
+  FormRoot,
+  maxLength,
+  minLength,
+  required,
+  SchemaPathTree,
+  ValidationError,
+} from '@angular/forms/signals';
 import { Router } from '@angular/router';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
-import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
-import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmInputImports } from '@spartan-ng/helm/input';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
-import { AuthStore } from '../../core/auth/auth.store';
-import { extractErrorMessage } from '../../core/auth/extract-error-message';
+import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
+import { extractErrorMessage } from '@core/auth/extract-error-message';
+
+type VerifyFormModel = {
+  code: string;
+};
 
 @Component({
   selector: 'app-mfa-verify',
@@ -17,10 +31,10 @@ import { extractErrorMessage } from '../../core/auth/extract-error-message';
     FormField,
     FormRoot,
     HlmAlertImports,
-    HlmButton,
+    HlmButtonImports,
     HlmCardImports,
     HlmFieldImports,
-    HlmInput,
+    HlmInputImports,
     HlmSpinnerImports,
   ],
   template: `
@@ -67,21 +81,21 @@ import { extractErrorMessage } from '../../core/auth/extract-error-message';
   `,
 })
 export class MfaVerifyPage {
-  private readonly authStore = inject(AuthStore);
-  private readonly router = inject(Router);
+  private readonly authStore: AuthStoreType = inject(AuthStore);
+  private readonly router: Router = inject(Router);
 
-  protected readonly model = signal({ code: '' });
+  protected readonly model: WritableSignal<VerifyFormModel> = signal({ code: '' });
 
-  protected readonly verifyForm = form(
+  protected readonly verifyForm: FieldTree<VerifyFormModel> = form(
     this.model,
-    (path) => {
+    (path: SchemaPathTree<VerifyFormModel>): void => {
       required(path.code, { message: 'Enter your verification code.' });
       minLength(path.code, 6, { message: 'Code must be 6-12 characters.' });
       maxLength(path.code, 12, { message: 'Code must be 6-12 characters.' });
     },
     {
       submission: {
-        action: async (field) => {
+        action: async (field: FieldTree<VerifyFormModel>): Promise<ValidationError | ValidationError[] | undefined> => {
           try {
             await this.authStore.verifyMfa(field().value().code);
           } catch (error) {

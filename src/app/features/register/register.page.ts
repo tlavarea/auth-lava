@@ -1,5 +1,18 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
-import { email, form, FormField, FormRoot, maxLength, minLength, required, validate } from '@angular/forms/signals';
+import { Component, DestroyRef, inject, signal, WritableSignal } from '@angular/core';
+import {
+  ChildFieldContext,
+  email,
+  FieldTree,
+  form,
+  FormField,
+  FormRoot,
+  maxLength,
+  minLength,
+  required,
+  SchemaPathTree,
+  validate,
+  ValidationError,
+} from '@angular/forms/signals';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { BrnInputOtp } from '@spartan-ng/brain/input-otp';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
@@ -10,9 +23,18 @@ import { HlmInputImports } from '@spartan-ng/helm/input';
 import { HlmInputOtpImports } from '@spartan-ng/helm/input-otp';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
-import { AuthStore } from '../../core/auth/auth.store';
-import { extractErrorMessage } from '../../core/auth/extract-error-message';
-import { OauthProviders } from '../../core/auth/oauth-providers/oauth-providers';
+import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
+import { extractErrorMessage } from '@core/auth/extract-error-message';
+import { OauthProviders } from '@core/auth/oauth-providers/oauth-providers';
+
+type EmailFormModel = {
+  email: string;
+};
+
+type PasswordFormModel = {
+  password: string;
+  confirmPassword: string;
+};
 
 type Step = 'email' | 'code' | 'password';
 
@@ -208,28 +230,28 @@ const RESEND_COOLDOWN_SECONDS = 60;
   `,
 })
 export class RegisterPage {
-  private readonly authStore = inject(AuthStore);
-  private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly authStore: AuthStoreType = inject(AuthStore);
+  private readonly router: Router = inject(Router);
+  private readonly route: ActivatedRoute = inject(ActivatedRoute);
+  private readonly destroyRef: DestroyRef = inject(DestroyRef);
 
   private registrationToken: string | null = null;
   private tickIntervalId: ReturnType<typeof setInterval> | null = null;
 
-  protected readonly step = signal<Step>('email');
-  protected readonly email = signal('');
-  protected readonly errorMessage = signal<string | null>(null);
+  protected readonly step: WritableSignal<Step> = signal<Step>('email');
+  protected readonly email: WritableSignal<string> = signal('');
+  protected readonly errorMessage: WritableSignal<string | null> = signal<string | null>(null);
 
-  protected readonly emailModel = signal({ email: '' });
-  protected readonly emailForm = form(
+  protected readonly emailModel: WritableSignal<EmailFormModel> = signal({ email: '' });
+  protected readonly emailForm: FieldTree<EmailFormModel> = form(
     this.emailModel,
-    (path) => {
+    (path: SchemaPathTree<EmailFormModel>): void => {
       required(path.email, { message: 'Email is required.' });
       email(path.email, { message: 'Enter a valid email address.' });
     },
     {
       submission: {
-        action: async (field) => {
+        action: async (field: FieldTree<EmailFormModel>): Promise<ValidationError | ValidationError[] | undefined> => {
           try {
             await this.authStore.startRegistration(field().value().email);
           } catch (error) {
@@ -243,36 +265,42 @@ export class RegisterPage {
     }
   );
 
-  protected readonly code = signal('');
-  protected readonly verifyingCode = signal(false);
-  protected readonly resending = signal(false);
-  protected readonly codeSecondsRemaining = signal(CODE_TTL_SECONDS);
-  protected readonly resendSecondsRemaining = signal(RESEND_COOLDOWN_SECONDS);
+  protected readonly code: WritableSignal<string> = signal('');
+  protected readonly verifyingCode: WritableSignal<boolean> = signal(false);
+  protected readonly resending: WritableSignal<boolean> = signal(false);
+  protected readonly codeSecondsRemaining: WritableSignal<number> = signal(CODE_TTL_SECONDS);
+  protected readonly resendSecondsRemaining: WritableSignal<number> = signal(RESEND_COOLDOWN_SECONDS);
 
-  protected readonly passwordModel = signal({ password: '', confirmPassword: '' });
-  protected readonly passwordForm = form(
+  protected readonly passwordModel: WritableSignal<PasswordFormModel> = signal({ password: '', confirmPassword: '' });
+  protected readonly passwordForm: FieldTree<PasswordFormModel> = form(
     this.passwordModel,
-    (path) => {
+    (path: SchemaPathTree<PasswordFormModel>): void => {
       required(path.password, { message: 'Password is required.' });
       minLength(path.password, 8, { message: 'Password must be at least 8 characters.' });
       maxLength(path.password, 32, { message: 'Password must be at most 32 characters.' });
       required(path.confirmPassword, { message: 'Please confirm your password.' });
-      validate(path.confirmPassword, ({ value, valueOf }) =>
-        value() === valueOf(path.password) ? null : { kind: 'mismatch', message: 'Passwords do not match.' }
+      validate(
+        path.confirmPassword,
+        ({ value, valueOf }: ChildFieldContext<string>): ValidationError | ValidationError[] | undefined =>
+          value() === valueOf(path.password) ? undefined : { kind: 'mismatch', message: 'Passwords do not match.' }
       );
     },
     {
       submission: {
-        action: async (field) => {
+        action: async (
+          field: FieldTree<PasswordFormModel>
+        ): Promise<ValidationError | ValidationError[] | undefined> => {
           if (!this.registrationToken) {
             this.step.set('email');
             return { kind: 'serverError', message: 'Your session expired. Please start over.' };
           }
+
           try {
             await this.authStore.completeRegistration(this.registrationToken, field().value().password);
           } catch (error) {
             return { kind: 'serverError', message: extractErrorMessage(error) };
           }
+
           await this.router.navigateByUrl('/login?registered=1');
           return;
         },
@@ -280,20 +308,20 @@ export class RegisterPage {
     }
   );
 
-  protected readonly oauthErrorMessage = signal(
+  protected readonly oauthErrorMessage: WritableSignal<string | null> = signal(
     this.route.snapshot.queryParamMap.get('error') === 'oauth'
       ? 'Sign-up with that provider failed. Please try again.'
       : null
   );
 
   constructor() {
-    this.destroyRef.onDestroy(() => this.clearTimers());
+    this.destroyRef.onDestroy((): void => this.clearTimers());
   }
 
   protected formattedCodeCountdown(): string {
-    const totalSeconds = this.codeSecondsRemaining();
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
+    const totalSeconds: number = this.codeSecondsRemaining();
+    const minutes: number = Math.floor(totalSeconds / 60);
+    const seconds: number = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 
@@ -304,6 +332,7 @@ export class RegisterPage {
 
     this.errorMessage.set(null);
     this.verifyingCode.set(true);
+
     try {
       this.registrationToken = await this.authStore.verifyRegistrationCode(this.email(), this.code());
       this.clearTimers();
@@ -322,6 +351,7 @@ export class RegisterPage {
 
     this.errorMessage.set(null);
     this.resending.set(true);
+
     try {
       await this.authStore.startRegistration(this.email());
       this.code.set('');
@@ -342,7 +372,7 @@ export class RegisterPage {
     this.clearTimers();
     this.codeSecondsRemaining.set(CODE_TTL_SECONDS);
     this.resendSecondsRemaining.set(RESEND_COOLDOWN_SECONDS);
-    this.tickIntervalId = setInterval(() => {
+    this.tickIntervalId = setInterval((): void => {
       this.codeSecondsRemaining.update((seconds) => Math.max(0, seconds - 1));
       this.resendSecondsRemaining.update((seconds) => Math.max(0, seconds - 1));
     }, 1000);
