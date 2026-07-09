@@ -6,7 +6,14 @@ import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthApi } from '../auth/auth-api';
 import { AuthStore } from '../auth/auth.store';
 
-const REFRESH_EXEMPT_PATHS = ['/api/auth/login', '/api/auth/register', '/api/auth/refresh', '/api/auth/me'];
+const REFRESH_EXEMPT_PATHS = [
+  '/api/auth/login',
+  '/api/auth/register/start',
+  '/api/auth/register/verify-code',
+  '/api/auth/register/complete',
+  '/api/auth/refresh',
+  '/api/auth/me',
+];
 
 export const authErrorInterceptor: HttpInterceptorFn = (req, next) => {
   const authApi = inject(AuthApi);

@@ -5,13 +5,16 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   BackupCodesResponse,
+  CompleteRegistrationRequest,
   LoginRequest,
   LogoutRequest,
   MfaEnrollVerifyRequest,
   MfaVerifyRequest,
-  RegisterRequest,
+  RegistrationTokenResponse,
+  StartRegistrationRequest,
   TotpEnrollment,
   UserResponse,
+  VerifyRegistrationCodeRequest,
 } from './auth.models';
 
 const BASE_URL = `${environment.apiUrl}/api/auth`;
@@ -20,8 +23,16 @@ const BASE_URL = `${environment.apiUrl}/api/auth`;
 export class AuthApi {
   private readonly http = inject(HttpClient);
 
-  register(payload: RegisterRequest): Observable<void> {
-    return this.http.post<void>(`${BASE_URL}/register`, payload);
+  startRegistration(payload: StartRegistrationRequest): Observable<void> {
+    return this.http.post<void>(`${BASE_URL}/register/start`, payload);
+  }
+
+  verifyRegistrationCode(payload: VerifyRegistrationCodeRequest): Observable<RegistrationTokenResponse> {
+    return this.http.post<RegistrationTokenResponse>(`${BASE_URL}/register/verify-code`, payload);
+  }
+
+  completeRegistration(payload: CompleteRegistrationRequest): Observable<void> {
+    return this.http.post<void>(`${BASE_URL}/register/complete`, payload);
   }
 
   login(payload: LoginRequest): Observable<UserResponse> {

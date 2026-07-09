@@ -5,8 +5,21 @@ export type UserResponse = {
   authorities: string[];
 };
 
-export type RegisterRequest = {
+export type StartRegistrationRequest = {
   email: string;
+};
+
+export type VerifyRegistrationCodeRequest = {
+  email: string;
+  code: string;
+};
+
+export type RegistrationTokenResponse = {
+  registrationToken: string;
+};
+
+export type CompleteRegistrationRequest = {
+  registrationToken: string;
   password: string;
 };
 

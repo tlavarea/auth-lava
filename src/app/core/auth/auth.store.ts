@@ -4,7 +4,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 
 import { AuthApi } from './auth-api';
-import { BackupCodesResponse, LoginRequest, RegisterRequest, TotpEnrollment, UserResponse } from './auth.models';
+import { BackupCodesResponse, LoginRequest, TotpEnrollment, UserResponse } from './auth.models';
 
 export type AuthStatus = 'unknown' | 'authenticated' | 'mfa-pending' | 'anonymous';
 
@@ -41,8 +41,17 @@ export const AuthStore = signalStore(
         }
       },
 
-      async register(payload: RegisterRequest): Promise<void> {
-        await firstValueFrom(authApi.register(payload));
+      async startRegistration(email: string): Promise<void> {
+        await firstValueFrom(authApi.startRegistration({ email }));
+      },
+
+      async verifyRegistrationCode(email: string, code: string): Promise<string> {
+        const { registrationToken } = await firstValueFrom(authApi.verifyRegistrationCode({ email, code }));
+        return registrationToken;
+      },
+
+      async completeRegistration(registrationToken: string, password: string): Promise<void> {
+        await firstValueFrom(authApi.completeRegistration({ registrationToken, password }));
       },
 
       async login(payload: LoginRequest): Promise<void> {
