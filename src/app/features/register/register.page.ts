@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { email, form, FormField, FormRoot, maxLength, minLength, required } from '@angular/forms/signals';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
@@ -10,6 +10,7 @@ import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
 import { AuthStore } from '../../core/auth/auth.store';
 import { extractErrorMessage } from '../../core/auth/extract-error-message';
+import { OauthProviders } from '../../core/auth/oauth-providers/oauth-providers';
 
 @Component({
   selector: 'app-register',
@@ -23,6 +24,7 @@ import { extractErrorMessage } from '../../core/auth/extract-error-message';
     HlmFieldImports,
     HlmInput,
     HlmSpinnerImports,
+    OauthProviders,
   ],
   template: `
     <div class="flex min-h-dvh items-center justify-center p-4">
@@ -31,7 +33,13 @@ import { extractErrorMessage } from '../../core/auth/extract-error-message';
           <h1 hlmCardTitle>Create an account</h1>
           <p hlmCardDescription>Enter your email and choose a password.</p>
         </div>
-        <div hlmCardContent>
+        <div class="flex flex-col gap-4" hlmCardContent>
+          @if (oauthErrorMessage()) {
+            <div hlmAlert variant="destructive">
+              <p hlmAlertDescription>{{ oauthErrorMessage() }}</p>
+            </div>
+          }
+
           <form class="flex flex-col gap-4" [formRoot]="registerForm">
             @for (error of registerForm().errors(); track error.kind) {
               <div hlmAlert variant="destructive">
@@ -70,6 +78,8 @@ import { extractErrorMessage } from '../../core/auth/extract-error-message';
               }
             </button>
           </form>
+
+          <app-oauth-providers />
         </div>
         <div class="justify-center" hlmCardFooter>
           <p class="text-sm text-muted-foreground">
@@ -84,6 +94,7 @@ import { extractErrorMessage } from '../../core/auth/extract-error-message';
 export class RegisterPage {
   private readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly model = signal({ email: '', password: '' });
 
@@ -109,5 +120,11 @@ export class RegisterPage {
         },
       },
     }
+  );
+
+  protected readonly oauthErrorMessage = signal(
+    this.route.snapshot.queryParamMap.get('error') === 'oauth'
+      ? 'Sign-up with that provider failed. Please try again.'
+      : null
   );
 }
