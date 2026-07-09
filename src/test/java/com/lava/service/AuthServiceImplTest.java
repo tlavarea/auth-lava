@@ -15,7 +15,6 @@ import com.lava.model.auth.Issued;
 import com.lava.model.auth.IssuedBuilder;
 import com.lava.model.auth.TokenPair;
 import com.lava.model.database.tables.pojos.RefreshToken;
-import com.lava.model.database.tables.pojos.RefreshTokenBuilder;
 import com.lava.model.database.view.AuthUserView;
 import com.lava.model.database.view.AuthUserViewBuilder;
 import com.lava.repository.UserRepository;
@@ -190,13 +189,8 @@ class AuthServiceImplTest {
 
     @Test
     void refresh_mfaAlreadyVerifiedForSession_carriesTotpFactorForward() {
-        RefreshToken current = RefreshTokenBuilder.builder()
-                .id(5L)
-                .userId(2L)
-                .tokenHash("hash")
-                .expiresAt(LocalDateTime.now().plusDays(30))
-                .mfaVerified(true)
-                .build();
+        RefreshToken current =
+                new RefreshToken(5L, 2L, "hash", LocalDateTime.now().plusDays(30), null, null, null, true);
         when(this.refreshTokenService.validateForRotation("raw")).thenReturn(current);
         when(this.userRepository.findAuthUserById(2L)).thenReturn(Optional.of(authUserView(2L, "active")));
         when(this.mfaService.isEnrolled(2L)).thenReturn(true);
@@ -252,12 +246,7 @@ class AuthServiceImplTest {
     }
 
     private static RefreshToken refreshTokenRow(Long id, Long userId) {
-        return RefreshTokenBuilder.builder()
-                .id(id)
-                .userId(userId)
-                .tokenHash("hash")
-                .expiresAt(LocalDateTime.now().plusDays(30))
-                .build();
+        return new RefreshToken(id, userId, "hash", LocalDateTime.now().plusDays(30), null, null, null, null);
     }
 
     private static Issued issued(Long userId, String rawToken) {

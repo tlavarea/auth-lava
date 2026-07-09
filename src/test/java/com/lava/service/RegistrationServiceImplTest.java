@@ -15,7 +15,6 @@ import com.lava.exception.InvalidRegistrationTokenException;
 import com.lava.exception.InvalidVerificationCodeException;
 import com.lava.exception.TooManyRequestsException;
 import com.lava.model.database.tables.pojos.PendingRegistration;
-import com.lava.model.database.tables.pojos.PendingRegistrationBuilder;
 import com.lava.repository.PendingRegistrationRepository;
 import com.lava.repository.UserRepository;
 import com.lava.security.Hasher;
@@ -266,14 +265,7 @@ class RegistrationServiceImplTest {
             LocalDateTime createdAt,
             int attemptCount,
             LocalDateTime verifiedAt) {
-        return PendingRegistrationBuilder.builder()
-                .id(id)
-                .email(email)
-                .codeHash(codeHash)
-                .createdAt(createdAt)
-                .expiresAt(createdAt.plusMinutes(5))
-                .attemptCount(attemptCount)
-                .verifiedAt(verifiedAt)
-                .build();
+        return new PendingRegistration(
+                id, email, codeHash, createdAt.plusMinutes(5), attemptCount, verifiedAt, createdAt);
     }
 }

@@ -15,9 +15,7 @@ import com.lava.model.auth.Issued;
 import com.lava.model.auth.IssuedBuilder;
 import com.lava.model.auth.TokenPair;
 import com.lava.model.database.tables.pojos.OauthAccount;
-import com.lava.model.database.tables.pojos.OauthAccountBuilder;
 import com.lava.model.database.tables.pojos.User;
-import com.lava.model.database.tables.pojos.UserBuilder;
 import com.lava.model.database.view.AuthUserView;
 import com.lava.model.database.view.AuthUserViewBuilder;
 import com.lava.repository.OauthAccountRepository;
@@ -164,21 +162,11 @@ class OAuthAuthenticationServiceImplTest {
     }
 
     private static User user(Long id) {
-        return UserBuilder.builder()
-                .id(id)
-                .email("x@example.com")
-                .emailVerified(true)
-                .status("active")
-                .build();
+        return new User(id, "x@example.com", null, true, "active", null, null, null);
     }
 
     private static OauthAccount oauthAccount(Long userId) {
-        return OauthAccountBuilder.builder()
-                .id(1L)
-                .userId(userId)
-                .provider("github")
-                .providerUserId("gh-x")
-                .build();
+        return new OauthAccount(1L, userId, "github", "gh-x", null, null, null);
     }
 
     private static AuthUserView authUserView(Long id, String status) {
