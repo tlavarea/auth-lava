@@ -32,6 +32,9 @@ importers:
       '@ng-icons/core':
         specifier: ^32.5.0
         version: 32.5.0(@angular/common@22.0.5(@angular/core@22.0.5(@angular/compiler@22.0.5)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.0.5(@angular/compiler@22.0.5)(rxjs@7.8.2))(rxjs@7.8.2)
+      '@ng-icons/font-awesome':
+        specifier: ^33.4.0
+        version: 33.4.0
       '@ng-icons/lucide':
         specifier: ^32.5.0
         version: 32.5.0
@@ -1968,6 +1971,9 @@ packages:
       '@angular/common': '>=20.0.0'
       '@angular/core': '>=20.0.0'
       rxjs: ^6.5.3 || ^7.4.0
+
+  '@ng-icons/font-awesome@33.4.0':
+    resolution: {integrity: sha512-nn1f4kPdGUORylmXgbgyyd/W1RHjdZZInuqU4c0PsvCzbUXFjF1EmU3tWZa8XD16CwIP3oA4nLFzYhyLIiUt2Q==}
 
   '@ng-icons/lucide@32.5.0':
     resolution: {integrity: sha512-oLIkz2tB4ZnO3JoLQ8pS15AaR7kxBpF81s/e3mGALqNXSu2U2u0TgiP88CF/4DQ14ONFD7S/gT4Ej4gIESvbeQ==}
@@ -8435,6 +8441,10 @@ snapshots:
       '@angular/common': 22.0.5(@angular/core@22.0.5(@angular/compiler@22.0.5)(rxjs@7.8.2))(rxjs@7.8.2)
       '@angular/core': 22.0.5(@angular/compiler@22.0.5)(rxjs@7.8.2)
       rxjs: 7.8.2
+      tslib: 2.8.1
+
+  '@ng-icons/font-awesome@33.4.0':
+    dependencies:
       tslib: 2.8.1
 
   '@ng-icons/lucide@32.5.0':

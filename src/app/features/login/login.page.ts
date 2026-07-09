@@ -2,10 +2,10 @@ import { Component, inject, signal } from '@angular/core';
 import { email, form, FormField, FormRoot, required } from '@angular/forms/signals';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
-import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
-import { HlmInput } from '@spartan-ng/helm/input';
+import { HlmInputImports } from '@spartan-ng/helm/input';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
 import { AuthStore } from '../../core/auth/auth.store';
@@ -19,10 +19,10 @@ import { OauthProviders } from '../../core/auth/oauth-providers/oauth-providers'
     FormRoot,
     RouterLink,
     HlmAlertImports,
-    HlmButton,
+    HlmButtonImports,
     HlmCardImports,
     HlmFieldImports,
-    HlmInput,
+    HlmInputImports,
     HlmSpinnerImports,
     OauthProviders,
   ],
@@ -30,10 +30,12 @@ import { OauthProviders } from '../../core/auth/oauth-providers/oauth-providers'
     <div class="flex min-h-dvh items-center justify-center p-4">
       <div class="w-full max-w-sm" hlmCard>
         <div hlmCardHeader>
-          <h1 hlmCardTitle>Sign in</h1>
-          <p hlmCardDescription>Enter your email and password to continue.</p>
+          <h1 class="text-center" hlmCardTitle>Sign in</h1>
+          <p class="text-center" hlmCardDescription>Enter your email and password to continue.</p>
         </div>
         <div class="flex flex-col gap-4" hlmCardContent>
+          <app-oauth-providers />
+
           @if (oauthErrorMessage()) {
             <div hlmAlert variant="destructive">
               <p hlmAlertDescription>{{ oauthErrorMessage() }}</p>
@@ -82,8 +84,6 @@ import { OauthProviders } from '../../core/auth/oauth-providers/oauth-providers'
               }
             </button>
           </form>
-
-          <app-oauth-providers />
         </div>
         <div class="justify-center" hlmCardFooter>
           <p class="text-sm text-muted-foreground">

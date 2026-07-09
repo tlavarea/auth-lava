@@ -1,16 +1,29 @@
 import { Component } from '@angular/core';
-import { HlmButton } from '@spartan-ng/helm/button';
-import { HlmFieldImports } from '@spartan-ng/helm/field';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { faBrandGithub } from '@ng-icons/font-awesome/brands';
+import { matfGoogleColored } from '@ng-icons/material-file-icons/colored';
+import { HlmButtonImports } from '@spartan-ng/helm/button';
+import { HlmSeparatorImports } from '@spartan-ng/helm/separator';
 
 @Component({
   selector: 'app-oauth-providers',
-  imports: [HlmButton, HlmFieldImports],
+  imports: [HlmButtonImports, HlmSeparatorImports, NgIcon],
+  viewProviders: [provideIcons({ faBrandGithub, matfGoogleColored })],
   template: `
-    <hlm-field-separator>OR</hlm-field-separator>
-
-    <div class="flex flex-col gap-2">
-      <button hlmBtn variant="outline" type="button" (click)="signInWithGoogle()">Continue with Google</button>
-      <button hlmBtn variant="outline" type="button" (click)="signInWithGithub()">Continue with GitHub</button>
+    <div class="mb-4 flex max-w-sm flex-col gap-8 text-sm">
+      <div class="flex flex-row gap-2">
+        <button class="flex-1" hlmBtn variant="outline" type="button" (click)="signInWithGoogle()">
+          <ng-icon name="matfGoogleColored" />
+          Google
+        </button>
+        <button class="flex-1" hlmBtn variant="outline" type="button" (click)="signInWithGithub()">
+          <ng-icon name="faBrandGithub" />
+          GitHub
+        </button>
+      </div>
+      <hlm-separator>
+        <div class="relative -top-3.75 m-auto flex h-7.5 w-12.5 items-center justify-center bg-white">or</div>
+      </hlm-separator>
     </div>
   `,
 })
