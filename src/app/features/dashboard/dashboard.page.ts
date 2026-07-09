@@ -1,15 +1,16 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, Signal, signal, WritableSignal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { UserResponse } from '@core/auth/auth.models';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
-import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
-import { AuthStore } from '../../core/auth/auth.store';
+import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, HlmBadgeImports, HlmButton, HlmCardImports, HlmSpinnerImports],
+  imports: [RouterLink, HlmBadgeImports, HlmButtonImports, HlmCardImports, HlmSpinnerImports],
   template: `
     <div class="flex min-h-dvh items-center justify-center p-4">
       <div hlmCard class="w-full max-w-sm">
@@ -53,11 +54,11 @@ import { AuthStore } from '../../core/auth/auth.store';
   `,
 })
 export class DashboardPage {
-  private readonly authStore = inject(AuthStore);
-  private readonly router = inject(Router);
+  private readonly authStore: AuthStoreType = inject(AuthStore);
+  private readonly router: Router = inject(Router);
 
-  protected readonly user = this.authStore.user;
-  protected readonly loggingOut = signal(false);
+  protected readonly user: Signal<UserResponse | null> = this.authStore.user;
+  protected readonly loggingOut: WritableSignal<boolean> = signal(false);
 
   protected async onLogout(): Promise<void> {
     this.loggingOut.set(true);

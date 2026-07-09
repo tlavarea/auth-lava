@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { environment } from '../../../environments/environment';
+import { environment } from '@env/environment';
 import {
   BackupCodesResponse,
   CompleteRegistrationRequest,
@@ -21,7 +21,7 @@ const BASE_URL = `${environment.apiUrl}/api/auth`;
 
 @Service()
 export class AuthApi {
-  private readonly http = inject(HttpClient);
+  private readonly http: HttpClient = inject(HttpClient);
 
   startRegistration(payload: StartRegistrationRequest): Observable<void> {
     return this.http.post<void>(`${BASE_URL}/register/start`, payload);

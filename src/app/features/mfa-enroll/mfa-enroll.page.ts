@@ -1,17 +1,17 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
 import { BrnInputOtp } from '@spartan-ng/brain/input-otp';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
-import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmCheckboxImports } from '@spartan-ng/helm/checkbox';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInputOtpImports } from '@spartan-ng/helm/input-otp';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
-import { TotpEnrollment } from '../../core/auth/auth.models';
-import { AuthStore } from '../../core/auth/auth.store';
-import { extractErrorMessage } from '../../core/auth/extract-error-message';
+import { TotpEnrollment } from '@core/auth/auth.models';
+import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
+import { extractErrorMessage } from '@core/auth/extract-error-message';
 
 type Step = 'loading' | 'verify' | 'backup-codes';
 
@@ -20,7 +20,7 @@ type Step = 'loading' | 'verify' | 'backup-codes';
   imports: [
     BrnInputOtp,
     HlmAlertImports,
-    HlmButton,
+    HlmButtonImports,
     HlmCardImports,
     HlmCheckboxImports,
     HlmFieldImports,
@@ -71,10 +71,20 @@ type Step = 'loading' | 'verify' | 'backup-codes';
                     (completed)="onVerify()">
                     <hlm-input-otp-group>
                       <hlm-input-otp-slot [index]="0" />
+                    </hlm-input-otp-group>
+                    <hlm-input-otp-group>
                       <hlm-input-otp-slot [index]="1" />
+                    </hlm-input-otp-group>
+                    <hlm-input-otp-group>
                       <hlm-input-otp-slot [index]="2" />
+                    </hlm-input-otp-group>
+                    <hlm-input-otp-group>
                       <hlm-input-otp-slot [index]="3" />
+                    </hlm-input-otp-group>
+                    <hlm-input-otp-group>
                       <hlm-input-otp-slot [index]="4" />
+                    </hlm-input-otp-group>
+                    <hlm-input-otp-group>
                       <hlm-input-otp-slot [index]="5" />
                     </hlm-input-otp-group>
                   </brn-input-otp>
@@ -118,16 +128,16 @@ type Step = 'loading' | 'verify' | 'backup-codes';
   `,
 })
 export class MfaEnrollPage {
-  private readonly authStore = inject(AuthStore);
-  private readonly router = inject(Router);
+  private readonly authStore: AuthStoreType = inject(AuthStore);
+  private readonly router: Router = inject(Router);
 
-  protected readonly step = signal<Step>('loading');
-  protected readonly enrollment = signal<TotpEnrollment | null>(null);
-  protected readonly backupCodes = signal<string[]>([]);
-  protected readonly code = signal('');
-  protected readonly errorMessage = signal<string | null>(null);
-  protected readonly verifying = signal(false);
-  protected readonly confirmedSaved = signal(false);
+  protected readonly step: WritableSignal<Step> = signal<Step>('loading');
+  protected readonly enrollment: WritableSignal<TotpEnrollment | null> = signal<TotpEnrollment | null>(null);
+  protected readonly backupCodes: WritableSignal<string[]> = signal<string[]>([]);
+  protected readonly code: WritableSignal<string> = signal('');
+  protected readonly errorMessage: WritableSignal<string | null> = signal<string | null>(null);
+  protected readonly verifying: WritableSignal<boolean> = signal(false);
+  protected readonly confirmedSaved: WritableSignal<boolean> = signal(false);
 
   constructor() {
     void this.startEnrollment();
@@ -135,7 +145,7 @@ export class MfaEnrollPage {
 
   private async startEnrollment(): Promise<void> {
     try {
-      const enrollment = await this.authStore.enrollMfa();
+      const enrollment: TotpEnrollment = await this.authStore.enrollMfa();
       this.enrollment.set(enrollment);
       this.step.set('verify');
     } catch (error) {
@@ -144,13 +154,15 @@ export class MfaEnrollPage {
   }
 
   protected async onVerify(): Promise<void> {
-    const enrollment = this.enrollment();
+    const enrollment: TotpEnrollment | null = this.enrollment();
+
     if (!enrollment || this.code().length !== 6) {
       return;
     }
 
     this.errorMessage.set(null);
     this.verifying.set(true);
+
     try {
       const { backupCodes } = await this.authStore.verifyEnrollment(enrollment.mfaMethodId, this.code());
       this.backupCodes.set(backupCodes);

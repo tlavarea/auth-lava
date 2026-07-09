@@ -1,5 +1,14 @@
-import { Component, inject, signal } from '@angular/core';
-import { email, form, FormField, FormRoot, required } from '@angular/forms/signals';
+import { Component, inject, signal, WritableSignal } from '@angular/core';
+import {
+  email,
+  FieldTree,
+  form,
+  FormField,
+  FormRoot,
+  required,
+  SchemaPathTree,
+  ValidationError,
+} from '@angular/forms/signals';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
@@ -8,9 +17,14 @@ import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInputImports } from '@spartan-ng/helm/input';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
-import { AuthStore } from '../../core/auth/auth.store';
-import { extractErrorMessage } from '../../core/auth/extract-error-message';
-import { OauthProviders } from '../../core/auth/oauth-providers/oauth-providers';
+import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
+import { extractErrorMessage } from '@core/auth/extract-error-message';
+import { OauthProviders } from '@core/auth/oauth-providers/oauth-providers';
+
+type LoginFormModel = {
+  email: string;
+  password: string;
+};
 
 @Component({
   selector: 'app-login',
@@ -96,22 +110,22 @@ import { OauthProviders } from '../../core/auth/oauth-providers/oauth-providers'
   `,
 })
 export class LoginPage {
-  private readonly authStore = inject(AuthStore);
-  private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
+  private readonly authStore: AuthStoreType = inject(AuthStore);
+  private readonly router: Router = inject(Router);
+  private readonly route: ActivatedRoute = inject(ActivatedRoute);
 
-  protected readonly model = signal({ email: '', password: '' });
+  protected readonly model: WritableSignal<LoginFormModel> = signal({ email: '', password: '' });
 
-  protected readonly loginForm = form(
+  protected readonly loginForm: FieldTree<LoginFormModel> = form(
     this.model,
-    (path) => {
+    (path: SchemaPathTree<LoginFormModel>): void => {
       required(path.email, { message: 'Email is required.' });
       email(path.email, { message: 'Enter a valid email address.' });
       required(path.password, { message: 'Password is required.' });
     },
     {
       submission: {
-        action: async (field) => {
+        action: async (field: FieldTree<LoginFormModel>): Promise<ValidationError | ValidationError[] | undefined> => {
           try {
             await this.authStore.login(field().value());
           } catch (error) {
@@ -124,13 +138,13 @@ export class LoginPage {
     }
   );
 
-  protected readonly oauthErrorMessage = signal(
+  protected readonly oauthErrorMessage: WritableSignal<string | null> = signal(
     this.route.snapshot.queryParamMap.get('error') === 'oauth'
       ? 'Sign-in with that provider failed. Please try again.'
       : null
   );
 
-  protected readonly registeredMessage = signal(
+  protected readonly registeredMessage: WritableSignal<string | null> = signal(
     this.route.snapshot.queryParamMap.get('registered') === '1' ? 'Account created. Sign in to continue.' : null
   );
 }

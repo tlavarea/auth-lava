@@ -1,8 +1,8 @@
 import { Routes } from '@angular/router';
 
-import { authGuard } from './core/guards/auth-guard';
-import { guestGuard } from './core/guards/guest-guard';
-import { mfaPendingGuard } from './core/guards/mfa-pending-guard';
+import { authGuard } from '@core/guards/auth-guard';
+import { guestGuard } from '@core/guards/guest-guard';
+import { mfaPendingGuard } from '@core/guards/mfa-pending-guard';
 
 export const routes: Routes = [
   {

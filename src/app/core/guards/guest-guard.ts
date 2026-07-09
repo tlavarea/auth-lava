@@ -1,10 +1,10 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateFn, Router, UrlTree } from '@angular/router';
 
-import { AuthStore } from '../auth/auth.store';
+import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
 
-export const guestGuard: CanActivateFn = () => {
-  const authStore = inject(AuthStore);
+export const guestGuard: CanActivateFn = (): boolean | UrlTree => {
+  const authStore: AuthStoreType = inject(AuthStore);
   const router = inject(Router);
 
   switch (authStore.status()) {

@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { CanActivateFn, provideRouter, Router } from '@angular/router';
 
-import { AuthStore } from '../auth/auth.store';
+import { AuthStore } from '@core/auth/auth.store';
 import { guestGuard } from './guest-guard';
 
 describe('guestGuard', () => {
