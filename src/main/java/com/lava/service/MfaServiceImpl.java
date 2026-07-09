@@ -12,12 +12,9 @@ import com.lava.model.mfa.TotpEnrollmentBuilder;
 import com.lava.repository.MfaBackupCodeRepository;
 import com.lava.repository.MfaMethodRepository;
 import com.lava.security.AuthUserPrincipal;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import com.lava.security.Hasher;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.IntStream;
@@ -57,8 +54,7 @@ public class MfaServiceImpl implements MfaService {
         List<String> rawBackupCodes = this.generateBackupCodes();
         this.backupCodeRepository.deleteAllByUserId(principal.getUserId());
         this.backupCodeRepository.insertBatch(
-                principal.getUserId(),
-                rawBackupCodes.stream().map(MfaServiceImpl::hash).toList());
+                principal.getUserId(), rawBackupCodes.stream().map(Hasher::hash).toList());
 
         log.info("confirmEnrollment::enabled TOTP for userId: {}", principal.getUserId());
         return rawBackupCodes;
@@ -109,7 +105,7 @@ public class MfaServiceImpl implements MfaService {
         }
 
         MfaBackupCode backupCode = this.backupCodeRepository
-                .findUnusedByUserIdAndCodeHash(userId, hash(code))
+                .findUnusedByUserIdAndCodeHash(userId, Hasher.hash(code))
                 .orElseThrow(InvalidTotpCodeException::new);
         this.backupCodeRepository.markUsed(backupCode.id(), LocalDateTime.now());
     }
@@ -152,21 +148,5 @@ public class MfaServiceImpl implements MfaService {
         }
 
         return method;
-    }
-
-    /**
-     * Creates a new hashed backup code, consistent with {@code RefreshTokenServiceImpl}'s SHA-256-hex hashing of raw
-     * refresh tokens.
-     *
-     * @param rawCode - the backup code to hash.
-     * @return the code as a hashed value.
-     */
-    private static String hash(String rawCode) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(rawCode.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 not available", e);
-        }
     }
 }

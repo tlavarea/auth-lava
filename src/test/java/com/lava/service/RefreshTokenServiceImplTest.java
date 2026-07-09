@@ -16,12 +16,10 @@ import com.lava.model.auth.Issued;
 import com.lava.model.database.tables.pojos.RefreshToken;
 import com.lava.model.database.tables.pojos.RefreshTokenBuilder;
 import com.lava.repository.RefreshTokenRepository;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import com.lava.security.Hasher;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.HexFormat;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,14 +51,14 @@ class RefreshTokenServiceImplTest {
 
         ArgumentCaptor<String> hashCaptor = ArgumentCaptor.forClass(String.class);
         verify(this.refreshTokenRepository).insert(eq(1L), hashCaptor.capture(), any(), eq(false));
-        assertThat(hashCaptor.getValue()).isEqualTo(sha256Hex(issued.rawToken()));
+        assertThat(hashCaptor.getValue()).isEqualTo(Hasher.hash(issued.rawToken()));
         assertThat(issued.id()).isEqualTo(9L);
         assertThat(issued.userId()).isEqualTo(1L);
     }
 
     @Test
     void markMfaVerified_delegatesToRepositoryWithHashedToken() {
-        when(this.refreshTokenRepository.findByTokenHash(sha256Hex("raw"))).thenReturn(Optional.of(row(9L, 1L)));
+        when(this.refreshTokenRepository.findByTokenHash(Hasher.hash("raw"))).thenReturn(Optional.of(row(9L, 1L)));
 
         this.service.markMfaVerified("raw");
 
@@ -76,12 +74,12 @@ class RefreshTokenServiceImplTest {
 
     @Test
     void findForLogout_delegatesToRepositoryWithHashedToken() {
-        when(this.refreshTokenRepository.findByTokenHash(sha256Hex("raw"))).thenReturn(Optional.of(row(1L, 2L)));
+        when(this.refreshTokenRepository.findByTokenHash(Hasher.hash("raw"))).thenReturn(Optional.of(row(1L, 2L)));
 
         Optional<RefreshToken> found = this.service.findForLogout("raw");
 
         assertThat(found).isPresent();
-        verify(this.refreshTokenRepository).findByTokenHash(sha256Hex("raw"));
+        verify(this.refreshTokenRepository).findByTokenHash(Hasher.hash("raw"));
     }
 
     @Test
@@ -132,11 +130,11 @@ class RefreshTokenServiceImplTest {
         RefreshToken valid = RefreshTokenBuilder.builder()
                 .id(1L)
                 .userId(3L)
-                .tokenHash(sha256Hex("raw"))
+                .tokenHash(Hasher.hash("raw"))
                 .expiresAt(LocalDateTime.now().plusDays(1))
                 .revokedAt(null)
                 .build();
-        when(this.refreshTokenRepository.findByTokenHash(sha256Hex("raw"))).thenReturn(Optional.of(valid));
+        when(this.refreshTokenRepository.findByTokenHash(Hasher.hash("raw"))).thenReturn(Optional.of(valid));
 
         RefreshToken result = this.service.validateForRotation("raw");
 
@@ -156,11 +154,11 @@ class RefreshTokenServiceImplTest {
         RefreshToken revoked = RefreshTokenBuilder.builder()
                 .id(1L)
                 .userId(3L)
-                .tokenHash(sha256Hex("raw"))
+                .tokenHash(Hasher.hash("raw"))
                 .expiresAt(LocalDateTime.now().plusDays(1))
                 .revokedAt(LocalDateTime.now().minusMinutes(1))
                 .build();
-        when(this.refreshTokenRepository.findByTokenHash(sha256Hex("raw"))).thenReturn(Optional.of(revoked));
+        when(this.refreshTokenRepository.findByTokenHash(Hasher.hash("raw"))).thenReturn(Optional.of(revoked));
 
         assertThatThrownBy(() -> this.service.validateForRotation("raw"))
                 .isInstanceOf(InvalidRefreshTokenException.class);
@@ -173,11 +171,11 @@ class RefreshTokenServiceImplTest {
         RefreshToken expired = RefreshTokenBuilder.builder()
                 .id(1L)
                 .userId(3L)
-                .tokenHash(sha256Hex("raw"))
+                .tokenHash(Hasher.hash("raw"))
                 .expiresAt(LocalDateTime.now().minusMinutes(1))
                 .revokedAt(null)
                 .build();
-        when(this.refreshTokenRepository.findByTokenHash(sha256Hex("raw"))).thenReturn(Optional.of(expired));
+        when(this.refreshTokenRepository.findByTokenHash(Hasher.hash("raw"))).thenReturn(Optional.of(expired));
 
         assertThatThrownBy(() -> this.service.validateForRotation("raw"))
                 .isInstanceOf(InvalidRefreshTokenException.class);
@@ -192,14 +190,5 @@ class RefreshTokenServiceImplTest {
                 .tokenHash("hash")
                 .expiresAt(LocalDateTime.now().plusDays(30))
                 .build();
-    }
-
-    private static String sha256Hex(String rawToken) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(rawToken.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
     }
 }
