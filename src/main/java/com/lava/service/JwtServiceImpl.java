@@ -7,6 +7,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
@@ -83,6 +84,20 @@ public class JwtServiceImpl implements JwtService {
     @Override
     public long getAccessTokenTtlSeconds() {
         return properties.accessTokenTtl().toSeconds();
+    }
+
+    @Override
+    public String generateRegistrationToken(String email, Duration ttl) {
+        Instant now = Instant.now();
+
+        return Jwts.builder()
+                .subject(email)
+                .claim(REGISTRATION_TOKEN_PURPOSE_CLAIM, REGISTRATION_TOKEN_PURPOSE)
+                .issuer(properties.issuer())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(ttl)))
+                .signWith(signingKey, Jwts.SIG.HS256)
+                .compact();
     }
 
     @Override

@@ -1,6 +1,5 @@
 package com.lava.service;
 
-import com.lava.exception.EmailAlreadyRegisteredException;
 import com.lava.exception.InvalidRefreshTokenException;
 import com.lava.logging.LogSanitizer;
 import com.lava.model.auth.Issued;
@@ -103,17 +102,5 @@ public class AuthServiceImpl implements AuthService {
                 .principal(principal)
                 .refreshToken(rotated.rawToken())
                 .build();
-    }
-
-    @Override
-    @Transactional
-    public void register(String email, String rawPassword) {
-        if (this.userRepository.existsByEmail(email)) {
-            log.warn("register::email already exists: {}", LogSanitizer.sanitize(email));
-            throw new EmailAlreadyRegisteredException(email);
-        }
-
-        this.userRepository.insert(email, this.passwordEncoder.encode(rawPassword));
-        log.info("register::email registered: {}", LogSanitizer.sanitize(email));
     }
 }

@@ -14,7 +14,6 @@ import com.lava.boot.autoconfigure.app.JwtProperties;
 import com.lava.exception.InvalidRefreshTokenException;
 import com.lava.model.auth.Issued;
 import com.lava.model.database.tables.pojos.RefreshToken;
-import com.lava.model.database.tables.pojos.RefreshTokenBuilder;
 import com.lava.repository.RefreshTokenRepository;
 import com.lava.security.Hasher;
 import java.security.SecureRandom;
@@ -110,13 +109,7 @@ class RefreshTokenServiceImplTest {
 
     @Test
     void rotate_oldTokenWasMfaVerified_carriesFlagForwardToNewToken() {
-        RefreshToken old = RefreshTokenBuilder.builder()
-                .id(1L)
-                .userId(3L)
-                .tokenHash("hash")
-                .expiresAt(LocalDateTime.now().plusDays(30))
-                .mfaVerified(true)
-                .build();
+        RefreshToken old = new RefreshToken(1L, 3L, "hash", LocalDateTime.now().plusDays(30), null, null, null, true);
         when(this.refreshTokenRepository.insert(eq(3L), any(), any(), eq(true))).thenAnswer(invocation -> row(2L, 3L));
 
         Issued next = this.service.rotate(old);
@@ -127,13 +120,8 @@ class RefreshTokenServiceImplTest {
 
     @Test
     void validateForRotation_validToken_returnsRow() {
-        RefreshToken valid = RefreshTokenBuilder.builder()
-                .id(1L)
-                .userId(3L)
-                .tokenHash(Hasher.hash("raw"))
-                .expiresAt(LocalDateTime.now().plusDays(1))
-                .revokedAt(null)
-                .build();
+        RefreshToken valid =
+                new RefreshToken(1L, 3L, Hasher.hash("raw"), LocalDateTime.now().plusDays(1), null, null, null, null);
         when(this.refreshTokenRepository.findByTokenHash(Hasher.hash("raw"))).thenReturn(Optional.of(valid));
 
         RefreshToken result = this.service.validateForRotation("raw");
@@ -151,13 +139,15 @@ class RefreshTokenServiceImplTest {
 
     @Test
     void validateForRotation_reuseOfRevokedToken_revokesAllSessionsAndThrows() {
-        RefreshToken revoked = RefreshTokenBuilder.builder()
-                .id(1L)
-                .userId(3L)
-                .tokenHash(Hasher.hash("raw"))
-                .expiresAt(LocalDateTime.now().plusDays(1))
-                .revokedAt(LocalDateTime.now().minusMinutes(1))
-                .build();
+        RefreshToken revoked = new RefreshToken(
+                1L,
+                3L,
+                Hasher.hash("raw"),
+                LocalDateTime.now().plusDays(1),
+                LocalDateTime.now().minusMinutes(1),
+                null,
+                null,
+                null);
         when(this.refreshTokenRepository.findByTokenHash(Hasher.hash("raw"))).thenReturn(Optional.of(revoked));
 
         assertThatThrownBy(() -> this.service.validateForRotation("raw"))
@@ -168,13 +158,8 @@ class RefreshTokenServiceImplTest {
 
     @Test
     void validateForRotation_expiredButNotRevoked_throwsWithoutRevokingAllSessions() {
-        RefreshToken expired = RefreshTokenBuilder.builder()
-                .id(1L)
-                .userId(3L)
-                .tokenHash(Hasher.hash("raw"))
-                .expiresAt(LocalDateTime.now().minusMinutes(1))
-                .revokedAt(null)
-                .build();
+        RefreshToken expired = new RefreshToken(
+                1L, 3L, Hasher.hash("raw"), LocalDateTime.now().minusMinutes(1), null, null, null, null);
         when(this.refreshTokenRepository.findByTokenHash(Hasher.hash("raw"))).thenReturn(Optional.of(expired));
 
         assertThatThrownBy(() -> this.service.validateForRotation("raw"))
@@ -184,11 +169,6 @@ class RefreshTokenServiceImplTest {
     }
 
     private static RefreshToken row(Long id, Long userId) {
-        return RefreshTokenBuilder.builder()
-                .id(id)
-                .userId(userId)
-                .tokenHash("hash")
-                .expiresAt(LocalDateTime.now().plusDays(30))
-                .build();
+        return new RefreshToken(id, userId, "hash", LocalDateTime.now().plusDays(30), null, null, null, null);
     }
 }

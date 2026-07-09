@@ -17,7 +17,6 @@ import com.lava.boot.autoconfigure.app.CorsProperties;
 import com.lava.boot.autoconfigure.app.JwtProperties;
 import com.lava.boot.autoconfigure.app.OAuthProperties;
 import com.lava.configuration.SecurityConfiguration;
-import com.lava.exception.EmailAlreadyRegisteredException;
 import com.lava.exception.InvalidRefreshTokenException;
 import com.lava.model.auth.TokenPair;
 import com.lava.model.auth.TokenPairBuilder;
@@ -108,42 +107,6 @@ class AuthControllerTest {
                         .content("{\"email\":\"user@example.com\",\"password\":\"password\"}"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Invalid email or password"));
-    }
-
-    @Test
-    void register_success_returns201() throws Exception {
-        this.mockMvc
-                .perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"new@example.com\",\"password\":\"password123\"}"))
-                .andExpect(status().isCreated());
-
-        verify(this.authService).register("new@example.com", "password123");
-    }
-
-    @Test
-    void register_emailAlreadyRegistered_returns409() throws Exception {
-        org.mockito.Mockito.doThrow(new EmailAlreadyRegisteredException("dup@example.com"))
-                .when(this.authService)
-                .register(eq("dup@example.com"), any());
-
-        this.mockMvc
-                .perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"dup@example.com\",\"password\":\"password123\"}"))
-                .andExpect(status().isConflict());
-    }
-
-    @Test
-    void register_passwordTooShort_returns400() throws Exception {
-        this.mockMvc
-                .perform(post("/api/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"new@example.com\",\"password\":\"short\"}"))
-                .andExpect(status().isBadRequest());
     }
 
     @Test

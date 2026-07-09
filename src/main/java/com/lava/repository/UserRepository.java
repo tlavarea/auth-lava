@@ -14,5 +14,7 @@ public interface UserRepository {
 
     Optional<User> insert(String email, String passwordHash);
 
+    Optional<User> insertVerified(String email, String passwordHash);
+
     Optional<User> insertVerifiedFromOAuth(String email);
 }

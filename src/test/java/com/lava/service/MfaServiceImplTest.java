@@ -14,9 +14,7 @@ import com.lava.exception.InvalidTotpCodeException;
 import com.lava.exception.MfaAlreadyEnabledException;
 import com.lava.exception.MfaEnrollmentNotFoundException;
 import com.lava.model.database.tables.pojos.MfaBackupCode;
-import com.lava.model.database.tables.pojos.MfaBackupCodeBuilder;
 import com.lava.model.database.tables.pojos.MfaMethod;
-import com.lava.model.database.tables.pojos.MfaMethodBuilder;
 import com.lava.model.mfa.TotpEnrollment;
 import com.lava.repository.MfaBackupCodeRepository;
 import com.lava.repository.MfaMethodRepository;
@@ -230,23 +228,11 @@ class MfaServiceImplTest {
     }
 
     private static MfaMethod mfaMethod(Long id, Long userId, boolean enabled) {
-        return MfaMethodBuilder.builder()
-                .id(id)
-                .userId(userId)
-                .type("totp")
-                .secretEncrypted("encrypted-secret")
-                .isEnabled(enabled)
-                .createdAt(LocalDateTime.now())
-                .build();
+        return new MfaMethod(id, userId, "totp", "encrypted-secret", null, enabled, null, LocalDateTime.now());
     }
 
     private static MfaBackupCode backupCode(Long id) {
-        return MfaBackupCodeBuilder.builder()
-                .id(id)
-                .userId(1L)
-                .codeHash("hash")
-                .createdAt(LocalDateTime.now())
-                .build();
+        return new MfaBackupCode(id, 1L, "hash", null, LocalDateTime.now());
     }
 
     private static MfaProperties properties() {

@@ -22,11 +22,24 @@ mfa:
   totp-issuer: auth-lava-test
   totp-allowed-discrepancy: 1
 
+mail:
+  from-address: no-reply@auth-lava.local
+
 oauth:
   success-redirect-uri: http://localhost:4200/
   failure-redirect-uri: http://localhost:4200/login?error=oauth
 
+registration:
+  code-length: 6
+  code-ttl: 5m
+  max-attempts: 5
+  resend-cooldown: 60s
+  bridge-token-ttl: 5m
+
 spring:
+  mail:
+    host: localhost
+    port: 1025
   security:
     oauth2:
       client:

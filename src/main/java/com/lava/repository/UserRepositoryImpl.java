@@ -63,6 +63,18 @@ public class UserRepositoryImpl extends AbstractSpringDAOImpl<UserRecord, User, 
 
     @Override
     @Transactional
+    public Optional<User> insertVerified(String email, String passwordHash) {
+        return this.dsl
+                .insertInto(USER)
+                .set(USER.EMAIL, normalize(email))
+                .set(USER.PASSWORD_HASH, passwordHash)
+                .set(USER.EMAIL_VERIFIED, true)
+                .returning()
+                .fetchOptionalInto(User.class);
+    }
+
+    @Override
+    @Transactional
     public Optional<User> insertVerifiedFromOAuth(String email) {
         return this.dsl
                 .insertInto(USER)

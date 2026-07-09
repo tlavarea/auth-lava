@@ -79,7 +79,9 @@ public class SecurityConfiguration {
 
         http.authorizeHttpRequests(auth -> auth.requestMatchers(
                         "/api/auth/login",
-                        "/api/auth/register",
+                        "/api/auth/register/start",
+                        "/api/auth/register/verify-code",
+                        "/api/auth/register/complete",
                         "/api/auth/refresh",
                         "/oauth2/authorization/**",
                         "/login/oauth2/code/**",
