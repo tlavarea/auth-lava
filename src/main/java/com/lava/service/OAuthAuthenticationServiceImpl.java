@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class OAuthAuthenticationServiceImpl implements OAuthAuthenticationService {
 
     private final JwtService jwtService;
+    private final MfaService mfaService;
     private final OauthAccountRepository oauthAccountRepository;
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
@@ -38,10 +39,8 @@ public class OAuthAuthenticationServiceImpl implements OAuthAuthenticationServic
                 .filter(user -> "active".equals(user.status()))
                 .orElseThrow(InvalidOAuthUserStateException::new);
         AuthUserPrincipal principal = AuthUserPrincipal.from(view);
-        // MFA gating for OAuth logins is deliberately out of scope for now (see plan) - password
-        // login is the only path currently gated, so OAuth-issued tokens never carry the
-        // MFA_ENROLLED marker or a TOTP factor.
-        String accessToken = this.jwtService.generateAccessToken(principal, false, false);
+        boolean mfaEnrolled = this.mfaService.isEnrolled(principal.getUserId());
+        String accessToken = this.jwtService.generateAccessToken(principal, mfaEnrolled, false);
         Issued refresh = this.refreshTokenService.issue(principal.getUserId());
 
         return TokenPairBuilder.builder()

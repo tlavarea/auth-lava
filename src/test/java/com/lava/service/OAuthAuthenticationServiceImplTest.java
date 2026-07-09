@@ -38,6 +38,9 @@ class OAuthAuthenticationServiceImplTest {
     private JwtService jwtService;
 
     @Mock
+    private MfaService mfaService;
+
+    @Mock
     private OauthAccountRepository oauthAccountRepository;
 
     @Mock
@@ -51,7 +54,11 @@ class OAuthAuthenticationServiceImplTest {
     @BeforeEach
     void setUp() {
         this.service = new OAuthAuthenticationServiceImpl(
-                this.jwtService, this.oauthAccountRepository, this.refreshTokenService, this.userRepository);
+                this.jwtService,
+                this.mfaService,
+                this.oauthAccountRepository,
+                this.refreshTokenService,
+                this.userRepository);
     }
 
     @Test
@@ -108,6 +115,23 @@ class OAuthAuthenticationServiceImplTest {
     }
 
     @Test
+    void authenticate_mfaEnrolledUser_generatesAccessTokenWithMfaEnrolledFlag() {
+        OAuthIdentity identity = new OAuthIdentity("github", "gh-1", "someone@example.com", true);
+
+        when(this.oauthAccountRepository.findByProviderAndProviderUserId("github", "gh-1"))
+                .thenReturn(Optional.of(oauthAccount(3L)));
+        when(this.userRepository.findAuthUserById(3L)).thenReturn(Optional.of(authUserView(3L, "active")));
+        when(this.mfaService.isEnrolled(3L)).thenReturn(true);
+        when(this.jwtService.generateAccessToken(any(), eq(true), eq(false))).thenReturn("access-token");
+        when(this.jwtService.getAccessTokenTtlSeconds()).thenReturn(900L);
+        when(this.refreshTokenService.issue(any())).thenAnswer(invocation -> issued(invocation.getArgument(0)));
+
+        this.service.authenticate(identity);
+
+        verify(this.jwtService).generateAccessToken(any(), eq(true), eq(false));
+    }
+
+    @Test
     void authenticate_suspendedUser_isRejected() {
         OAuthIdentity identity = new OAuthIdentity("github", "gh-2", "suspended@example.com", true);
 
@@ -133,6 +157,7 @@ class OAuthAuthenticationServiceImplTest {
     }
 
     private void stubTokenIssuance() {
+        when(this.mfaService.isEnrolled(any())).thenReturn(false);
         when(this.jwtService.generateAccessToken(any(), eq(false), eq(false))).thenReturn("access-token");
         when(this.jwtService.getAccessTokenTtlSeconds()).thenReturn(900L);
         when(this.refreshTokenService.issue(any())).thenAnswer(invocation -> issued(invocation.getArgument(0)));
