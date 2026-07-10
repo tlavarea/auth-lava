@@ -110,6 +110,17 @@ class AuthControllerTest {
     }
 
     @Test
+    void login_anyResponse_carriesSecurityHeaders() throws Exception {
+        this.mockMvc
+                .perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"\",\"password\":\"password\"}"))
+                .andExpect(header().string("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"))
+                .andExpect(header().string("Referrer-Policy", "no-referrer"));
+    }
+
+    @Test
     void me_authenticated_returnsCurrentUser() throws Exception {
         AuthUserPrincipal principal = principal(7L);
 
