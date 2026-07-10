@@ -1,4 +1,16 @@
 services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    restart: unless-stopped
+    volumes:
+      - mailpit_data:/data
+    
   postgres:
     image: postgres:latest
     container_name: auth_postgres
@@ -18,4 +30,5 @@ services:
       - pgdata:/var/lib/postgresql
 
 volumes:
+  mailpit_data:
   pgdata:
