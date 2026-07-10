@@ -14,18 +14,17 @@ import {
   ValidationError,
 } from '@angular/forms/signals';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { BrnInputOtp } from '@spartan-ng/brain/input-otp';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInputImports } from '@spartan-ng/helm/input';
-import { HlmInputOtpImports } from '@spartan-ng/helm/input-otp';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
 import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
 import { extractErrorMessage } from '@core/auth/extract-error-message';
 import { OauthProviders } from '@core/auth/oauth-providers/oauth-providers';
+import { OtpInput } from '../../shared/otp-input/otp-input';
 
 type EmailFormModel = {
   email: string;
@@ -44,7 +43,6 @@ const RESEND_COOLDOWN_SECONDS = 60;
 @Component({
   selector: 'app-register',
   imports: [
-    BrnInputOtp,
     FormField,
     FormRoot,
     RouterLink,
@@ -53,9 +51,9 @@ const RESEND_COOLDOWN_SECONDS = 60;
     HlmCardImports,
     HlmFieldImports,
     HlmInputImports,
-    HlmInputOtpImports,
     HlmSpinnerImports,
     OauthProviders,
+    OtpInput,
   ],
   template: `
     <div class="flex min-h-dvh items-center justify-center p-4">
@@ -119,34 +117,18 @@ const RESEND_COOLDOWN_SECONDS = 60;
             }
             @case ('code') {
               <div hlmField class="items-center">
-                <label hlmFieldLabel for="otp">Verification code</label>
-                <brn-input-otp
-                  id="otp"
-                  hlmInputOtp
+                <div class="flex items-center justify-between">
+                  <label hlmFieldLabel for="otp">Verification code</label>
+                  @if (verifyingCode()) {
+                    <hlm-spinner />
+                  }
+                </div>
+                <app-otp-input
+                  inputId="otp"
+                  [disabled]="codeSecondsRemaining() === 0 || verifyingCode()"
                   [maxLength]="6"
-                  [disabled]="codeSecondsRemaining() === 0"
-                  [value]="code()"
                   (valueChange)="code.set($event)"
-                  (completed)="onVerifyCode()">
-                  <hlm-input-otp-group>
-                    <hlm-input-otp-slot [index]="0" />
-                  </hlm-input-otp-group>
-                  <hlm-input-otp-group>
-                    <hlm-input-otp-slot [index]="1" />
-                  </hlm-input-otp-group>
-                  <hlm-input-otp-group>
-                    <hlm-input-otp-slot [index]="2" />
-                  </hlm-input-otp-group>
-                  <hlm-input-otp-group>
-                    <hlm-input-otp-slot [index]="3" />
-                  </hlm-input-otp-group>
-                  <hlm-input-otp-group>
-                    <hlm-input-otp-slot [index]="4" />
-                  </hlm-input-otp-group>
-                  <hlm-input-otp-group>
-                    <hlm-input-otp-slot [index]="5" />
-                  </hlm-input-otp-group>
-                </brn-input-otp>
+                  (completed)="onVerifyCode()" />
                 <p hlmFieldDescription>
                   @if (codeSecondsRemaining() > 0) {
                     Code expires in {{ formattedCodeCountdown() }}.
@@ -155,19 +137,6 @@ const RESEND_COOLDOWN_SECONDS = 60;
                   }
                 </p>
               </div>
-
-              <button
-                hlmBtn
-                type="button"
-                [disabled]="code().length !== 6 || codeSecondsRemaining() === 0 || verifyingCode()"
-                (click)="onVerifyCode()">
-                @if (verifyingCode()) {
-                  <hlm-spinner />
-                  Verifying...
-                } @else {
-                  Verify
-                }
-              </button>
 
               <button
                 hlmBtn

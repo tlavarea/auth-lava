@@ -8,6 +8,7 @@ import {
   minLength,
   required,
   SchemaPathTree,
+  submit,
   ValidationError,
 } from '@angular/forms/signals';
 import { Router } from '@angular/router';
@@ -20,6 +21,7 @@ import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
 import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
 import { extractErrorMessage } from '@core/auth/extract-error-message';
+import { OtpInput } from '../../shared/otp-input/otp-input';
 
 type VerifyFormModel = {
   code: string;
@@ -36,6 +38,7 @@ type VerifyFormModel = {
     HlmFieldImports,
     HlmInputImports,
     HlmSpinnerImports,
+    OtpInput,
   ],
   template: `
     <div class="flex min-h-dvh items-center justify-center p-4">
@@ -53,27 +56,48 @@ type VerifyFormModel = {
             }
 
             <div hlmField>
-              <label hlmFieldLabel for="code">Code</label>
-              <input
-                hlmInput
-                id="code"
-                type="text"
-                autocomplete="one-time-code"
-                inputmode="text"
-                [formField]="verifyForm.code" />
-              @for (error of verifyForm.code().errors(); track error.kind) {
-                <hlm-field-error [validator]="error.kind">{{ error.message }}</hlm-field-error>
+              @if (!enterBackupCode()) {
+                <div class="flex items-center justify-between">
+                  <label hlmFieldLabel for="otp">Verification code</label>
+                  @if (verifyForm().submitting()) {
+                    <hlm-spinner />
+                  } @else {
+                    <button hlmBtn size="xs" type="button" variant="outline" (click)="enterBackupCode.set(true)">
+                      Enter backup code
+                    </button>
+                  }
+                </div>
+                <app-otp-input
+                  inputId="otp"
+                  [disabled]="verifyForm().submitting()"
+                  [maxLength]="6"
+                  (valueChange)="updateFormModel($event)"
+                  (completed)="verifyCode()" />
+              } @else {
+                <label hlmFieldLabel for="backupCode">Code</label>
+                <input
+                  hlmInput
+                  id="backupCode"
+                  type="text"
+                  autocomplete="backup-code"
+                  inputmode="text"
+                  [formField]="verifyForm.code" />
+                @for (error of verifyForm.code().errors(); track error.kind) {
+                  <hlm-field-error [validator]="error.kind">{{ error.message }}</hlm-field-error>
+                }
               }
             </div>
 
-            <button hlmBtn type="submit" [disabled]="verifyForm().submitting()">
-              @if (verifyForm().submitting()) {
-                <hlm-spinner />
-                Verifying...
-              } @else {
-                Verify
-              }
-            </button>
+            @if (enterBackupCode()) {
+              <button hlmBtn type="submit" [disabled]="verifyForm().submitting()">
+                @if (verifyForm().submitting()) {
+                  <hlm-spinner />
+                  Verifying...
+                } @else {
+                  Verify
+                }
+              </button>
+            }
           </form>
         </div>
       </div>
@@ -84,7 +108,11 @@ export class MfaVerifyPage {
   private readonly authStore: AuthStoreType = inject(AuthStore);
   private readonly router: Router = inject(Router);
 
+  protected readonly enterBackupCode: WritableSignal<boolean> = signal(false);
   protected readonly model: WritableSignal<VerifyFormModel> = signal({ code: '' });
+  protected readonly updateFormModel: (code: string) => void = (code: string): void => {
+    this.model.update((m: VerifyFormModel): VerifyFormModel => ({ ...m, code }));
+  };
 
   protected readonly verifyForm: FieldTree<VerifyFormModel> = form(
     this.model,
@@ -95,16 +123,25 @@ export class MfaVerifyPage {
     },
     {
       submission: {
-        action: async (field: FieldTree<VerifyFormModel>): Promise<ValidationError | ValidationError[] | undefined> => {
-          try {
-            await this.authStore.verifyMfa(field().value().code);
-          } catch (error) {
-            return { kind: 'serverError', message: extractErrorMessage(error) };
-          }
-          await this.router.navigateByUrl('/');
-          return;
-        },
+        action: (field: FieldTree<VerifyFormModel>): Promise<ValidationError | ValidationError[] | undefined> =>
+          this.verifyMfa(field().value().code),
       },
     }
   );
+
+  protected readonly verifyCode: () => void = (): void => {
+    submit(this.verifyForm, (): Promise<ValidationError | ValidationError[] | undefined> =>
+      this.verifyMfa(this.model().code)
+    );
+  };
+
+  private async verifyMfa(code: string): Promise<ValidationError | ValidationError[] | undefined> {
+    try {
+      await this.authStore.verifyMfa(code);
+    } catch (error) {
+      return { kind: 'serverError', message: extractErrorMessage(error) };
+    }
+    await this.router.navigateByUrl('/');
+    return;
+  }
 }
