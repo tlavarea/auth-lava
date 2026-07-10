@@ -22,6 +22,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -113,6 +114,26 @@ public class SecurityConfiguration {
         // XorCsrfTokenRequestAttributeHandler expects a masked value instead and rejects every
         // raw token as invalid.
         http.csrf(CsrfConfigurer::spa);
+
+        // This is a pure JSON API (no template engine, empty static/templates dirs) sitting
+        // behind a separate SPA, so the strictest possible CSP is correct here - nothing is ever
+        // legitimately loaded as script/style/image/etc. from this origin. This also hardens
+        // Spring Boot's default Whitelabel error page, the one place this app can still render
+        // HTML (a browser-navigation request with Accept: text/html that falls through to
+        // /error). frame-ancestors 'none' is the CSP-level equivalent of Spring Security's
+        // default X-Frame-Options: DENY, kept for browsers that prefer CSP over the legacy
+        // header. Referrer-Policy isn't set by Spring Security by default; no-referrer is safe
+        // here since nothing about this API's URLs needs to reach the OAuth2 provider or the
+        // post-login SPA redirect target.
+        //
+        // Deliberately NOT adding Cross-Origin-Resource-Policy/-Opener-Policy/-Embedder-Policy:
+        // CORP: same-origin (a common hardening default) would break the legitimate cross-origin
+        // fetch from the Angular SPA, since CORP blocks cross-origin loading independently of the
+        // CORS headers above. COOP/COEP are for browsing-context isolation (e.g. SharedArrayBuffer
+        // use cases) and aren't relevant to a JSON auth API.
+        http.headers(headers -> headers.contentSecurityPolicy(
+                        csp -> csp.policyDirectives("default-src 'none'; frame-ancestors 'none'"))
+                .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)));
 
         http.exceptionHandling(handling ->
                 handling.authenticationEntryPoint((request, response, authException) -> response.sendError(401)));
