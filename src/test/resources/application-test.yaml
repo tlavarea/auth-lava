@@ -36,6 +36,9 @@ oauth:
   success-redirect-uri: http://localhost:4200/
   failure-redirect-uri: http://localhost:4200/login?error=oauth
 
+password-breach-check:
+  enabled: false
+
 registration:
   code-length: 6
   code-ttl: 5m

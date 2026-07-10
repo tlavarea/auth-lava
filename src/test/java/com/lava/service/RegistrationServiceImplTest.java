@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.lava.boot.autoconfigure.app.RegistrationProperties;
+import com.lava.exception.BreachedPasswordException;
 import com.lava.exception.EmailAlreadyRegisteredException;
 import com.lava.exception.InvalidRegistrationTokenException;
 import com.lava.exception.InvalidVerificationCodeException;
@@ -43,6 +44,9 @@ class RegistrationServiceImplTest {
     private JwtService jwtService;
 
     @Mock
+    private PasswordBreachCheckService passwordBreachCheckService;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -61,6 +65,7 @@ class RegistrationServiceImplTest {
         this.service = new RegistrationServiceImpl(
                 this.emailService,
                 this.jwtService,
+                this.passwordBreachCheckService,
                 this.passwordEncoder,
                 this.pendingRegistrationRepository,
                 this.registrationProperties,
@@ -203,6 +208,26 @@ class RegistrationServiceImplTest {
 
         verify(this.userRepository).insertVerified("complete@example.com", "encoded");
         verify(this.pendingRegistrationRepository).deleteByEmail("complete@example.com");
+    }
+
+    @Test
+    void complete_breachedPassword_throwsAndDoesNotCreateUser() {
+        Claims claims = Jwts.claims()
+                .subject("breached@example.com")
+                .add(Map.of(JwtService.REGISTRATION_TOKEN_PURPOSE_CLAIM, JwtService.REGISTRATION_TOKEN_PURPOSE))
+                .build();
+        when(this.jwtService.parseAndValidate("valid-token")).thenReturn(claims);
+        PendingRegistration verified =
+                pendingRow(1L, "breached@example.com", "hash", LocalDateTime.now(), 0, LocalDateTime.now());
+        when(this.pendingRegistrationRepository.findByEmail("breached@example.com"))
+                .thenReturn(Optional.of(verified));
+        when(this.passwordBreachCheckService.isBreached("password123")).thenReturn(true);
+
+        assertThatThrownBy(() -> this.service.complete("valid-token", "password123"))
+                .isInstanceOf(BreachedPasswordException.class);
+
+        verify(this.userRepository, never()).insertVerified(any(), any());
+        verify(this.pendingRegistrationRepository, never()).deleteByEmail(any());
     }
 
     @Test
