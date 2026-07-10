@@ -6,17 +6,20 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.lava.exception.InvalidRefreshTokenException;
+import com.lava.exception.TooManyRequestsException;
 import com.lava.model.auth.Issued;
 import com.lava.model.auth.IssuedBuilder;
 import com.lava.model.auth.TokenPair;
 import com.lava.model.database.tables.pojos.RefreshToken;
 import com.lava.model.database.view.AuthUserView;
 import com.lava.model.database.view.AuthUserViewBuilder;
+import com.lava.model.throttle.AuthThrottleScope;
 import com.lava.repository.UserRepository;
 import com.lava.security.AuthUserPrincipal;
 import java.time.LocalDateTime;
@@ -28,6 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -48,6 +52,9 @@ class AuthServiceImplTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
+    private RateLimitService rateLimitService;
+
+    @Mock
     private RefreshTokenService refreshTokenService;
 
     @Mock
@@ -62,6 +69,7 @@ class AuthServiceImplTest {
                 this.jwtService,
                 this.mfaService,
                 this.passwordEncoder,
+                this.rateLimitService,
                 this.refreshTokenService,
                 this.userRepository);
     }
@@ -108,6 +116,31 @@ class AuthServiceImplTest {
         assertThat(pair.refreshToken()).isEqualTo("raw-refresh");
         assertThat(pair.expiresInSeconds()).isEqualTo(900L);
         assertThat(pair.principal()).isEqualTo(principal);
+        verify(this.rateLimitService).checkNotLocked(AuthThrottleScope.LOGIN, "user@example.com");
+        verify(this.rateLimitService).recordSuccess(AuthThrottleScope.LOGIN, "user@example.com");
+    }
+
+    @Test
+    void login_locked_throwsWithoutAttemptingAuthentication() {
+        doThrow(new TooManyRequestsException("locked"))
+                .when(this.rateLimitService)
+                .checkNotLocked(AuthThrottleScope.LOGIN, "user@example.com");
+
+        assertThatThrownBy(() -> this.service.login("user@example.com", "password"))
+                .isInstanceOf(TooManyRequestsException.class);
+
+        verify(this.authenticationManager, never()).authenticate(any());
+    }
+
+    @Test
+    void login_badCredentials_recordsFailureAndRethrows() {
+        when(this.authenticationManager.authenticate(any())).thenThrow(new BadCredentialsException("bad creds"));
+
+        assertThatThrownBy(() -> this.service.login("user@example.com", "wrong-password"))
+                .isInstanceOf(BadCredentialsException.class);
+
+        verify(this.rateLimitService).recordFailure(AuthThrottleScope.LOGIN, "user@example.com");
+        verify(this.rateLimitService, never()).recordSuccess(any(), any());
     }
 
     @Test

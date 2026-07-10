@@ -9,6 +9,7 @@ import com.lava.model.database.tables.pojos.MfaMethod;
 import com.lava.model.mfa.MfaMethodType;
 import com.lava.model.mfa.TotpEnrollment;
 import com.lava.model.mfa.TotpEnrollmentBuilder;
+import com.lava.model.throttle.AuthThrottleScope;
 import com.lava.repository.MfaBackupCodeRepository;
 import com.lava.repository.MfaMethodRepository;
 import com.lava.security.AuthUserPrincipal;
@@ -35,6 +36,7 @@ public class MfaServiceImpl implements MfaService {
     private final MfaBackupCodeRepository backupCodeRepository;
     private final MfaMethodRepository mfaMethodRepository;
     private final MfaProperties mfaProperties;
+    private final RateLimitService rateLimitService;
     private final SecureRandom secureRandom;
     private final TextEncryptor totpSecretEncryptor;
     private final TotpService totpService;
@@ -95,19 +97,27 @@ public class MfaServiceImpl implements MfaService {
     @Override
     @Transactional
     public void verifyCode(Long userId, String code) {
+        this.rateLimitService.checkNotLocked(AuthThrottleScope.MFA_VERIFY, userId.toString());
+
         Optional<MfaMethod> method =
                 this.mfaMethodRepository.findEnabledByUserIdAndType(userId, MfaMethodType.TOTP.dbValue());
 
         if (method.isPresent()
                 && this.totpService.verifyCode(
                         this.totpSecretEncryptor.decrypt(method.get().secretEncrypted()), code)) {
+            this.rateLimitService.recordSuccess(AuthThrottleScope.MFA_VERIFY, userId.toString());
             return;
         }
 
-        MfaBackupCode backupCode = this.backupCodeRepository
-                .findUnusedByUserIdAndCodeHash(userId, Hasher.hash(code))
-                .orElseThrow(InvalidTotpCodeException::new);
-        this.backupCodeRepository.markUsed(backupCode.id(), LocalDateTime.now());
+        Optional<MfaBackupCode> backupCode =
+                this.backupCodeRepository.findUnusedByUserIdAndCodeHash(userId, Hasher.hash(code));
+        if (backupCode.isEmpty()) {
+            this.rateLimitService.recordFailure(AuthThrottleScope.MFA_VERIFY, userId.toString());
+            throw new InvalidTotpCodeException();
+        }
+
+        this.backupCodeRepository.markUsed(backupCode.get().id(), LocalDateTime.now());
+        this.rateLimitService.recordSuccess(AuthThrottleScope.MFA_VERIFY, userId.toString());
     }
 
     /**

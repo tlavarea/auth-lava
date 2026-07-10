@@ -1,0 +1,58 @@
+databaseChangeLog:
+  - changeSet:
+      id: "9"
+      author: tlavarea
+      comment: >
+        AUTH_THROTTLE - generic per-identifier failed-attempt counter used to lock out
+        brute-force guessing against both password login (scope=LOGIN, identifier=email)
+        and MFA verification (scope=MFA_VERIFY, identifier=userId). One shared table/scope
+        column instead of a dedicated table per flow, since the counting/lockout logic is
+        identical. locked_until is set once a scope's configured max-attempts threshold is
+        reached; RateLimitServiceImpl clears the row on a successful attempt.
+      changes:
+        - createTable:
+            tableName: auth_throttle
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: scope
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: identifier
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: failed_count
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: locked_until
+                  type: TIMESTAMPTZ
+              - column:
+                  name: updated_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addAutoIncrement:
+            tableName: auth_throttle
+            columnName: id
+            columnDataType: BIGINT
+            generationType: ALWAYS
+        - addUniqueConstraint:
+            tableName: auth_throttle
+            columnNames: scope, identifier
+            constraintName: uq_auth_throttle_scope_identifier
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS auth_throttle CASCADE;

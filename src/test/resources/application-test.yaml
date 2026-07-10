@@ -1,3 +1,10 @@
+auth:
+  throttle:
+    login-max-attempts: 5
+    login-lockout-duration: 15m
+    mfa-max-attempts: 5
+    mfa-lockout-duration: 15m
+
 cors:
   allowed-origins: http://localhost:4200
 
