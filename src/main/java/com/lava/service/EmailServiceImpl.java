@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @Service
 @Slf4j
-public class SmtpEmailServiceImpl implements EmailService {
+public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
     private final MailProperties mailProperties;
