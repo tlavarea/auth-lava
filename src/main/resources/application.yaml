@@ -45,6 +45,9 @@ oauth:
   success-redirect-uri: ${OAUTH_SUCCESS_REDIRECT_URI:http://localhost:4200/}
   failure-redirect-uri: ${OAUTH_FAILURE_REDIRECT_URI:http://localhost:4200/login?error=oauth}
 
+password-breach-check:
+  enabled: ${PASSWORD_BREACH_CHECK_ENABLED:true}
+
 registration:
   code-length: ${REGISTRATION_CODE_LENGTH:6}
   code-ttl: ${REGISTRATION_CODE_TTL:5m}
@@ -55,6 +58,10 @@ registration:
 spring:
   application:
     name: auth-lava
+  http:
+    clients:
+      connect-timeout: ${HTTP_CLIENT_CONNECT_TIMEOUT:2s}
+      read-timeout: ${HTTP_CLIENT_READ_TIMEOUT:2s}
   datasource:
     driver-class-name: org.postgresql.Driver
     password: ${SPRING_DATASOURCE_PASSWORD:}

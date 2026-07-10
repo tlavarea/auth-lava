@@ -1,5 +1,6 @@
 package com.lava.controller;
 
+import com.lava.exception.BreachedPasswordException;
 import com.lava.exception.EmailAlreadyRegisteredException;
 import com.lava.exception.InvalidRefreshTokenException;
 import com.lava.exception.InvalidRegistrationTokenException;
@@ -43,5 +44,10 @@ public class AuthExceptionHandler {
     @ExceptionHandler(TooManyRequestsException.class)
     public ResponseEntity<Map<String, String>> handleTooManyRequests(TooManyRequestsException e) {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(BreachedPasswordException.class)
+    public ResponseEntity<Map<String, String>> handleBreachedPassword(BreachedPasswordException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
     }
 }

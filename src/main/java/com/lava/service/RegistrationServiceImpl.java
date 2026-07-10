@@ -1,6 +1,7 @@
 package com.lava.service;
 
 import com.lava.boot.autoconfigure.app.RegistrationProperties;
+import com.lava.exception.BreachedPasswordException;
 import com.lava.exception.EmailAlreadyRegisteredException;
 import com.lava.exception.InvalidRegistrationTokenException;
 import com.lava.exception.InvalidVerificationCodeException;
@@ -28,6 +29,7 @@ public class RegistrationServiceImpl implements RegistrationService {
 
     private final EmailService emailService;
     private final JwtService jwtService;
+    private final PasswordBreachCheckService passwordBreachCheckService;
     private final PasswordEncoder passwordEncoder;
     private final PendingRegistrationRepository pendingRegistrationRepository;
     private final RegistrationProperties registrationProperties;
@@ -46,6 +48,10 @@ public class RegistrationServiceImpl implements RegistrationService {
                 .findByEmail(email)
                 .filter(row -> row.verifiedAt() != null)
                 .orElseThrow(InvalidRegistrationTokenException::new);
+
+        if (this.passwordBreachCheckService.isBreached(rawPassword)) {
+            throw new BreachedPasswordException();
+        }
 
         this.userRepository.insertVerified(email, this.passwordEncoder.encode(rawPassword));
         this.pendingRegistrationRepository.deleteByEmail(email);
