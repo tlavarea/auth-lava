@@ -7,7 +7,6 @@ import com.lava.model.database.tables.pojos.MfaBackupCode;
 import com.lava.model.database.tables.records.MfaBackupCodeRecord;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.InsertValuesStep2;
 import org.springframework.stereotype.Repository;
@@ -35,13 +34,12 @@ public class MfaBackupCodeRepositoryImpl extends AbstractSpringDAOImpl<MfaBackup
     }
 
     @Override
-    public Optional<MfaBackupCode> findUnusedByUserIdAndCodeHash(Long userId, String codeHash) {
+    public List<MfaBackupCode> findAllUnusedByUserId(Long userId) {
         return this.dsl
                 .selectFrom(MFA_BACKUP_CODE)
                 .where(MFA_BACKUP_CODE.USER_ID.eq(userId))
-                .and(MFA_BACKUP_CODE.CODE_HASH.eq(codeHash))
                 .and(MFA_BACKUP_CODE.USED_AT.isNull())
-                .fetchOptionalInto(MfaBackupCode.class);
+                .fetchInto(MfaBackupCode.class);
     }
 
     @Override

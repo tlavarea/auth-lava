@@ -109,8 +109,9 @@ public class MfaServiceImpl implements MfaService {
             return;
         }
 
-        Optional<MfaBackupCode> backupCode =
-                this.backupCodeRepository.findUnusedByUserIdAndCodeHash(userId, Hasher.hash(code));
+        Optional<MfaBackupCode> backupCode = this.backupCodeRepository.findAllUnusedByUserId(userId).stream()
+                .filter(candidate -> Hasher.matches(code, candidate.codeHash()))
+                .findFirst();
         if (backupCode.isEmpty()) {
             this.rateLimitService.recordFailure(AuthThrottleScope.MFA_VERIFY, userId.toString());
             throw new InvalidTotpCodeException();
