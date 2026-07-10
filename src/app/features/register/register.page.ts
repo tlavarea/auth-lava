@@ -110,7 +110,7 @@ const RESEND_COOLDOWN_SECONDS = 60;
                 <button hlmBtn type="submit" [disabled]="emailForm().submitting()">
                   @if (emailForm().submitting()) {
                     <hlm-spinner />
-                    Sending code...
+                    Registering...
                   } @else {
                     Continue
                   }
