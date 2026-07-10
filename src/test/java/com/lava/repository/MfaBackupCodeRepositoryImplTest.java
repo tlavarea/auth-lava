@@ -6,7 +6,6 @@ import com.lava.model.database.tables.pojos.MfaBackupCode;
 import com.lava.model.database.tables.pojos.User;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,33 +20,28 @@ class MfaBackupCodeRepositoryImplTest extends AbstractRepositoryIntegrationTest 
     private UserRepository userRepository;
 
     @Test
-    void insertBatch_thenFindUnusedByUserIdAndCodeHash_roundTrips() {
+    void insertBatch_thenFindAllUnusedByUserId_roundTrips() {
         User user =
                 this.userRepository.insert("backup-insert@example.com", "hash").orElseThrow();
 
         this.backupCodeRepository.insertBatch(user.id(), List.of("hash-1", "hash-2", "hash-3"));
 
-        assertThat(this.backupCodeRepository.findUnusedByUserIdAndCodeHash(user.id(), "hash-1"))
-                .isPresent();
-        assertThat(this.backupCodeRepository.findUnusedByUserIdAndCodeHash(user.id(), "hash-2"))
-                .isPresent();
-        assertThat(this.backupCodeRepository.findUnusedByUserIdAndCodeHash(user.id(), "missing"))
-                .isEmpty();
+        assertThat(this.backupCodeRepository.findAllUnusedByUserId(user.id()))
+                .extracting(MfaBackupCode::codeHash)
+                .containsExactlyInAnyOrder("hash-1", "hash-2", "hash-3");
     }
 
     @Test
-    void markUsed_excludesCodeFromFindUnused() {
+    void markUsed_excludesCodeFromFindAllUnused() {
         User user =
                 this.userRepository.insert("backup-used@example.com", "hash").orElseThrow();
         this.backupCodeRepository.insertBatch(user.id(), List.of("hash-used"));
-        MfaBackupCode code = this.backupCodeRepository
-                .findUnusedByUserIdAndCodeHash(user.id(), "hash-used")
-                .orElseThrow();
+        MfaBackupCode code =
+                this.backupCodeRepository.findAllUnusedByUserId(user.id()).getFirst();
 
         this.backupCodeRepository.markUsed(code.id(), LocalDateTime.now());
 
-        Optional<MfaBackupCode> found = this.backupCodeRepository.findUnusedByUserIdAndCodeHash(user.id(), "hash-used");
-        assertThat(found).isEmpty();
+        assertThat(this.backupCodeRepository.findAllUnusedByUserId(user.id())).isEmpty();
     }
 
     @Test
@@ -59,9 +53,9 @@ class MfaBackupCodeRepositoryImplTest extends AbstractRepositoryIntegrationTest 
 
         this.backupCodeRepository.deleteAllByUserId(userA.id());
 
-        assertThat(this.backupCodeRepository.findUnusedByUserIdAndCodeHash(userA.id(), "a-hash-1"))
-                .isEmpty();
-        assertThat(this.backupCodeRepository.findUnusedByUserIdAndCodeHash(userB.id(), "b-hash-1"))
-                .isPresent();
+        assertThat(this.backupCodeRepository.findAllUnusedByUserId(userA.id())).isEmpty();
+        assertThat(this.backupCodeRepository.findAllUnusedByUserId(userB.id()))
+                .extracting(MfaBackupCode::codeHash)
+                .containsExactly("b-hash-1");
     }
 }
