@@ -22,6 +22,7 @@ import com.lava.model.throttle.AuthThrottleScope;
 import com.lava.repository.MfaBackupCodeRepository;
 import com.lava.repository.MfaMethodRepository;
 import com.lava.security.AuthUserPrincipal;
+import com.lava.security.Hasher;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -192,7 +193,7 @@ class MfaServiceImplTest {
 
         this.service.verifyCode(1L, "123456");
 
-        verify(this.backupCodeRepository, never()).findUnusedByUserIdAndCodeHash(any(), any());
+        verify(this.backupCodeRepository, never()).findAllUnusedByUserId(any());
         verify(this.rateLimitService).checkNotLocked(AuthThrottleScope.MFA_VERIFY, "1");
         verify(this.rateLimitService).recordSuccess(AuthThrottleScope.MFA_VERIFY, "1");
     }
@@ -203,8 +204,8 @@ class MfaServiceImplTest {
                 .thenReturn(Optional.of(mfaMethod(5L, 1L, true)));
         when(this.totpSecretEncryptor.decrypt("encrypted-secret")).thenReturn("SECRET");
         when(this.totpService.verifyCode(eq("SECRET"), any())).thenReturn(false);
-        when(this.backupCodeRepository.findUnusedByUserIdAndCodeHash(eq(1L), any()))
-                .thenReturn(Optional.of(backupCode(20L)));
+        when(this.backupCodeRepository.findAllUnusedByUserId(1L))
+                .thenReturn(List.of(backupCode(20L, Hasher.hash("BACKUP1234"))));
 
         this.service.verifyCode(1L, "BACKUP1234");
 
@@ -215,8 +216,8 @@ class MfaServiceImplTest {
     @Test
     void verifyCode_noEnabledTotpMethod_fallsBackToBackupCodeDirectly() {
         when(this.mfaMethodRepository.findEnabledByUserIdAndType(1L, "totp")).thenReturn(Optional.empty());
-        when(this.backupCodeRepository.findUnusedByUserIdAndCodeHash(eq(1L), any()))
-                .thenReturn(Optional.of(backupCode(20L)));
+        when(this.backupCodeRepository.findAllUnusedByUserId(1L))
+                .thenReturn(List.of(backupCode(20L, Hasher.hash("BACKUP1234"))));
 
         this.service.verifyCode(1L, "BACKUP1234");
 
@@ -230,8 +231,8 @@ class MfaServiceImplTest {
                 .thenReturn(Optional.of(mfaMethod(5L, 1L, true)));
         when(this.totpSecretEncryptor.decrypt("encrypted-secret")).thenReturn("SECRET");
         when(this.totpService.verifyCode(eq("SECRET"), any())).thenReturn(false);
-        when(this.backupCodeRepository.findUnusedByUserIdAndCodeHash(eq(1L), any()))
-                .thenReturn(Optional.empty());
+        when(this.backupCodeRepository.findAllUnusedByUserId(1L))
+                .thenReturn(List.of(backupCode(20L, Hasher.hash("some-other-code"))));
 
         assertThatThrownBy(() -> this.service.verifyCode(1L, "wrong")).isInstanceOf(InvalidTotpCodeException.class);
 
@@ -255,8 +256,8 @@ class MfaServiceImplTest {
         return new MfaMethod(id, userId, "totp", "encrypted-secret", null, enabled, null, LocalDateTime.now());
     }
 
-    private static MfaBackupCode backupCode(Long id) {
-        return new MfaBackupCode(id, 1L, "hash", null, LocalDateTime.now());
+    private static MfaBackupCode backupCode(Long id, String codeHash) {
+        return new MfaBackupCode(id, 1L, codeHash, null, LocalDateTime.now());
     }
 
     private static MfaProperties properties() {

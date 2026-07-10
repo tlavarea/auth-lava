@@ -17,4 +17,14 @@ class HasherTest {
     void hash_withExplicitSha256Algorithm_matchesDefaultOverload() {
         assertThat(Hasher.hash("hello", HashAlgorithm.SHA_256)).isEqualTo(Hasher.hash("hello"));
     }
+
+    @Test
+    void matches_correctRawValue_returnsTrue() {
+        assertThat(Hasher.matches("hello", KNOWN_SHA_256_HEX)).isTrue();
+    }
+
+    @Test
+    void matches_wrongRawValue_returnsFalse() {
+        assertThat(Hasher.matches("goodbye", KNOWN_SHA_256_HEX)).isFalse();
+    }
 }

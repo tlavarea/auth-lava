@@ -41,4 +41,17 @@ public final class Hasher {
             throw new IllegalStateException(algorithm.jdkName() + " not available", e);
         }
     }
+
+    /**
+     * Constant-time equivalent of {@code hash(rawValue).equals(expectedHash)}, for comparing a freshly-hashed guess (a
+     * backup code, refresh token, etc.) against a stored hash without leaking timing information byte-by-byte.
+     *
+     * @param rawValue - the raw value to hash and compare.
+     * @param expectedHash - the stored hash to compare against.
+     * @return true if {@code hash(rawValue)} equals {@code expectedHash}.
+     */
+    public static boolean matches(String rawValue, String expectedHash) {
+        return MessageDigest.isEqual(
+                hash(rawValue).getBytes(StandardCharsets.UTF_8), expectedHash.getBytes(StandardCharsets.UTF_8));
+    }
 }
