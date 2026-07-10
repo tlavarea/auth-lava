@@ -7,6 +7,7 @@ import com.lava.model.auth.TokenPair;
 import com.lava.model.auth.TokenPairBuilder;
 import com.lava.model.database.tables.pojos.RefreshToken;
 import com.lava.model.database.view.AuthUserView;
+import com.lava.model.throttle.AuthThrottleScope;
 import com.lava.repository.UserRepository;
 import com.lava.security.AuthUserPrincipal;
 import java.util.Optional;
@@ -15,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final MfaService mfaService;
     private final PasswordEncoder passwordEncoder;
+    private final RateLimitService rateLimitService;
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
 
@@ -52,8 +55,18 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public TokenPair login(String email, String rawPassword) {
-        Authentication authResult = this.authenticationManager.authenticate(
-                UsernamePasswordAuthenticationToken.unauthenticated(email, rawPassword));
+        this.rateLimitService.checkNotLocked(AuthThrottleScope.LOGIN, email);
+
+        Authentication authResult;
+        try {
+            authResult = this.authenticationManager.authenticate(
+                    UsernamePasswordAuthenticationToken.unauthenticated(email, rawPassword));
+        } catch (AuthenticationException e) {
+            this.rateLimitService.recordFailure(AuthThrottleScope.LOGIN, email);
+            throw e;
+        }
+        this.rateLimitService.recordSuccess(AuthThrottleScope.LOGIN, email);
+
         AuthUserPrincipal principal = (AuthUserPrincipal) authResult.getPrincipal();
         boolean mfaEnrolled = this.mfaService.isEnrolled(principal.getUserId());
         String accessToken = this.jwtService.generateAccessToken(principal, mfaEnrolled, false);

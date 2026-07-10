@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,9 +14,11 @@ import com.lava.boot.autoconfigure.app.MfaProperties;
 import com.lava.exception.InvalidTotpCodeException;
 import com.lava.exception.MfaAlreadyEnabledException;
 import com.lava.exception.MfaEnrollmentNotFoundException;
+import com.lava.exception.TooManyRequestsException;
 import com.lava.model.database.tables.pojos.MfaBackupCode;
 import com.lava.model.database.tables.pojos.MfaMethod;
 import com.lava.model.mfa.TotpEnrollment;
+import com.lava.model.throttle.AuthThrottleScope;
 import com.lava.repository.MfaBackupCodeRepository;
 import com.lava.repository.MfaMethodRepository;
 import com.lava.security.AuthUserPrincipal;
@@ -41,6 +44,9 @@ class MfaServiceImplTest {
     private MfaMethodRepository mfaMethodRepository;
 
     @Mock
+    private RateLimitService rateLimitService;
+
+    @Mock
     private TextEncryptor totpSecretEncryptor;
 
     @Mock
@@ -54,6 +60,7 @@ class MfaServiceImplTest {
                 this.backupCodeRepository,
                 this.mfaMethodRepository,
                 properties(),
+                this.rateLimitService,
                 new SecureRandom(),
                 this.totpSecretEncryptor,
                 this.totpService);
@@ -166,6 +173,17 @@ class MfaServiceImplTest {
     }
 
     @Test
+    void verifyCode_locked_throwsWithoutCheckingCredentials() {
+        doThrow(new TooManyRequestsException("locked"))
+                .when(this.rateLimitService)
+                .checkNotLocked(AuthThrottleScope.MFA_VERIFY, "1");
+
+        assertThatThrownBy(() -> this.service.verifyCode(1L, "123456")).isInstanceOf(TooManyRequestsException.class);
+
+        verify(this.mfaMethodRepository, never()).findEnabledByUserIdAndType(any(), any());
+    }
+
+    @Test
     void verifyCode_validTotpCode_succeedsWithoutTouchingBackupCodes() {
         when(this.mfaMethodRepository.findEnabledByUserIdAndType(1L, "totp"))
                 .thenReturn(Optional.of(mfaMethod(5L, 1L, true)));
@@ -175,6 +193,8 @@ class MfaServiceImplTest {
         this.service.verifyCode(1L, "123456");
 
         verify(this.backupCodeRepository, never()).findUnusedByUserIdAndCodeHash(any(), any());
+        verify(this.rateLimitService).checkNotLocked(AuthThrottleScope.MFA_VERIFY, "1");
+        verify(this.rateLimitService).recordSuccess(AuthThrottleScope.MFA_VERIFY, "1");
     }
 
     @Test
@@ -189,6 +209,7 @@ class MfaServiceImplTest {
         this.service.verifyCode(1L, "BACKUP1234");
 
         verify(this.backupCodeRepository).markUsed(eq(20L), any(LocalDateTime.class));
+        verify(this.rateLimitService).recordSuccess(AuthThrottleScope.MFA_VERIFY, "1");
     }
 
     @Test
@@ -200,6 +221,7 @@ class MfaServiceImplTest {
         this.service.verifyCode(1L, "BACKUP1234");
 
         verify(this.backupCodeRepository).markUsed(eq(20L), any(LocalDateTime.class));
+        verify(this.rateLimitService).recordSuccess(AuthThrottleScope.MFA_VERIFY, "1");
     }
 
     @Test
@@ -214,6 +236,8 @@ class MfaServiceImplTest {
         assertThatThrownBy(() -> this.service.verifyCode(1L, "wrong")).isInstanceOf(InvalidTotpCodeException.class);
 
         verify(this.backupCodeRepository, never()).markUsed(any(), any());
+        verify(this.rateLimitService).recordFailure(AuthThrottleScope.MFA_VERIFY, "1");
+        verify(this.rateLimitService, never()).recordSuccess(any(), any());
     }
 
     private static AuthUserPrincipal principal(Long userId) {

@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changes/003-add-refresh-token-mfa-verified.yaml
   - include:
       file: db/changelog/changes/004-create-pending-registration.yaml
+  - include:
+      file: db/changelog/changes/005-create-auth-throttle.yaml
