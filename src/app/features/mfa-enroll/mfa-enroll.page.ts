@@ -1,31 +1,29 @@
 import { Component, inject, signal, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
-import { BrnInputOtp } from '@spartan-ng/brain/input-otp';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmCheckboxImports } from '@spartan-ng/helm/checkbox';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
-import { HlmInputOtpImports } from '@spartan-ng/helm/input-otp';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
 import { TotpEnrollment } from '@core/auth/auth.models';
 import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
 import { extractErrorMessage } from '@core/auth/extract-error-message';
+import { OtpInput } from '../../shared/otp-input/otp-input';
 
 type Step = 'loading' | 'verify' | 'backup-codes';
 
 @Component({
   selector: 'app-mfa-enroll',
   imports: [
-    BrnInputOtp,
     HlmAlertImports,
     HlmButtonImports,
     HlmCardImports,
     HlmCheckboxImports,
     HlmFieldImports,
-    HlmInputOtpImports,
     HlmSpinnerImports,
+    OtpInput,
   ],
   template: `
     <div class="flex min-h-dvh items-center justify-center p-4">
@@ -61,43 +59,19 @@ type Step = 'loading' | 'verify' | 'backup-codes';
                 </p>
 
                 <div hlmField class="items-center">
-                  <label hlmFieldLabel for="otp">Verification code</label>
-                  <brn-input-otp
-                    id="otp"
-                    hlmInputOtp
+                  <div class="flex items-center justify-between">
+                    <label hlmFieldLabel for="otp">Verification code</label>
+                    @if (verifyingCode()) {
+                      <hlm-spinner />
+                    }
+                  </div>
+                  <app-otp-input
+                    inputId="otp"
+                    [disabled]="verifyingCode()"
                     [maxLength]="6"
-                    [value]="code()"
                     (valueChange)="code.set($event)"
-                    (completed)="onVerify()">
-                    <hlm-input-otp-group>
-                      <hlm-input-otp-slot [index]="0" />
-                    </hlm-input-otp-group>
-                    <hlm-input-otp-group>
-                      <hlm-input-otp-slot [index]="1" />
-                    </hlm-input-otp-group>
-                    <hlm-input-otp-group>
-                      <hlm-input-otp-slot [index]="2" />
-                    </hlm-input-otp-group>
-                    <hlm-input-otp-group>
-                      <hlm-input-otp-slot [index]="3" />
-                    </hlm-input-otp-group>
-                    <hlm-input-otp-group>
-                      <hlm-input-otp-slot [index]="4" />
-                    </hlm-input-otp-group>
-                    <hlm-input-otp-group>
-                      <hlm-input-otp-slot [index]="5" />
-                    </hlm-input-otp-group>
-                  </brn-input-otp>
+                    (completed)="onVerify()" />
                 </div>
-
-                <button hlmBtn type="button" [disabled]="code().length !== 6 || verifying()" (click)="onVerify()">
-                  @if (verifying()) {
-                    <hlm-spinner />
-                    Verifying...
-                  } @else {
-                    Verify
-                  }
-                </button>
               }
             }
             @case ('backup-codes') {
@@ -136,7 +110,7 @@ export class MfaEnrollPage {
   protected readonly backupCodes: WritableSignal<string[]> = signal<string[]>([]);
   protected readonly code: WritableSignal<string> = signal('');
   protected readonly errorMessage: WritableSignal<string | null> = signal<string | null>(null);
-  protected readonly verifying: WritableSignal<boolean> = signal(false);
+  protected readonly verifyingCode: WritableSignal<boolean> = signal(false);
   protected readonly confirmedSaved: WritableSignal<boolean> = signal(false);
 
   constructor() {
@@ -161,7 +135,7 @@ export class MfaEnrollPage {
     }
 
     this.errorMessage.set(null);
-    this.verifying.set(true);
+    this.verifyingCode.set(true);
 
     try {
       const { backupCodes } = await this.authStore.verifyEnrollment(enrollment.mfaMethodId, this.code());
@@ -170,7 +144,7 @@ export class MfaEnrollPage {
     } catch (error) {
       this.errorMessage.set(extractErrorMessage(error));
     } finally {
-      this.verifying.set(false);
+      this.verifyingCode.set(false);
     }
   }
 
