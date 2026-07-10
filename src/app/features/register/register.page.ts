@@ -130,10 +130,20 @@ const RESEND_COOLDOWN_SECONDS = 60;
                   (completed)="onVerifyCode()">
                   <hlm-input-otp-group>
                     <hlm-input-otp-slot [index]="0" />
+                  </hlm-input-otp-group>
+                  <hlm-input-otp-group>
                     <hlm-input-otp-slot [index]="1" />
+                  </hlm-input-otp-group>
+                  <hlm-input-otp-group>
                     <hlm-input-otp-slot [index]="2" />
+                  </hlm-input-otp-group>
+                  <hlm-input-otp-group>
                     <hlm-input-otp-slot [index]="3" />
+                  </hlm-input-otp-group>
+                  <hlm-input-otp-group>
                     <hlm-input-otp-slot [index]="4" />
+                  </hlm-input-otp-group>
+                  <hlm-input-otp-group>
                     <hlm-input-otp-slot [index]="5" />
                   </hlm-input-otp-group>
                 </brn-input-otp>
