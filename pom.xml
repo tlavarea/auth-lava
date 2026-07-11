@@ -30,14 +30,14 @@
   <properties>
     <bouncycastle.version>1.84</bouncycastle.version>
     <git-build-hook-plugin.version>3.6.0</git-build-hook-plugin.version>
-    <jacoco.version>0.8.14</jacoco.version>
+    <jacoco.version>0.8.15</jacoco.version>
     <java.version>25</java.version>
     <jcommander.version>1.82</jcommander.version>
     <jjwt.version>0.13.0</jjwt.version>
     <owasp-encoder.version>1.4.0</owasp-encoder.version>
     <palantir.version>2.91.0</palantir.version>
     <record-builder.version>53</record-builder.version>
-    <spotless.version>3.6.0</spotless.version>
+    <spotless.version>3.8.0</spotless.version>
     <totp.version>1.7.1</totp.version>
   </properties>
   <dependencyManagement>
