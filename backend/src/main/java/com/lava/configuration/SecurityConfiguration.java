@@ -115,6 +115,9 @@ public class SecurityConfiguration {
         // raw token as invalid.
         http.csrf(CsrfConfigurer::spa);
 
+        http.exceptionHandling(handling ->
+                handling.authenticationEntryPoint((request, response, authException) -> response.sendError(401)));
+
         // This is a pure JSON API (no template engine, empty static/templates dirs) sitting
         // behind a separate SPA, so the strictest possible CSP is correct here - nothing is ever
         // legitimately loaded as script/style/image/etc. from this origin. This also hardens
@@ -134,9 +137,6 @@ public class SecurityConfiguration {
         http.headers(headers -> headers.contentSecurityPolicy(
                         csp -> csp.policyDirectives("default-src 'none'; frame-ancestors 'none'"))
                 .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)));
-
-        http.exceptionHandling(handling ->
-                handling.authenticationEntryPoint((request, response, authException) -> response.sendError(401)));
 
         http.oauth2Login(
                 oauth2 -> oauth2.userInfoEndpoint(info -> info.userService(githubEmailBackfillOAuth2UserService))
