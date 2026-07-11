@@ -3,6 +3,13 @@
 .DS_Store
 Thumbs.db
 
+# IntelliJ IDEA (project opened at repo root)
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
 # Claude Code local state
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
