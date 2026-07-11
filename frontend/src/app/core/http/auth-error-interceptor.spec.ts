@@ -61,6 +61,13 @@ describe('authErrorInterceptor', () => {
     await expect(firstValueFrom(interceptor(req, () => throwError(() => unauthorized)))).rejects.toBe(unauthorized);
   });
 
+  it('does not retry a 401 from /api/auth/mfa/verify', async () => {
+    const req = new HttpRequest('POST', '/api/auth/mfa/verify', { code: '000000' });
+    const unauthorized = new HttpErrorResponse({ status: 401 });
+
+    await expect(firstValueFrom(interceptor(req, () => throwError(() => unauthorized)))).rejects.toBe(unauthorized);
+  });
+
   it('force-logs-out and redirects to /login when refresh fails', async () => {
     const req = new HttpRequest('GET', '/api/auth/dashboard');
     const unauthorized = new HttpErrorResponse({ status: 401 });

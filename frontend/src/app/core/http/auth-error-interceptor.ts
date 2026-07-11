@@ -13,6 +13,7 @@ const REFRESH_EXEMPT_PATHS: string[] = [
   '/api/auth/register/complete',
   '/api/auth/refresh',
   '/api/auth/me',
+  '/api/auth/mfa/verify',
 ];
 
 export const authErrorInterceptor: HttpInterceptorFn = (req, next) => {
