@@ -14,7 +14,6 @@ import com.lava.boot.autoconfigure.app.CorsProperties;
 import com.lava.boot.autoconfigure.app.JwtProperties;
 import com.lava.boot.autoconfigure.app.OAuthProperties;
 import com.lava.configuration.SecurityConfiguration;
-import com.lava.exception.EmailAlreadyRegisteredException;
 import com.lava.exception.InvalidRegistrationTokenException;
 import com.lava.exception.InvalidVerificationCodeException;
 import com.lava.exception.TooManyRequestsException;
@@ -85,17 +84,19 @@ class RegistrationControllerTest {
     }
 
     @Test
-    void start_emailAlreadyRegistered_returns409() throws Exception {
-        doThrow(new EmailAlreadyRegisteredException("dup@example.com"))
-                .when(this.registrationService)
-                .start("dup@example.com");
-
+    void start_emailAlreadyRegistered_returns200SameAsSuccess() throws Exception {
+        // registrationService.start(...) is a no-op for an already-registered email (see
+        // RegistrationServiceImpl) - the controller has no idea which case it is, and that's the
+        // point: the response must be indistinguishable from the "not registered yet" case so a
+        // caller can't enumerate which emails already have an account.
         this.mockMvc
                 .perform(post("/api/auth/register/start")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"dup@example.com\"}"))
-                .andExpect(status().isConflict());
+                .andExpect(status().isOk());
+
+        verify(this.registrationService).start("dup@example.com");
     }
 
     @Test

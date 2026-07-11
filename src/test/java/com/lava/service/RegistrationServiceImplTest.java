@@ -11,7 +11,6 @@ import static org.mockito.Mockito.when;
 
 import com.lava.boot.autoconfigure.app.RegistrationProperties;
 import com.lava.exception.BreachedPasswordException;
-import com.lava.exception.EmailAlreadyRegisteredException;
 import com.lava.exception.InvalidRegistrationTokenException;
 import com.lava.exception.InvalidVerificationCodeException;
 import com.lava.exception.TooManyRequestsException;
@@ -85,13 +84,13 @@ class RegistrationServiceImplTest {
     }
 
     @Test
-    void start_emailAlreadyRegistered_throwsAndDoesNotSend() {
+    void start_emailAlreadyRegistered_silentlyNoOpsWithoutSendingCode() {
         when(this.userRepository.existsByEmail("existing@example.com")).thenReturn(true);
 
-        assertThatThrownBy(() -> this.service.start("existing@example.com"))
-                .isInstanceOf(EmailAlreadyRegisteredException.class);
+        this.service.start("existing@example.com");
 
         verify(this.emailService, never()).sendVerificationCode(any(), any());
+        verify(this.pendingRegistrationRepository, never()).upsertCode(any(), any(), any(), any());
     }
 
     @Test

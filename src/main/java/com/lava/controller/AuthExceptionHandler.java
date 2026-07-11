@@ -1,7 +1,6 @@
 package com.lava.controller;
 
 import com.lava.exception.BreachedPasswordException;
-import com.lava.exception.EmailAlreadyRegisteredException;
 import com.lava.exception.InvalidRefreshTokenException;
 import com.lava.exception.InvalidRegistrationTokenException;
 import com.lava.exception.InvalidTotpCodeException;
@@ -31,7 +30,7 @@ public class AuthExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", message));
     }
 
-    @ExceptionHandler({EmailAlreadyRegisteredException.class, MfaAlreadyEnabledException.class})
+    @ExceptionHandler(MfaAlreadyEnabledException.class)
     public ResponseEntity<Map<String, String>> handleAlreadyEnrolledException(RuntimeException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
     }

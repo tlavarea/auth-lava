@@ -2,7 +2,6 @@ package com.lava.service;
 
 import com.lava.boot.autoconfigure.app.RegistrationProperties;
 import com.lava.exception.BreachedPasswordException;
-import com.lava.exception.EmailAlreadyRegisteredException;
 import com.lava.exception.InvalidRegistrationTokenException;
 import com.lava.exception.InvalidVerificationCodeException;
 import com.lava.exception.TooManyRequestsException;
@@ -61,9 +60,11 @@ public class RegistrationServiceImpl implements RegistrationService {
     @Override
     @Transactional
     public void start(String email) {
+        // Deliberately a silent no-op rather than an error: returning a distinguishable response
+        // (or throwing) here would let a caller enumerate which emails already have an account.
         if (this.userRepository.existsByEmail(email)) {
-            log.warn("start::email already registered: {}", LogSanitizer.sanitize(email));
-            throw new EmailAlreadyRegisteredException(email);
+            log.warn("start::skipped, email already registered: {}", LogSanitizer.sanitize(email));
+            return;
         }
 
         LocalDateTime now = LocalDateTime.now();
