@@ -13,7 +13,7 @@ The two talk over HTTP: the Angular dev server proxies `/api`, `/oauth2`, `/logi
 
 ## Commands
 
-- Shared dev infra (Postgres + Mailpit): `docker-compose up -d` from the repo root
+- Shared dev infra (Postgres + Mailpit + Zipkin at `localhost:9411`): `docker-compose up -d` from the repo root
 - Backend: `cd backend && ./mvnw verify` (build + test), `./mvnw spring-boot:run` (run locally, needs a `.env` — see `backend/CLAUDE.md`)
 - Frontend: `cd frontend && pnpm install && pnpm start` (dev server at `localhost:4200`), `pnpm build`, `pnpm test`
 

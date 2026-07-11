@@ -25,10 +25,13 @@ logging:
     org.springframework.jndi: error
     root: ${LOG_LEVEL_ROOT:info}
   pattern:
-    console: "%d{yyyy-MM-dd} %d{HH:mm:ss.SSS} | %clr(%.-1p) | %-30.30logger{30} | %clr(%replace(%m){'[\n\r\t]', '_'}%n)"
+    console: "%d{yyyy-MM-dd} %d{HH:mm:ss.SSS} | %clr(%.-1p) | %-30.30logger{30} | %X{traceId:-} %X{spanId:-} | %clr(%replace(%m){'[\n\r\t]', '_'}%n)"
+  # Unset (local dev) keeps the human-readable pattern above; set to gelf/ecs/logstash in
+  # containerized/prod environments to emit structured JSON to stdout instead - MDC entries
+  # (including traceId/spanId) are automatically included as JSON fields in every structured format.
   structured:
     format:
-      file: gelf
+      console: ${LOG_STRUCTURED_FORMAT:}
 
 mail:
   from-address: ${MAIL_FROM_ADDRESS:no-reply@auth-lava.local}
@@ -41,6 +44,12 @@ management:
     web:
       exposure:
         include: health
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+    export:
+      zipkin:
+        endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
 
 mfa:
   encryption-key: ${MFA_ENCRYPTION_KEY:}
