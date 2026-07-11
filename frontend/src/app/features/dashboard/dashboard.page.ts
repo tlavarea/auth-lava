@@ -38,7 +38,11 @@ import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
             </dl>
           }
 
-          <a hlmBtn variant="outline" routerLink="/mfa/enroll">Set up two-factor authentication</a>
+          @if (user()?.mfaEnabled) {
+            <a hlmBtn variant="outline" routerLink="/mfa/disable">Disable two-factor authentication</a>
+          } @else {
+            <a hlmBtn variant="outline" routerLink="/mfa/enroll">Set up two-factor authentication</a>
+          }
 
           <button hlmBtn variant="destructive" type="button" [disabled]="loggingOut()" (click)="onLogout()">
             @if (loggingOut()) {

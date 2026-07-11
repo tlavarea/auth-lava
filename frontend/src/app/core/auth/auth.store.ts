@@ -95,6 +95,11 @@ export const AuthStore = signalStore(
         const user = await firstValueFrom(authApi.verifyMfa({ code }));
         patchState(store, { status: 'authenticated', user });
       },
+
+      async disableMfa(code: string): Promise<void> {
+        const user = await firstValueFrom(authApi.disableMfa({ code }));
+        patchState(store, { status: 'authenticated', user });
+      },
     };
   })
 );

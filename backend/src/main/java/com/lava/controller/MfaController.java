@@ -3,6 +3,7 @@ package com.lava.controller;
 import com.lava.logging.LogSanitizer;
 import com.lava.model.mfa.TotpEnrollment;
 import com.lava.model.web.request.EnrollTotpVerifyRequest;
+import com.lava.model.web.request.MfaDisableRequest;
 import com.lava.model.web.request.MfaVerifyRequest;
 import com.lava.model.web.response.BackupCodesResponse;
 import com.lava.model.web.response.BackupCodesResponseBuilder;
@@ -21,6 +22,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,6 +52,14 @@ public class MfaController {
         log.info("enrollVerify::userId: {}", LogSanitizer.sanitize(principal.getUserId()));
         return ResponseEntity.ok(
                 BackupCodesResponseBuilder.builder().backupCodes(backupCodes).build());
+    }
+
+    @DeleteMapping
+    public ResponseEntity<UserResponse> disable(
+            @AuthenticationPrincipal AuthUserPrincipal principal, @Valid @RequestBody MfaDisableRequest request) {
+        this.mfaService.disable(principal.getUserId(), request.code());
+        log.info("disable::userId: {}", LogSanitizer.sanitize(principal.getUserId()));
+        return ResponseEntity.ok(UserResponse.from(principal, false));
     }
 
     // Not gated by the MFA authorization requirement (see SecurityConfiguration) - the caller
