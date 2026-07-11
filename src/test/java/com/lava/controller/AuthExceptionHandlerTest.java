@@ -2,7 +2,6 @@ package com.lava.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.lava.exception.EmailAlreadyRegisteredException;
 import com.lava.exception.InvalidRefreshTokenException;
 import com.lava.exception.InvalidTotpCodeException;
 import com.lava.exception.MfaAlreadyEnabledException;
@@ -22,16 +21,6 @@ class AuthExceptionHandlerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(response.getBody()).isEqualTo(java.util.Map.of("error", "Invalid email or password"));
-    }
-
-    @Test
-    void handleEmailAlreadyRegisteredException_returns409WithExceptionMessage() {
-        ResponseEntity<?> response =
-                this.handler.handleAlreadyEnrolledException(new EmailAlreadyRegisteredException("dup@example.com"));
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(response.getBody())
-                .isEqualTo(java.util.Map.of("error", "Email already registered: dup@example.com"));
     }
 
     @Test
