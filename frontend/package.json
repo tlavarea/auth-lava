@@ -11,7 +11,7 @@
     "lint:fix": "ng lint --fix",
     "prettier:check": "prettier --check \"src/**/*.{ts,html,css,scss,json}\"",
     "prettier:format": "prettier --write \"src/**/*.{ts,html,css,scss,json}\"",
-    "prepare": "husky"
+    "prepare": "cd .. && husky frontend/.husky"
   },
   "lint-staged": {
     "**/*.{ts,js,html}": [
