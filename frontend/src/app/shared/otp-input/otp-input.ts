@@ -7,6 +7,7 @@ import { HlmInputOtpImports } from '@spartan-ng/helm/input-otp';
   imports: [BrnInputOtp, BrnInputOtpImports, HlmInputOtpImports],
   template: `
     <brn-input-otp
+      class="justify-between"
       hlmInputOtp
       [disabled]="disabled()"
       [maxLength]="maxLength()"
@@ -15,7 +16,7 @@ import { HlmInputOtpImports } from '@spartan-ng/helm/input-otp';
       (completed)="completed.emit()">
       @for (slot of slots(); track $index) {
         <hlm-input-otp-group>
-          <hlm-input-otp-slot [index]="slot" />
+          <hlm-input-otp-slot class="h-12 w-11 text-xl" [index]="slot" />
         </hlm-input-otp-group>
       }
     </brn-input-otp>
