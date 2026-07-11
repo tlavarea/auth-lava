@@ -8,6 +8,8 @@ public interface MfaService {
 
     List<String> confirmEnrollment(AuthUserPrincipal principal, Long mfaMethodId, String code);
 
+    void disable(Long userId, String code);
+
     boolean isEnrolled(Long userId);
 
     TotpEnrollment startEnrollment(AuthUserPrincipal principal);

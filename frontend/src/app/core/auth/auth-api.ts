@@ -8,6 +8,7 @@ import {
   CompleteRegistrationRequest,
   LoginRequest,
   LogoutRequest,
+  MfaDisableRequest,
   MfaEnrollVerifyRequest,
   MfaVerifyRequest,
   RegistrationTokenResponse,
@@ -61,5 +62,9 @@ export class AuthApi {
 
   verifyMfa(payload: MfaVerifyRequest): Observable<UserResponse> {
     return this.http.post<UserResponse>(`${BASE_URL}/mfa/verify`, payload);
+  }
+
+  disableMfa(payload: MfaDisableRequest): Observable<UserResponse> {
+    return this.http.delete<UserResponse>(`${BASE_URL}/mfa`, { body: payload });
   }
 }

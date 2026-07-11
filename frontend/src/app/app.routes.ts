@@ -30,6 +30,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/mfa-enroll/mfa-enroll.page').then((m) => m.MfaEnrollPage),
   },
   {
+    path: 'mfa/disable',
+    title: 'Disable two-factor authentication',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/mfa-disable/mfa-disable.page').then((m) => m.MfaDisablePage),
+  },
+  {
     path: 'mfa/verify',
     title: 'Two-factor verification',
     canActivate: [mfaPendingGuard],

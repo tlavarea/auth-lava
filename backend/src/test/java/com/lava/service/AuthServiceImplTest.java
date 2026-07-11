@@ -116,6 +116,7 @@ class AuthServiceImplTest {
         assertThat(pair.refreshToken()).isEqualTo("raw-refresh");
         assertThat(pair.expiresInSeconds()).isEqualTo(900L);
         assertThat(pair.principal()).isEqualTo(principal);
+        assertThat(pair.mfaEnrolled()).isFalse();
         verify(this.rateLimitService).checkNotLocked(AuthThrottleScope.LOGIN, "user@example.com");
         verify(this.rateLimitService).recordSuccess(AuthThrottleScope.LOGIN, "user@example.com");
         verify(this.userRepository).recordLogin(1L);
@@ -158,6 +159,7 @@ class AuthServiceImplTest {
         TokenPair pair = this.service.login("user@example.com", "password");
 
         assertThat(pair.accessToken()).isEqualTo("access-token");
+        assertThat(pair.mfaEnrolled()).isTrue();
         verify(this.jwtService).generateAccessToken(principal, true, false);
     }
 
@@ -220,6 +222,7 @@ class AuthServiceImplTest {
 
         assertThat(pair.accessToken()).isEqualTo("new-access-token");
         assertThat(pair.refreshToken()).isEqualTo("new-refresh");
+        assertThat(pair.mfaEnrolled()).isFalse();
     }
 
     @Test
@@ -236,6 +239,7 @@ class AuthServiceImplTest {
         TokenPair pair = this.service.refresh("raw");
 
         assertThat(pair.accessToken()).isEqualTo("new-access-token");
+        assertThat(pair.mfaEnrolled()).isTrue();
         verify(this.jwtService).generateAccessToken(any(), eq(true), eq(true));
     }
 

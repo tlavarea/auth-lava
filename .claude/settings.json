@@ -5,10 +5,12 @@
     "allow": [
       "Bash(npm *)",
       "Bash(npx *)",
+      "Bash(pnpm *)",
       "Bash(flutter *)",
       "Bash(dart *)",
       "Bash(./mvnw *)",
       "Bash(mvn *)",
+      "Bash(mvnw *)",
       "Bash(ng *)",
       "Bash(git status *)",
       "Bash(git log *)",

@@ -2,6 +2,7 @@ export type UserResponse = {
   id: number;
   email: string;
   emailVerified: boolean;
+  mfaEnabled: boolean;
   authorities: string[];
 };
 
@@ -49,6 +50,10 @@ export type BackupCodesResponse = {
 };
 
 export type MfaVerifyRequest = {
+  code: string;
+};
+
+export type MfaDisableRequest = {
   code: string;
 };
 

@@ -2,9 +2,12 @@ package com.lava.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -184,8 +187,70 @@ class MfaControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void disable_validCode_returnsUserWithMfaEnabledFalse() throws Exception {
+        AuthUserPrincipal principal = principal(
+                1L,
+                Set.of(
+                        new SimpleGrantedAuthority(MfaAuthorities.MFA_ENROLLED_AUTHORITY),
+                        passwordFactor(),
+                        totpFactor()));
+
+        this.mockMvc
+                .perform(delete("/api/auth/mfa")
+                        .with(csrf())
+                        .with(authentication(authToken(principal)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"123456\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mfaEnabled").value(false));
+
+        verify(this.mfaService).disable(1L, "123456");
+    }
+
+    @Test
+    void disable_invalidCode_returns401() throws Exception {
+        AuthUserPrincipal principal = principal(
+                1L,
+                Set.of(
+                        new SimpleGrantedAuthority(MfaAuthorities.MFA_ENROLLED_AUTHORITY),
+                        passwordFactor(),
+                        totpFactor()));
+        doThrow(new InvalidTotpCodeException()).when(this.mfaService).disable(1L, "000000");
+
+        this.mockMvc
+                .perform(delete("/api/auth/mfa")
+                        .with(csrf())
+                        .with(authentication(authToken(principal)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"000000\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void disable_blankCode_returns400() throws Exception {
+        AuthUserPrincipal principal = principal(
+                1L,
+                Set.of(
+                        new SimpleGrantedAuthority(MfaAuthorities.MFA_ENROLLED_AUTHORITY),
+                        passwordFactor(),
+                        totpFactor()));
+
+        this.mockMvc
+                .perform(delete("/api/auth/mfa")
+                        .with(csrf())
+                        .with(authentication(authToken(principal)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
     private static GrantedAuthority passwordFactor() {
         return FactorGrantedAuthority.fromAuthority(FactorGrantedAuthority.PASSWORD_AUTHORITY);
+    }
+
+    private static GrantedAuthority totpFactor() {
+        return FactorGrantedAuthority.fromAuthority(MfaAuthorities.TOTP_FACTOR_AUTHORITY);
     }
 
     private static Authentication authToken(AuthUserPrincipal principal) {
