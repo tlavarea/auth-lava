@@ -6,6 +6,8 @@ import java.util.Optional;
 
 public interface MfaMethodRepository {
 
+    void deleteEnabledByUserIdAndType(Long userId, String type);
+
     void deleteUnconfirmedByUserIdAndType(Long userId, String type);
 
     Optional<MfaMethod> findOptionalById(Long id);

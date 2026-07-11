@@ -76,6 +76,7 @@ public class AuthServiceImpl implements AuthService {
         return TokenPairBuilder.builder()
                 .accessToken(accessToken)
                 .expiresInSeconds(this.jwtService.getAccessTokenTtlSeconds())
+                .mfaEnrolled(mfaEnrolled)
                 .principal(principal)
                 .refreshToken(refresh.rawToken())
                 .build();
@@ -113,6 +114,7 @@ public class AuthServiceImpl implements AuthService {
         return TokenPairBuilder.builder()
                 .accessToken(accessToken)
                 .expiresInSeconds(this.jwtService.getAccessTokenTtlSeconds())
+                .mfaEnrolled(mfaEnrolled)
                 .principal(principal)
                 .refreshToken(rotated.rawToken())
                 .build();

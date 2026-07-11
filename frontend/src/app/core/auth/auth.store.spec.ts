@@ -13,6 +13,7 @@ describe('AuthStore', () => {
     id: 1,
     email: 'user@example.com',
     emailVerified: true,
+    mfaEnabled: false,
     authorities: [],
   };
 

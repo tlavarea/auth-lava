@@ -25,6 +25,17 @@ public class MfaMethodRepositoryImpl extends AbstractSpringDAOImpl<MfaMethodReco
 
     @Override
     @Transactional
+    public void deleteEnabledByUserIdAndType(Long userId, String type) {
+        this.dsl
+                .deleteFrom(MFA_METHOD)
+                .where(MFA_METHOD.USER_ID.eq(userId))
+                .and(MFA_METHOD.TYPE.eq(type))
+                .and(MFA_METHOD.IS_ENABLED.eq(true))
+                .execute();
+    }
+
+    @Override
+    @Transactional
     public void deleteUnconfirmedByUserIdAndType(Long userId, String type) {
         this.dsl
                 .deleteFrom(MFA_METHOD)

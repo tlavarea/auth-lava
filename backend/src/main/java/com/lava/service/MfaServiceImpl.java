@@ -63,6 +63,15 @@ public class MfaServiceImpl implements MfaService {
     }
 
     @Override
+    @Transactional
+    public void disable(Long userId, String code) {
+        this.verifyCode(userId, code);
+        this.mfaMethodRepository.deleteEnabledByUserIdAndType(userId, MfaMethodType.TOTP.dbValue());
+        this.backupCodeRepository.deleteAllByUserId(userId);
+        log.info("disable::disabled TOTP for userId: {}", userId);
+    }
+
+    @Override
     public boolean isEnrolled(Long userId) {
         return this.mfaMethodRepository
                 .findEnabledByUserIdAndType(userId, MfaMethodType.TOTP.dbValue())

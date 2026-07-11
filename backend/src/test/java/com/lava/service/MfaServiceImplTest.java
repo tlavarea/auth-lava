@@ -159,6 +159,33 @@ class MfaServiceImplTest {
     }
 
     @Test
+    void disable_validCode_deletesMethodAndBackupCodes() {
+        when(this.mfaMethodRepository.findEnabledByUserIdAndType(1L, "totp"))
+                .thenReturn(Optional.of(mfaMethod(5L, 1L, true)));
+        when(this.totpSecretEncryptor.decrypt("encrypted-secret")).thenReturn("SECRET");
+        when(this.totpService.verifyCode("SECRET", "123456")).thenReturn(true);
+
+        this.service.disable(1L, "123456");
+
+        verify(this.mfaMethodRepository).deleteEnabledByUserIdAndType(1L, "totp");
+        verify(this.backupCodeRepository).deleteAllByUserId(1L);
+    }
+
+    @Test
+    void disable_invalidCode_throwsAndDoesNotDeleteAnything() {
+        when(this.mfaMethodRepository.findEnabledByUserIdAndType(1L, "totp"))
+                .thenReturn(Optional.of(mfaMethod(5L, 1L, true)));
+        when(this.totpSecretEncryptor.decrypt("encrypted-secret")).thenReturn("SECRET");
+        when(this.totpService.verifyCode("SECRET", "000000")).thenReturn(false);
+        when(this.backupCodeRepository.findAllUnusedByUserId(1L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> this.service.disable(1L, "000000")).isInstanceOf(InvalidTotpCodeException.class);
+
+        verify(this.mfaMethodRepository, never()).deleteEnabledByUserIdAndType(any(), any());
+        verify(this.backupCodeRepository, never()).deleteAllByUserId(any());
+    }
+
+    @Test
     void isEnrolled_enabledMethodExists_returnsTrue() {
         when(this.mfaMethodRepository.findEnabledByUserIdAndType(1L, "totp"))
                 .thenReturn(Optional.of(mfaMethod(5L, 1L, true)));

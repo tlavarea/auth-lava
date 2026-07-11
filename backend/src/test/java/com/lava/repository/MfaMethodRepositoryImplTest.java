@@ -59,6 +59,20 @@ class MfaMethodRepositoryImplTest extends AbstractRepositoryIntegrationTest {
     }
 
     @Test
+    void deleteEnabledByUserIdAndType_removesOnlyEnabledRows() {
+        User user =
+                this.userRepository.insert("mfa-disable@example.com", "hash").orElseThrow();
+        MfaMethod enabled = this.mfaMethodRepository.insertPending(user.id(), "totp", "encrypted-secret-1");
+        this.mfaMethodRepository.markVerifiedAndEnabled(enabled.id(), LocalDateTime.now());
+        MfaMethod unconfirmed = this.mfaMethodRepository.insertPending(user.id(), "totp", "encrypted-secret-2");
+
+        this.mfaMethodRepository.deleteEnabledByUserIdAndType(user.id(), "totp");
+
+        assertThat(this.mfaMethodRepository.findOptionalById(enabled.id())).isEmpty();
+        assertThat(this.mfaMethodRepository.findOptionalById(unconfirmed.id())).isPresent();
+    }
+
+    @Test
     void deleteUnconfirmedByUserIdAndType_removesOnlyDisabledRows() {
         User user = this.userRepository.insert("mfa-delete@example.com", "hash").orElseThrow();
         MfaMethod enabled = this.mfaMethodRepository.insertPending(user.id(), "totp", "encrypted-secret-1");

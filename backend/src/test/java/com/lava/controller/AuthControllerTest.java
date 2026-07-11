@@ -87,6 +87,21 @@ class AuthControllerTest {
     }
 
     @Test
+    void login_mfaEnrolledUser_reportsMfaEnabledTrue() throws Exception {
+        this.stubCookies();
+        AuthUserPrincipal principal = principal(1L);
+        when(this.authService.login("user@example.com", "password")).thenReturn(tokenPair(principal, true));
+
+        this.mockMvc
+                .perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"user@example.com\",\"password\":\"password\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mfaEnabled").value(true));
+    }
+
+    @Test
     void login_blankEmail_returns400() throws Exception {
         this.mockMvc
                 .perform(post("/api/auth/login")
@@ -205,6 +220,20 @@ class AuthControllerTest {
     }
 
     @Test
+    void refresh_mfaEnrolledUser_reportsMfaEnabledTrue() throws Exception {
+        this.stubCookies();
+        AuthUserPrincipal principal = principal(1L);
+        when(this.authService.refresh("raw-refresh")).thenReturn(tokenPair(principal, true));
+
+        this.mockMvc
+                .perform(post("/api/auth/refresh")
+                        .with(csrf())
+                        .cookie(new jakarta.servlet.http.Cookie(AuthCookieFactory.REFRESH_TOKEN_COOKIE, "raw-refresh")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mfaEnabled").value(true));
+    }
+
+    @Test
     void refresh_invalidToken_returns401() throws Exception {
         when(this.authService.refresh("bad-refresh")).thenThrow(new InvalidRefreshTokenException());
 
@@ -313,11 +342,16 @@ class AuthControllerTest {
     }
 
     private static TokenPair tokenPair(AuthUserPrincipal principal) {
+        return tokenPair(principal, false);
+    }
+
+    private static TokenPair tokenPair(AuthUserPrincipal principal, boolean mfaEnrolled) {
         return TokenPairBuilder.builder()
                 .accessToken("access")
                 .refreshToken("raw-refresh")
                 .expiresInSeconds(900L)
                 .principal(principal)
+                .mfaEnrolled(mfaEnrolled)
                 .build();
     }
 }

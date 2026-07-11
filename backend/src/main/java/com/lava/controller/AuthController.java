@@ -38,7 +38,7 @@ public class AuthController {
         log.info("login::request: {}", LogSanitizer.sanitize(request));
         TokenPair pair = this.authService.login(request.email(), request.password());
         this.setAuthCookies(response, pair);
-        return ResponseEntity.ok(UserResponse.from(pair.principal()));
+        return ResponseEntity.ok(UserResponse.from(pair.principal(), pair.mfaEnrolled()));
     }
 
     @PostMapping("/logout")
@@ -80,7 +80,7 @@ public class AuthController {
         log.info("refresh::request received");
         TokenPair pair = this.authService.refresh(refreshTokenCookie);
         this.setAuthCookies(response, pair);
-        return ResponseEntity.ok(UserResponse.from(pair.principal()));
+        return ResponseEntity.ok(UserResponse.from(pair.principal(), pair.mfaEnrolled()));
     }
 
     /**
