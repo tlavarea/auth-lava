@@ -1,12 +1,14 @@
 package com.lava.repository;
 
 import static com.lava.model.database.Tables.ROLE;
+import static com.lava.model.database.Tables.USER;
 import static com.lava.model.database.Tables.USER_ROLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.lava.model.database.tables.pojos.User;
 import com.lava.model.database.view.AuthUserView;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.Test;
@@ -96,5 +98,20 @@ class UserRepositoryImplTest extends AbstractRepositoryIntegrationTest {
                 this.userRepository.insertVerifiedFromOAuth("oauth@example.com").orElseThrow();
 
         assertThat(user.emailVerified()).isTrue();
+    }
+
+    @Test
+    void recordLogin_setsLastLoginAt() {
+        User user = this.userRepository.insert("login@example.com", "hash").orElseThrow();
+        assertThat(user.lastLoginAt()).isNull();
+
+        this.userRepository.recordLogin(user.id());
+
+        LocalDateTime lastLoginAt = this.dsl
+                .select(USER.LAST_LOGIN_AT)
+                .from(USER)
+                .where(USER.ID.eq(user.id()))
+                .fetchOne(USER.LAST_LOGIN_AT);
+        assertThat(lastLoginAt).isNotNull();
     }
 }

@@ -68,6 +68,7 @@ public class AuthServiceImpl implements AuthService {
         this.rateLimitService.recordSuccess(AuthThrottleScope.LOGIN, email);
 
         AuthUserPrincipal principal = (AuthUserPrincipal) authResult.getPrincipal();
+        this.userRepository.recordLogin(principal.getUserId());
         boolean mfaEnrolled = this.mfaService.isEnrolled(principal.getUserId());
         String accessToken = this.jwtService.generateAccessToken(principal, mfaEnrolled, false);
         Issued refresh = this.refreshTokenService.issue(principal.getUserId());

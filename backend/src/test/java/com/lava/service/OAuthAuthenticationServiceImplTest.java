@@ -75,6 +75,7 @@ class OAuthAuthenticationServiceImplTest {
         assertThat(pair.principal().getUserId()).isEqualTo(42L);
         verify(this.userRepository).insertVerifiedFromOAuth("new@example.com");
         verify(this.oauthAccountRepository).insert(42L, "google", "g-123");
+        verify(this.userRepository).recordLogin(42L);
     }
 
     @Test
@@ -139,6 +140,8 @@ class OAuthAuthenticationServiceImplTest {
 
         assertThatThrownBy(() -> this.service.authenticate(identity))
                 .isInstanceOf(InvalidOAuthUserStateException.class);
+
+        verify(this.userRepository, never()).recordLogin(any());
     }
 
     @Test
@@ -152,6 +155,7 @@ class OAuthAuthenticationServiceImplTest {
 
         verify(this.userRepository, never()).findAuthUserByEmail(anyString());
         verify(this.userRepository, never()).insertVerifiedFromOAuth(anyString());
+        verify(this.userRepository, never()).recordLogin(any());
     }
 
     private void stubTokenIssuance() {
