@@ -61,7 +61,7 @@ type VerifyFormModel = {
                   <label hlmFieldLabel for="otp">Verification code</label>
                   @if (verifyForm().submitting()) {
                     <hlm-spinner />
-                  } @else {
+                  } @else if (!maxAttempts()) {
                     <button hlmBtn size="xs" type="button" variant="outline" (click)="enterBackupCode.set(true)">
                       Enter backup code
                     </button>
@@ -69,8 +69,9 @@ type VerifyFormModel = {
                 </div>
                 <app-otp-input
                   inputId="otp"
-                  [disabled]="verifyForm().submitting()"
+                  [disabled]="verifyForm().submitting() || maxAttempts()"
                   [maxLength]="6"
+                  [value]="model().code"
                   (valueChange)="updateFormModel($event)"
                   (completed)="verifyCode()" />
               } @else {
@@ -109,6 +110,7 @@ export class MfaVerifyPage {
   private readonly router: Router = inject(Router);
 
   protected readonly enterBackupCode: WritableSignal<boolean> = signal(false);
+  protected readonly maxAttempts: WritableSignal<boolean> = signal(false);
   protected readonly model: WritableSignal<VerifyFormModel> = signal({ code: '' });
   protected readonly updateFormModel: (code: string) => void = (code: string): void => {
     this.model.update((m: VerifyFormModel): VerifyFormModel => ({ ...m, code }));
@@ -139,8 +141,22 @@ export class MfaVerifyPage {
     try {
       await this.authStore.verifyMfa(code);
     } catch (error) {
-      return { kind: 'serverError', message: extractErrorMessage(error) };
+      this.updateFormModel('');
+      const message: string = extractErrorMessage(error);
+
+      if (message === 'Too many failed attempts - try again later') {
+        this.maxAttempts.set(true);
+        setTimeout((): void => {
+          void (async (): Promise<void> => {
+            await this.authStore.logout();
+            await this.router.navigateByUrl('/login');
+          })();
+        }, 2000);
+      }
+
+      return { kind: 'serverError', message };
     }
+
     await this.router.navigateByUrl('/');
     return;
   }

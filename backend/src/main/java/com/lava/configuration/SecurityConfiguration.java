@@ -98,8 +98,11 @@ public class SecurityConfiguration {
                 .permitAll()
                 // Reachable on the password-only-factor token /login issues for an MFA-enrolled
                 // user - this endpoint is precisely how that token is upgraded to carry the TOTP
-                // factor, so it must not itself require that factor already be present.
-                .requestMatchers("/api/auth/mfa/verify")
+                // factor, so it must not itself require that factor already be present. Logout
+                // needs the same carve-out: an MFA-pending session (e.g. one locked out of
+                // /mfa/verify by the rate limiter) must still be able to clear its cookies/refresh
+                // token instead of being stuck with a live-but-unusable session until it expires.
+                .requestMatchers("/api/auth/mfa/verify", "/api/auth/logout")
                 .authenticated()
                 .anyRequest()
                 .access(mfaAuthorizationManagerFactory.authenticated()));
