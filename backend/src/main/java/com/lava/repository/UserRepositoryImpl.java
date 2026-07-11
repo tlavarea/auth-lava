@@ -7,6 +7,7 @@ import com.lava.model.database.tables.pojos.User;
 import com.lava.model.database.tables.records.UserRecord;
 import com.lava.model.database.view.AuthUserView;
 import com.lava.model.database.view.AuthUserViewBuilder;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -128,6 +129,16 @@ public class UserRepositoryImpl extends AbstractSpringDAOImpl<UserRecord, User, 
                 .roles(roles)
                 .status(records.getFirst().get(USER.STATUS))
                 .build());
+    }
+
+    @Override
+    @Transactional
+    public void recordLogin(Long userId) {
+        this.dsl
+                .update(USER)
+                .set(USER.LAST_LOGIN_AT, LocalDateTime.now())
+                .where(USER.ID.eq(userId))
+                .execute();
     }
 
     // Emails are stored lower-cased so the plain UNIQUE constraint on the column

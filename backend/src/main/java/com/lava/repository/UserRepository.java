@@ -17,4 +17,6 @@ public interface UserRepository {
     Optional<User> insertVerified(String email, String passwordHash);
 
     Optional<User> insertVerifiedFromOAuth(String email);
+
+    void recordLogin(Long userId);
 }

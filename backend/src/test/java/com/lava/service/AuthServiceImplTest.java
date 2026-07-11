@@ -118,6 +118,7 @@ class AuthServiceImplTest {
         assertThat(pair.principal()).isEqualTo(principal);
         verify(this.rateLimitService).checkNotLocked(AuthThrottleScope.LOGIN, "user@example.com");
         verify(this.rateLimitService).recordSuccess(AuthThrottleScope.LOGIN, "user@example.com");
+        verify(this.userRepository).recordLogin(1L);
     }
 
     @Test
@@ -141,6 +142,7 @@ class AuthServiceImplTest {
 
         verify(this.rateLimitService).recordFailure(AuthThrottleScope.LOGIN, "user@example.com");
         verify(this.rateLimitService, never()).recordSuccess(any(), any());
+        verify(this.userRepository, never()).recordLogin(anyLong());
     }
 
     @Test
