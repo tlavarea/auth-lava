@@ -9,6 +9,7 @@ import { HlmInputOtpImports } from '@spartan-ng/helm/input-otp';
     <brn-input-otp
       class="justify-between"
       hlmInputOtp
+      [autofocus]="true"
       [disabled]="disabled()"
       [maxLength]="maxLength()"
       [inputId]="inputId()"
@@ -25,7 +26,7 @@ import { HlmInputOtpImports } from '@spartan-ng/helm/input-otp';
 })
 export class OtpInput {
   protected readonly slots: Signal<number[]> = computed((): number[] => {
-    return Array.from({ length: this.maxLength() }, (_, i) => i);
+    return Array.from({ length: this.maxLength() }, (_: unknown, i: number): number => i);
   });
 
   readonly disabled: InputSignal<boolean> = input(false);

@@ -105,6 +105,7 @@ export class MfaEnrollPage {
   protected readonly enrollment: WritableSignal<TotpEnrollment | null> = signal<TotpEnrollment | null>(null);
   protected readonly backupCodes: WritableSignal<string[]> = signal<string[]>([]);
   protected readonly code: WritableSignal<string> = signal('');
+  protected readonly copySuccess: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly errorMessage: WritableSignal<string | null> = signal<string | null>(null);
   protected readonly verifyingCode: WritableSignal<boolean> = signal(false);
   protected readonly confirmedSaved: WritableSignal<boolean> = signal(false);
@@ -119,8 +120,24 @@ export class MfaEnrollPage {
       this.enrollment.set(enrollment);
       this.step.set('verify');
     } catch (error) {
-      this.errorMessage.set(extractErrorMessage(error));
+      const message: string = extractErrorMessage(error);
+      this.errorMessage.set(message);
+
+      if (message === 'MFA is already enabled for this account') {
+        setTimeout((): void => {
+          void this.router.navigate(['/']);
+        }, 2000);
+      }
     }
+  }
+
+  protected async copyRecoveryCodes(): Promise<void> {
+    await navigator.clipboard.writeText(this.backupCodes().join('\n'));
+    this.confirmedSaved.set(true);
+    this.copySuccess.set(true);
+    setTimeout((): void => {
+      this.copySuccess.set(false);
+    }, 2000);
   }
 
   protected async onVerify(): Promise<void> {
