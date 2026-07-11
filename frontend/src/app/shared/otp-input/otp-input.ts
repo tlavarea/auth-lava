@@ -13,6 +13,7 @@ import { HlmInputOtpImports } from '@spartan-ng/helm/input-otp';
       [disabled]="disabled()"
       [maxLength]="maxLength()"
       [inputId]="inputId()"
+      [value]="value()"
       (valueChange)="valueChange.emit($event)"
       (completed)="completed.emit()">
       @for (slot of slots(); track $index) {
@@ -32,6 +33,7 @@ export class OtpInput {
   readonly disabled: InputSignal<boolean> = input(false);
   readonly inputId: InputSignal<string> = input.required<string>();
   readonly maxLength: InputSignal<number> = input.required<number>();
+  readonly value: InputSignal<string | null> = input<string | null>(null);
   readonly completed: OutputEmitterRef<void> = output<void>();
   readonly valueChange: OutputEmitterRef<string> = output<string>();
 }

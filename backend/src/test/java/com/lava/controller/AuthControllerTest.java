@@ -258,6 +258,27 @@ class AuthControllerTest {
         verify(this.authService).logout(eq(principal), eq(Optional.empty()));
     }
 
+    @Test
+    void logout_mfaEnrolledWithoutTotpFactor_returnsNoContent() throws Exception {
+        this.stubClearedCookies();
+        AuthUserPrincipal principal = AuthUserPrincipal.builder()
+                .userId(1L)
+                .email("user@example.com")
+                .passwordHash("hash")
+                .status("active")
+                .emailVerified(true)
+                .authorities(Set.of(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("MFA_ENROLLED"),
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("FACTOR_PASSWORD")))
+                .build();
+
+        this.mockMvc
+                .perform(post("/api/auth/logout").with(csrf()).with(authentication(authToken(principal))))
+                .andExpect(status().isNoContent());
+
+        verify(this.authService).logout(eq(principal), eq(Optional.empty()));
+    }
+
     private void stubCookies() {
         when(this.cookieFactory.accessTokenCookie(any()))
                 .thenReturn(org.springframework.http.ResponseCookie.from("ACCESS_TOKEN", "a")
