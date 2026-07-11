@@ -104,7 +104,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./mvnw spotless:apply 2>/dev/null || true"
+            "command": "cd \"$CLAUDE_PROJECT_DIR/backend\" && ./mvnw spotless:apply 2>/dev/null || true"
           }
         ]
       }

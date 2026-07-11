@@ -1,0 +1,16 @@
+*.min.css
+*.min.js
+*.json
+*.yaml
+*.md
+.next
+.nx
+.prettierrc
+eslint.config.js
+yarn.lock
+
+build
+coverage
+dist
+libs
+node_modules
