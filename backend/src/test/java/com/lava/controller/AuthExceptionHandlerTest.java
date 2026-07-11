@@ -54,4 +54,12 @@ class AuthExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isEqualTo(java.util.Map.of("error", "No pending MFA enrollment found"));
     }
+
+    @Test
+    void handleUnexpectedException_returns500WithGenericMessage() {
+        ResponseEntity<?> response = this.handler.handleUnexpectedException(new RuntimeException("boom"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isEqualTo(java.util.Map.of("error", "An unexpected error occurred"));
+    }
 }
