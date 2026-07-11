@@ -29,6 +29,13 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql
 
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    restart: unless-stopped
+
 volumes:
   mailpit_data:
   pgdata:
