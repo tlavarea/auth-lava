@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Run a single test class: `./mvnw test -Dtest=AuthServiceImplTest`
 - Run a single test method: `./mvnw test -Dtest=AuthServiceImplTest#login_returnsTokenPair`
 - Run the app locally: `./mvnw spring-boot:run` (needs Postgres + Mailpit — `docker-compose up -d` starts both, and a `.env` with `POSTGRES_USER`/`POSTGRES_PASSWORD` plus the datasource/JWT/MFA env vars referenced in `application.yaml`)
-- Format code (Palantir style via Spotless): `./mvnw spotless:apply` — runs automatically after every Edit/Write in this repo (see `.claude/settings.json` hook), and `spotless:check` runs in the git pre-commit hook (`hooks/pre-commit`), so don't hand-fix formatting
+- Format code (Palantir style via Spotless): `./mvnw spotless:apply` — runs automatically after every Edit/Write in this repo (see `.claude/settings.json` hook), and `spotless:check` runs via `hooks/pre-commit`, invoked by the monorepo's shared Husky pre-commit hook (`../frontend/.husky/pre-commit`) whenever a commit touches `backend/`, so don't hand-fix formatting
 - jOOQ codegen (regenerates `com.lava.model.database` from the Liquibase changelog) runs automatically during `generate-sources`; it reads `src/main/resources/db/changelog/db.changelog-master.yaml`, not `schema.sql`
 
 Coverage: JaCoCo enforces 80% line and 80% branch coverage bundle-wide on `verify` (excludes jOOQ-generated code, `*Builder` classes, and `Application`).
