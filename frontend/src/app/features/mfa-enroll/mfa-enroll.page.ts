@@ -1,9 +1,10 @@
 import { Component, inject, signal, WritableSignal } from '@angular/core';
 import { Router } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideCopy, lucideCopyCheck } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
-import { HlmCheckboxImports } from '@spartan-ng/helm/checkbox';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
@@ -16,36 +17,32 @@ type Step = 'loading' | 'verify' | 'backup-codes';
 
 @Component({
   selector: 'app-mfa-enroll',
-  imports: [
-    HlmAlertImports,
-    HlmButtonImports,
-    HlmCardImports,
-    HlmCheckboxImports,
-    HlmFieldImports,
-    HlmSpinnerImports,
-    OtpInput,
-  ],
+  imports: [HlmAlertImports, HlmButtonImports, HlmCardImports, HlmFieldImports, HlmSpinnerImports, OtpInput, NgIcon],
+  viewProviders: [provideIcons({ lucideCopy, lucideCopyCheck })],
   template: `
     <div class="flex min-h-dvh items-center justify-center p-4">
       <div hlmCard class="w-full max-w-sm">
         <div hlmCardHeader>
-          <h1 hlmCardTitle>Set up two-factor authentication</h1>
-          <p hlmCardDescription>Protect your account with an authenticator app.</p>
+          <h1 class="text-center" hlmCardTitle>Set up two-factor authentication</h1>
+          <p class="text-center" hlmCardDescription>Protect your account with an authenticator app.</p>
         </div>
         <div hlmCardContent class="flex flex-col gap-4">
           @if (errorMessage()) {
             <div hlmAlert variant="destructive">
-              <p hlmAlertDescription>{{ errorMessage() }}</p>
+              <p class="text-center" hlmAlertDescription>{{ errorMessage() }}</p>
             </div>
           }
 
           @switch (step()) {
             @case ('loading') {
-              <div class="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-                <hlm-spinner />
-                Preparing enrollment...
-              </div>
+              @if (!errorMessage()) {
+                <div class="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                  <hlm-spinner />
+                  Preparing enrollment...
+                </div>
+              }
             }
+
             @case ('verify') {
               @if (enrollment(); as enrollment) {
                 <img
@@ -59,7 +56,7 @@ type Step = 'loading' | 'verify' | 'backup-codes';
                 </p>
 
                 <div hlmField class="items-center">
-                  <div class="flex items-center justify-between">
+                  <div class="flex items-center justify-center">
                     <label hlmFieldLabel for="otp">Verification code</label>
                     @if (verifyingCode()) {
                       <hlm-spinner />
@@ -74,6 +71,7 @@ type Step = 'loading' | 'verify' | 'backup-codes';
                 </div>
               }
             }
+
             @case ('backup-codes') {
               <p class="text-sm text-muted-foreground">
                 Save these backup codes somewhere safe. Each one can be used once to sign in if you lose access to your
@@ -81,19 +79,17 @@ type Step = 'loading' | 'verify' | 'backup-codes';
               </p>
               <ul class="grid grid-cols-2 gap-2 rounded-md border p-4 font-mono text-sm">
                 @for (backupCode of backupCodes(); track backupCode) {
-                  <li>{{ backupCode }}</li>
+                  <li class="text-center">{{ backupCode }}</li>
                 }
               </ul>
 
-              <div hlmField orientation="horizontal">
-                <hlm-checkbox
-                  id="confirm-saved"
-                  [checked]="confirmedSaved()"
-                  (checkedChange)="confirmedSaved.set($event)" />
-                <label hlmFieldLabel for="confirm-saved">I've saved these backup codes</label>
+              <div class="flex gap-2">
+                <button hlmBtn type="button" [disabled]="!confirmedSaved()" (click)="finish()">Continue</button>
+                <button hlmBtn type="button" variant="outline" (click)="copyRecoveryCodes()">
+                  <ng-icon [name]="copySuccess() ? 'lucideCopyCheck' : 'lucideCopy'" />
+                  {{ copySuccess() ? 'Copied' : 'Copy all' }}
+                </button>
               </div>
-
-              <button hlmBtn type="button" [disabled]="!confirmedSaved()" (click)="finish()">Continue</button>
             }
           }
         </div>
