@@ -39,6 +39,7 @@ public class OAuthAuthenticationServiceImpl implements OAuthAuthenticationServic
                 .filter(user -> "active".equals(user.status()))
                 .orElseThrow(InvalidOAuthUserStateException::new);
         AuthUserPrincipal principal = AuthUserPrincipal.from(view);
+        this.userRepository.recordLogin(principal.getUserId());
         boolean mfaEnrolled = this.mfaService.isEnrolled(principal.getUserId());
         String accessToken = this.jwtService.generateAccessToken(principal, mfaEnrolled, false);
         Issued refresh = this.refreshTokenService.issue(principal.getUserId());
