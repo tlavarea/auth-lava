@@ -86,6 +86,10 @@ public class SecurityConfiguration {
                         "/api/auth/refresh",
                         "/oauth2/authorization/**",
                         "/login/oauth2/code/**",
+                        // Load balancer / orchestrator health probes hit this unauthenticated -
+                        // show-details is "never" (application.yaml) so it only ever reveals UP/DOWN,
+                        // never dependency internals, to an anonymous caller.
+                        "/actuator/health",
                         // Spring Boot's default error handling forwards internally to /error when
                         // a filter calls response.sendError(...), and Spring Security re-runs the
                         // filter chain for that forwarded dispatch. Without this, a denial (e.g.

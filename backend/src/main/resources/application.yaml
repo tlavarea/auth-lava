@@ -19,11 +19,11 @@ jwt:
 
 logging:
   level:
-    com.lava: debug
-    org.jooq.tools.LoggerListener: debug
-    org.springframework: debug
+    com.lava: ${LOG_LEVEL_COM_LAVA:info}
+    org.jooq.tools.LoggerListener: ${LOG_LEVEL_JOOQ:warn}
+    org.springframework: ${LOG_LEVEL_SPRING:warn}
     org.springframework.jndi: error
-    root: info
+    root: ${LOG_LEVEL_ROOT:info}
   pattern:
     console: "%d{yyyy-MM-dd} %d{HH:mm:ss.SSS} | %clr(%.-1p) | %-30.30logger{30} | %clr(%replace(%m){'[\n\r\t]', '_'}%n)"
   structured:
@@ -32,6 +32,15 @@ logging:
 
 mail:
   from-address: ${MAIL_FROM_ADDRESS:no-reply@auth-lava.local}
+
+management:
+  endpoint:
+    health:
+      show-details: never
+  endpoints:
+    web:
+      exposure:
+        include: health
 
 mfa:
   encryption-key: ${MFA_ENCRYPTION_KEY:}

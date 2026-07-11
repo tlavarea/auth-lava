@@ -9,14 +9,17 @@ import com.lava.exception.MfaAlreadyEnabledException;
 import com.lava.exception.MfaEnrollmentNotFoundException;
 import com.lava.exception.TooManyRequestsException;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+@Slf4j
 @RestControllerAdvice
-public class AuthExceptionHandler {
+public class AuthExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler({
         AuthenticationException.class,
@@ -48,5 +51,12 @@ public class AuthExceptionHandler {
     @ExceptionHandler(BreachedPasswordException.class)
     public ResponseEntity<Map<String, String>> handleBreachedPassword(BreachedPasswordException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> handleUnexpectedException(Exception e) {
+        log.error("Unhandled exception", e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "An unexpected error occurred"));
     }
 }
