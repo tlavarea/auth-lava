@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/004-create-pending-registration.yaml
   - include:
       file: db/changelog/changes/005-create-auth-throttle.yaml
+  - include:
+      file: db/changelog/changes/006-create-pending-email-change.yaml
