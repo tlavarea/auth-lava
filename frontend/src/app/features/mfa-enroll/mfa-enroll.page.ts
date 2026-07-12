@@ -20,7 +20,7 @@ type Step = 'loading' | 'verify' | 'backup-codes';
   imports: [HlmAlertImports, HlmButtonImports, HlmCardImports, HlmFieldImports, HlmSpinnerImports, OtpInput, NgIcon],
   viewProviders: [provideIcons({ lucideCopy, lucideCopyCheck })],
   template: `
-    <div class="flex min-h-dvh items-center justify-center p-4">
+    <div class="flex h-full items-center justify-center p-4">
       <div hlmCard class="w-full max-w-sm">
         <div hlmCardHeader>
           <h1 class="text-center" hlmCardTitle>Set up two-factor authentication</h1>

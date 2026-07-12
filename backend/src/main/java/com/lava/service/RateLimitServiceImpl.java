@@ -91,6 +91,7 @@ public class RateLimitServiceImpl implements RateLimitService {
         return switch (scope) {
             case LOGIN -> this.authThrottleProperties.loginLockoutDuration();
             case MFA_VERIFY -> this.authThrottleProperties.mfaLockoutDuration();
+            case PASSWORD_CHANGE -> this.authThrottleProperties.passwordChangeLockoutDuration();
         };
     }
 
@@ -98,6 +99,7 @@ public class RateLimitServiceImpl implements RateLimitService {
         return switch (scope) {
             case LOGIN -> this.authThrottleProperties.loginMaxAttempts();
             case MFA_VERIFY -> this.authThrottleProperties.mfaMaxAttempts();
+            case PASSWORD_CHANGE -> this.authThrottleProperties.passwordChangeMaxAttempts();
         };
     }
 }

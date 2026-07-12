@@ -11,6 +11,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.lava.exception.BreachedPasswordException;
+import com.lava.exception.InvalidCurrentPasswordException;
 import com.lava.exception.InvalidRefreshTokenException;
 import com.lava.exception.TooManyRequestsException;
 import com.lava.model.auth.Issued;
@@ -49,6 +51,9 @@ class AuthServiceImplTest {
     private MfaService mfaService;
 
     @Mock
+    private PasswordBreachCheckService passwordBreachCheckService;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -68,10 +73,70 @@ class AuthServiceImplTest {
                 this.authenticationManager,
                 this.jwtService,
                 this.mfaService,
+                this.passwordBreachCheckService,
                 this.passwordEncoder,
                 this.rateLimitService,
                 this.refreshTokenService,
                 this.userRepository);
+    }
+
+    @Test
+    void changePassword_success_updatesHashAndRevokesAllSessions() {
+        AuthUserPrincipal principal = principal(1L, "active");
+        when(this.userRepository.findAuthUserById(1L)).thenReturn(Optional.of(authUserView(1L, "active")));
+        when(this.passwordEncoder.matches("old-password", "hash")).thenReturn(true);
+        when(this.passwordBreachCheckService.isBreached("new-password")).thenReturn(false);
+        when(this.passwordEncoder.encode("new-password")).thenReturn("new-hash");
+
+        this.service.changePassword(principal, "old-password", "new-password");
+
+        verify(this.rateLimitService).checkNotLocked(AuthThrottleScope.PASSWORD_CHANGE, "1");
+        verify(this.rateLimitService).recordSuccess(AuthThrottleScope.PASSWORD_CHANGE, "1");
+        verify(this.userRepository).updatePasswordHash(1L, "new-hash");
+        verify(this.refreshTokenService).revokeAllForUser(1L);
+    }
+
+    @Test
+    void changePassword_locked_throwsWithoutCheckingPassword() {
+        AuthUserPrincipal principal = principal(1L, "active");
+        doThrow(new TooManyRequestsException("locked"))
+                .when(this.rateLimitService)
+                .checkNotLocked(AuthThrottleScope.PASSWORD_CHANGE, "1");
+
+        assertThatThrownBy(() -> this.service.changePassword(principal, "old-password", "new-password"))
+                .isInstanceOf(TooManyRequestsException.class);
+
+        verify(this.userRepository, never()).findAuthUserById(anyLong());
+        verify(this.userRepository, never()).updatePasswordHash(anyLong(), any());
+    }
+
+    @Test
+    void changePassword_wrongCurrentPassword_recordsFailureAndThrows() {
+        AuthUserPrincipal principal = principal(1L, "active");
+        when(this.userRepository.findAuthUserById(1L)).thenReturn(Optional.of(authUserView(1L, "active")));
+        when(this.passwordEncoder.matches("wrong-password", "hash")).thenReturn(false);
+
+        assertThatThrownBy(() -> this.service.changePassword(principal, "wrong-password", "new-password"))
+                .isInstanceOf(InvalidCurrentPasswordException.class);
+
+        verify(this.rateLimitService).recordFailure(AuthThrottleScope.PASSWORD_CHANGE, "1");
+        verify(this.rateLimitService, never()).recordSuccess(any(), any());
+        verify(this.userRepository, never()).updatePasswordHash(anyLong(), any());
+        verify(this.refreshTokenService, never()).revokeAllForUser(anyLong());
+    }
+
+    @Test
+    void changePassword_breachedNewPassword_throwsWithoutUpdating() {
+        AuthUserPrincipal principal = principal(1L, "active");
+        when(this.userRepository.findAuthUserById(1L)).thenReturn(Optional.of(authUserView(1L, "active")));
+        when(this.passwordEncoder.matches("old-password", "hash")).thenReturn(true);
+        when(this.passwordBreachCheckService.isBreached("breached-password")).thenReturn(true);
+
+        assertThatThrownBy(() -> this.service.changePassword(principal, "old-password", "breached-password"))
+                .isInstanceOf(BreachedPasswordException.class);
+
+        verify(this.userRepository, never()).updatePasswordHash(anyLong(), any());
+        verify(this.refreshTokenService, never()).revokeAllForUser(anyLong());
     }
 
     @Test

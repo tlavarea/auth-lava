@@ -100,6 +100,10 @@ export const AuthStore = signalStore(
         const user = await firstValueFrom(authApi.disableMfa({ code }));
         patchState(store, { status: 'authenticated', user });
       },
+
+      async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+        await firstValueFrom(authApi.changePassword({ currentPassword, newPassword }));
+      },
     };
   })
 );
