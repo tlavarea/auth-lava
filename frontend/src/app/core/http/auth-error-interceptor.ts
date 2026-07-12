@@ -14,7 +14,17 @@ const REFRESH_EXEMPT_PATHS: string[] = [
   '/api/auth/refresh',
   '/api/auth/me',
   '/api/auth/mfa/verify',
+  '/api/auth/mfa/enroll/verify',
+  '/api/auth/password',
+  '/api/auth/email/change/verify',
 ];
+
+// Handled separately from REFRESH_EXEMPT_PATHS: a plain substring entry for '/api/auth/mfa'
+// would also swallow POST /api/auth/mfa/enroll (which takes no code, so a 401 there is a
+// genuine expired-session case that should still trigger the refresh/retry flow).
+function isMfaDisableRequest(url: string, method: string): boolean {
+  return method === 'DELETE' && url.endsWith('/api/auth/mfa');
+}
 
 export const authErrorInterceptor: HttpInterceptorFn = (req, next) => {
   const authApi: AuthApi = inject(AuthApi);
@@ -26,6 +36,7 @@ export const authErrorInterceptor: HttpInterceptorFn = (req, next) => {
       const isRetryableUnauthorized: boolean =
         error instanceof HttpErrorResponse &&
         error.status === 401 &&
+        !isMfaDisableRequest(req.url, req.method) &&
         !REFRESH_EXEMPT_PATHS.some((path) => req.url.includes(path));
 
       if (!isRetryableUnauthorized) {

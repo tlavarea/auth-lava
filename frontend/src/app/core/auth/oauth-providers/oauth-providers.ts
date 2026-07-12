@@ -22,7 +22,10 @@ import { HlmSeparatorImports } from '@spartan-ng/helm/separator';
         </button>
       </div>
       <hlm-separator>
-        <div class="relative -top-3.75 m-auto flex h-7.5 w-12.5 items-center justify-center bg-white">or</div>
+        <div
+          class="relative -top-3.75 m-auto flex h-7.5 w-12.5 items-center justify-center bg-white dark:bg-(--card) dark:text-(--card-foreground)">
+          or
+        </div>
       </hlm-separator>
     </div>
   `,
