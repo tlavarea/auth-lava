@@ -4,6 +4,8 @@ auth:
     login-lockout-duration: ${AUTH_THROTTLE_LOGIN_LOCKOUT_DURATION:15m}
     mfa-max-attempts: ${AUTH_THROTTLE_MFA_MAX_ATTEMPTS:5}
     mfa-lockout-duration: ${AUTH_THROTTLE_MFA_LOCKOUT_DURATION:15m}
+    password-change-max-attempts: ${AUTH_THROTTLE_PASSWORD_CHANGE_MAX_ATTEMPTS:5}
+    password-change-lockout-duration: ${AUTH_THROTTLE_PASSWORD_CHANGE_LOCKOUT_DURATION:15m}
 
 cookie:
   domain: ${COOKIE_DOMAIN:}

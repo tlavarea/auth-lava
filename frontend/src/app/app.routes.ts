@@ -7,9 +7,30 @@ import { mfaPendingGuard } from '@core/guards/mfa-pending-guard';
 export const routes: Routes = [
   {
     path: '',
-    title: 'Dashboard',
     canActivate: [authGuard],
-    loadComponent: () => import('./features/dashboard/dashboard.page').then((m) => m.DashboardPage),
+    loadComponent: () => import('./shared/layout/app-shell').then((m) => m.AppShell),
+    children: [
+      {
+        path: '',
+        title: 'Dashboard',
+        loadComponent: () => import('./features/dashboard/dashboard.page').then((m) => m.DashboardPage),
+      },
+      {
+        path: 'profile',
+        title: 'Profile',
+        loadComponent: () => import('./features/profile/profile.page').then((m) => m.ProfilePage),
+      },
+      {
+        path: 'mfa/enroll',
+        title: 'Set up two-factor authentication',
+        loadComponent: () => import('./features/mfa-enroll/mfa-enroll.page').then((m) => m.MfaEnrollPage),
+      },
+      {
+        path: 'mfa/disable',
+        title: 'Disable two-factor authentication',
+        loadComponent: () => import('./features/mfa-disable/mfa-disable.page').then((m) => m.MfaDisablePage),
+      },
+    ],
   },
   {
     path: 'login',
@@ -22,18 +43,6 @@ export const routes: Routes = [
     title: 'Create account',
     canActivate: [guestGuard],
     loadComponent: () => import('./features/register/register.page').then((m) => m.RegisterPage),
-  },
-  {
-    path: 'mfa/enroll',
-    title: 'Set up two-factor authentication',
-    canActivate: [authGuard],
-    loadComponent: () => import('./features/mfa-enroll/mfa-enroll.page').then((m) => m.MfaEnrollPage),
-  },
-  {
-    path: 'mfa/disable',
-    title: 'Disable two-factor authentication',
-    canActivate: [authGuard],
-    loadComponent: () => import('./features/mfa-disable/mfa-disable.page').then((m) => m.MfaDisablePage),
   },
   {
     path: 'mfa/verify',

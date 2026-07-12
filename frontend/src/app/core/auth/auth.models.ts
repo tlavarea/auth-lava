@@ -57,6 +57,11 @@ export type MfaDisableRequest = {
   code: string;
 };
 
+export type PasswordChangeRequest = {
+  currentPassword: string;
+  newPassword: string;
+};
+
 export type ApiErrorBody = {
   error: string;
 };

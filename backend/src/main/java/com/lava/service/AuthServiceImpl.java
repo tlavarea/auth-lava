@@ -1,5 +1,7 @@
 package com.lava.service;
 
+import com.lava.exception.BreachedPasswordException;
+import com.lava.exception.InvalidCurrentPasswordException;
 import com.lava.exception.InvalidRefreshTokenException;
 import com.lava.logging.LogSanitizer;
 import com.lava.model.auth.Issued;
@@ -30,10 +32,39 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final MfaService mfaService;
+    private final PasswordBreachCheckService passwordBreachCheckService;
     private final PasswordEncoder passwordEncoder;
     private final RateLimitService rateLimitService;
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
+
+    @Override
+    @Transactional
+    public void changePassword(AuthUserPrincipal principal, String currentPassword, String newPassword) {
+        Long userId = principal.getUserId();
+        this.rateLimitService.checkNotLocked(AuthThrottleScope.PASSWORD_CHANGE, userId.toString());
+
+        // principal here may be reconstructed straight from JWT claims (passwordHash is never
+        // carried in the token, see JwtAuthenticationFilter), so re-fetch the real hash from the
+        // DB rather than trusting principal.getPassword().
+        AuthUserView freshUser =
+                this.userRepository.findAuthUserById(userId).orElseThrow(InvalidCurrentPasswordException::new);
+
+        if (!this.passwordEncoder.matches(currentPassword, freshUser.passwordHash())) {
+            this.rateLimitService.recordFailure(AuthThrottleScope.PASSWORD_CHANGE, userId.toString());
+            throw new InvalidCurrentPasswordException();
+        }
+        this.rateLimitService.recordSuccess(AuthThrottleScope.PASSWORD_CHANGE, userId.toString());
+
+        if (this.passwordBreachCheckService.isBreached(newPassword)) {
+            throw new BreachedPasswordException();
+        }
+
+        this.userRepository.updatePasswordHash(userId, this.passwordEncoder.encode(newPassword));
+        this.refreshTokenService.revokeAllForUser(userId);
+
+        log.info("changePassword::userId: {}", LogSanitizer.sanitize(userId));
+    }
 
     @Override
     @Transactional

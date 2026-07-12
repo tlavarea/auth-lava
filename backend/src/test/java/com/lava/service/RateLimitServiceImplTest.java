@@ -34,7 +34,8 @@ class RateLimitServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        this.authThrottleProperties = new AuthThrottleProperties(5, Duration.ofMinutes(15), 5, Duration.ofMinutes(15));
+        this.authThrottleProperties = new AuthThrottleProperties(
+                5, Duration.ofMinutes(15), 5, Duration.ofMinutes(15), 5, Duration.ofMinutes(15));
         this.service = new RateLimitServiceImpl(this.authThrottleRepository, this.authThrottleProperties);
     }
 

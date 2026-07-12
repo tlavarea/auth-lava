@@ -12,4 +12,6 @@ public record AuthThrottleProperties(
         @Min(1) int loginMaxAttempts,
         @NotNull Duration loginLockoutDuration,
         @Min(1) int mfaMaxAttempts,
-        @NotNull Duration mfaLockoutDuration) {}
+        @NotNull Duration mfaLockoutDuration,
+        @Min(1) int passwordChangeMaxAttempts,
+        @NotNull Duration passwordChangeLockoutDuration) {}
