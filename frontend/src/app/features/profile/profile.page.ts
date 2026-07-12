@@ -61,7 +61,7 @@ type EmailChangeStep = 'email' | 'code';
     OtpInput,
   ],
   template: `
-    <div class="mx-auto flex w-full max-w-sm flex-col gap-4 p-4">
+    <div class="mx-auto flex w-full max-w-sm flex-col gap-4 p-4 sm:max-w-xl lg:max-w-2xl">
       <div hlmCard>
         <div hlmCardHeader>
           <h1 hlmCardTitle>Profile</h1>
@@ -90,7 +90,7 @@ type EmailChangeStep = 'email' | 'code';
           <h2 hlmCardTitle>Change password</h2>
           <p hlmCardDescription>Changing your password signs you out of every other device.</p>
         </div>
-        <div hlmCardContent>
+        <div hlmCardContent class="max-w-sm">
           <form class="flex flex-col gap-4" [formRoot]="passwordForm">
             @for (error of passwordForm().errors(); track error.kind) {
               <div hlmAlert variant="destructive">
@@ -143,7 +143,7 @@ type EmailChangeStep = 'email' | 'code';
               }
             </div>
 
-            <button hlmBtn type="submit" [disabled]="passwordForm().submitting()">
+            <button class="self-start" hlmBtn type="submit" [disabled]="passwordForm().submitting()">
               @if (passwordForm().submitting()) {
                 <hlm-spinner />
                 Changing password...
@@ -164,7 +164,7 @@ type EmailChangeStep = 'email' | 'code';
             <p hlmCardDescription>Enter the code we sent to {{ pendingNewEmail() }}.</p>
           }
         </div>
-        <div hlmCardContent class="flex flex-col gap-4">
+        <div hlmCardContent class="flex max-w-sm flex-col gap-4">
           @if (emailChanged()) {
             <div hlmAlert>
               <p hlmAlertDescription>Email changed successfully.</p>
@@ -193,7 +193,7 @@ type EmailChangeStep = 'email' | 'code';
                   }
                 </div>
 
-                <button hlmBtn type="submit" [disabled]="emailChangeForm().submitting()">
+                <button class="self-start" hlmBtn type="submit" [disabled]="emailChangeForm().submitting()">
                   @if (emailChangeForm().submitting()) {
                     <hlm-spinner />
                     Sending code...
@@ -251,7 +251,7 @@ type EmailChangeStep = 'email' | 'code';
           <h2 hlmCardTitle>Two-factor authentication</h2>
           <p hlmCardDescription>Adds an extra layer of protection to your account.</p>
         </div>
-        <div hlmCardContent>
+        <div hlmCardContent class="max-w-sm">
           @if (user()?.mfaEnabled) {
             <a hlmBtn variant="outline" routerLink="/mfa/disable">Disable two-factor authentication</a>
           } @else {
