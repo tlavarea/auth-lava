@@ -21,4 +21,13 @@ public interface UserRepository {
     void recordLogin(Long userId);
 
     void updatePasswordHash(Long userId, String passwordHash);
+
+    /**
+     * Updates the user's email and marks it verified - callers must only invoke this once ownership of the new address
+     * has actually been proven (e.g. a verification code sent to it was entered correctly).
+     *
+     * @param userId - the user to update.
+     * @param newEmail - the new email address.
+     */
+    void updateEmail(Long userId, String newEmail);
 }

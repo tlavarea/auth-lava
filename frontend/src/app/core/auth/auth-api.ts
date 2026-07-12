@@ -6,6 +6,8 @@ import { environment } from '@env/environment';
 import {
   BackupCodesResponse,
   CompleteRegistrationRequest,
+  EmailChangeStartRequest,
+  EmailChangeVerifyRequest,
   LoginRequest,
   LogoutRequest,
   MfaDisableRequest,
@@ -71,5 +73,13 @@ export class AuthApi {
 
   changePassword(payload: PasswordChangeRequest): Observable<void> {
     return this.http.patch<void>(`${BASE_URL}/password`, payload);
+  }
+
+  startEmailChange(payload: EmailChangeStartRequest): Observable<void> {
+    return this.http.post<void>(`${BASE_URL}/email/change`, payload);
+  }
+
+  verifyEmailChange(payload: EmailChangeVerifyRequest): Observable<UserResponse> {
+    return this.http.post<UserResponse>(`${BASE_URL}/email/change/verify`, payload);
   }
 }

@@ -10,6 +10,12 @@ auth:
 cors:
   allowed-origins: http://localhost:4200
 
+email-change:
+  code-length: 6
+  code-ttl: 5m
+  max-attempts: 5
+  resend-cooldown: 60s
+
 logging:
   level:
     com.lava: info

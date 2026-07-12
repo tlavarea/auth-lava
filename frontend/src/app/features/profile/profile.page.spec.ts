@@ -29,6 +29,13 @@ function fillPasswordForm(
   confirmNewPasswordInput.dispatchEvent(new Event('input'));
 }
 
+function submitNewEmail(fixture: ComponentFixture<unknown>, newEmail: string): void {
+  const newEmailInput: HTMLInputElement = fixture.nativeElement.querySelector('#newEmail');
+  newEmailInput.value = newEmail;
+  newEmailInput.dispatchEvent(new Event('input'));
+  newEmailInput.closest('form')?.dispatchEvent(new Event('submit', { cancelable: true }));
+}
+
 describe('ProfilePage', () => {
   let component: ProfilePage;
   let fixture: ComponentFixture<ProfilePage>;
@@ -143,5 +150,98 @@ describe('ProfilePage', () => {
     expect(fixture.nativeElement.textContent).toContain('Current password is incorrect');
     expect(fixture.nativeElement.querySelector('#currentPassword').value).toBe('');
     expect(fixture.nativeElement.querySelector('#newPassword').value).toBe('new-password');
+  });
+
+  it('starts an email change and moves to the code step showing the pending address', async () => {
+    submitNewEmail(fixture, 'new@example.com');
+    await flushAsync(fixture);
+
+    const req = httpMock.expectOne('/api/auth/email/change');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ newEmail: 'new@example.com' });
+    req.flush(null);
+    await flushAsync(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('new@example.com');
+    expect(fixture.nativeElement.querySelector('#emailChangeCode')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('#newEmail')).toBeNull();
+  });
+
+  it('verifying the correct code shows a success message and returns to the email step', async () => {
+    submitNewEmail(fixture, 'new@example.com');
+    await flushAsync(fixture);
+    httpMock.expectOne('/api/auth/email/change').flush(null);
+    await flushAsync(fixture);
+
+    const codeInput: HTMLInputElement = fixture.nativeElement.querySelector('#emailChangeCode');
+    codeInput.value = '123456';
+    codeInput.dispatchEvent(new Event('input'));
+    await flushAsync(fixture);
+
+    const req = httpMock.expectOne('/api/auth/email/change/verify');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ code: '123456' });
+    req.flush({ id: 1, email: 'new@example.com', emailVerified: true, mfaEnabled: false, authorities: [] });
+    await flushAsync(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('Email changed successfully');
+    expect(fixture.nativeElement.querySelector('#newEmail')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('#emailChangeCode')).toBeNull();
+  });
+
+  it('shows a server error and stays on the code step when the code is wrong', async () => {
+    submitNewEmail(fixture, 'new@example.com');
+    await flushAsync(fixture);
+    httpMock.expectOne('/api/auth/email/change').flush(null);
+    await flushAsync(fixture);
+
+    const codeInput: HTMLInputElement = fixture.nativeElement.querySelector('#emailChangeCode');
+    codeInput.value = '000000';
+    codeInput.dispatchEvent(new Event('input'));
+    await flushAsync(fixture);
+
+    httpMock
+      .expectOne('/api/auth/email/change/verify')
+      .flush({ error: 'Invalid verification code' }, { status: 401, statusText: 'Unauthorized' });
+    await flushAsync(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('Invalid verification code');
+    expect(fixture.nativeElement.querySelector('#emailChangeCode')).toBeTruthy();
+  });
+
+  it('resend code re-calls the start endpoint with the same pending address', async () => {
+    submitNewEmail(fixture, 'new@example.com');
+    await flushAsync(fixture);
+    httpMock.expectOne('/api/auth/email/change').flush(null);
+    await flushAsync(fixture);
+
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const resendButton: HTMLButtonElement = buttons.find((button) =>
+      button.textContent?.includes('Resend code')
+    ) as HTMLButtonElement;
+    resendButton.click();
+    await flushAsync(fixture);
+
+    const req = httpMock.expectOne('/api/auth/email/change');
+    expect(req.request.body).toEqual({ newEmail: 'new@example.com' });
+    req.flush(null);
+  });
+
+  it('"use a different email" cancels back to the email step without calling the API', async () => {
+    submitNewEmail(fixture, 'new@example.com');
+    await flushAsync(fixture);
+    httpMock.expectOne('/api/auth/email/change').flush(null);
+    await flushAsync(fixture);
+
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const cancelButton: HTMLButtonElement = buttons.find((button) =>
+      button.textContent?.includes('Use a different email')
+    ) as HTMLButtonElement;
+    cancelButton.click();
+    await flushAsync(fixture);
+
+    expect(fixture.nativeElement.querySelector('#newEmail')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('#emailChangeCode')).toBeNull();
+    httpMock.expectNone('/api/auth/email/change/verify');
   });
 });

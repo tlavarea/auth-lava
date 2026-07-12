@@ -62,6 +62,14 @@ export type PasswordChangeRequest = {
   newPassword: string;
 };
 
+export type EmailChangeStartRequest = {
+  newEmail: string;
+};
+
+export type EmailChangeVerifyRequest = {
+  code: string;
+};
+
 export type ApiErrorBody = {
   error: string;
 };
