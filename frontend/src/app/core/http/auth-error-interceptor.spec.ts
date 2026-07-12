@@ -68,6 +68,52 @@ describe('authErrorInterceptor', () => {
     await expect(firstValueFrom(interceptor(req, () => throwError(() => unauthorized)))).rejects.toBe(unauthorized);
   });
 
+  it('does not retry a 401 from /api/auth/mfa/enroll/verify', async () => {
+    const req = new HttpRequest('POST', '/api/auth/mfa/enroll/verify', { mfaMethodId: 1, code: '000000' });
+    const unauthorized = new HttpErrorResponse({ status: 401 });
+
+    await expect(firstValueFrom(interceptor(req, () => throwError(() => unauthorized)))).rejects.toBe(unauthorized);
+  });
+
+  it('does not retry a 401 from DELETE /api/auth/mfa', async () => {
+    const req = new HttpRequest('DELETE', '/api/auth/mfa', { code: '000000' });
+    const unauthorized = new HttpErrorResponse({ status: 401 });
+
+    await expect(firstValueFrom(interceptor(req, () => throwError(() => unauthorized)))).rejects.toBe(unauthorized);
+  });
+
+  it('does not retry a 401 from PATCH /api/auth/password', async () => {
+    const req = new HttpRequest('PATCH', '/api/auth/password', { currentPassword: 'wrong', newPassword: 'new' });
+    const unauthorized = new HttpErrorResponse({ status: 401 });
+
+    await expect(firstValueFrom(interceptor(req, () => throwError(() => unauthorized)))).rejects.toBe(unauthorized);
+  });
+
+  it('does not retry a 401 from /api/auth/email/change/verify', async () => {
+    const req = new HttpRequest('POST', '/api/auth/email/change/verify', { code: '000000' });
+    const unauthorized = new HttpErrorResponse({ status: 401 });
+
+    await expect(firstValueFrom(interceptor(req, () => throwError(() => unauthorized)))).rejects.toBe(unauthorized);
+  });
+
+  it('still retries a 401 from POST /api/auth/mfa/enroll (no code involved)', async () => {
+    const req = new HttpRequest('POST', '/api/auth/mfa/enroll', {});
+    const unauthorized = new HttpErrorResponse({ status: 401 });
+    const retriedResponse = new HttpResponse({ status: 200, body: 'retried' });
+    let attempt = 0;
+
+    const result$ = interceptor(req, () => {
+      attempt += 1;
+      return attempt === 1 ? throwError(() => unauthorized) : of(retriedResponse);
+    });
+    const resultPromise = firstValueFrom(result$);
+
+    httpMock.expectOne('/api/auth/refresh').flush(null);
+
+    expect(await resultPromise).toBe(retriedResponse);
+    expect(attempt).toBe(2);
+  });
+
   it('force-logs-out and redirects to /login when refresh fails', async () => {
     const req = new HttpRequest('GET', '/api/auth/dashboard');
     const unauthorized = new HttpErrorResponse({ status: 401 });

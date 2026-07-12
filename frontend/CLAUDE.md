@@ -17,6 +17,8 @@ pnpm lint                    # ng lint
 pnpm lint:fix                # ng lint --fix
 pnpm prettier:check          # check formatting of src/**/*.{ts,html,css,scss,json}
 pnpm prettier:format         # write formatting
+pnpm e2e                     # Playwright e2e tests (frontend/e2e/) — starts its own dev server, backend is mocked
+pnpm e2e:ui                  # same, in Playwright's interactive UI mode
 ```
 
 Run a single test file/suite with Vitest's CLI filtering, e.g.:
@@ -64,6 +66,49 @@ Generated spartan/ui components — Helm-styled wrappers around `@spartan-ng/bra
 - `@env/*` → `src/environments/*`
 - `@spartan-ng/helm/<component>` → `libs/ui/<component>/src/index.ts`
 
-### CI (`.github/workflows/build.yml`)
+### End-to-end tests (`e2e/`)
 
-On PRs and pushes to `main`: `pnpm install --frozen-lockfile` → `ng lint` → `ng build` → `ng test --watch=false`. A pre-commit hook (Husky + lint-staged) runs `prettier --write` and `eslint --fix` on staged `*.{ts,js,html}` files.
+Playwright drives the real app in a browser; the Spring Boot backend is never
+required — `/api/auth/**` is mocked at the network layer, so `pnpm e2e` works
+with the backend fully stopped.
+
+- **`e2e/support/fake-auth-backend.ts`** — `FakeAuthBackend`, an in-memory
+  stand-in for every `/api/auth/**` endpoint, keyed off the contract in
+  `src/app/core/auth/auth-api.ts` / `auth.models.ts` (the actual source of
+  truth for request/response shapes — not the Java backend). Holds mutable
+  session state and exposes scenario setters (`withAuthenticatedUser`,
+  `withMfaPendingUser`, `withRegisteredUser`, ...) that specs call before
+  `page.goto(...)`.
+- **`e2e/support/fixtures.ts`** — wraps `@playwright/test`'s `test`/`expect`
+  with an `auto: true` `backend` fixture that installs the fake backend's
+  `page.route('**/api/auth/**', ...)` handler before every test, whether or
+  not the spec destructures `backend` — a spec that skips this fixture would
+  otherwise leak real requests to the (usually absent) backend.
+- **`e2e/specs/*.spec.ts`** — one file per user flow (login, register, MFA
+  enroll/verify/disable, password/email change, route guards, OAuth).
+
+Conventions for new specs:
+- Prefer `getByRole`/`getByLabel` locators over CSS selectors or
+  `data-testid` — the app already requires WCAG AA/AXE-passing markup (see
+  `.claude/CLAUDE.md`), so accessible names are already there.
+- Add new backend behavior to `FakeAuthBackend` rather than registering ad
+  hoc `page.route` calls inside a spec, so every test shares one accurate
+  mock of the API contract. Note that the frontend's `authErrorInterceptor`
+  treats a bare `401` from most (non-exempt, see `REFRESH_EXEMPT_PATHS` in
+  `auth-error-interceptor.ts`) endpoints as "session expired" and force-logs
+  the user out — match the real backend's actual status codes for
+  invalid-input-but-still-authenticated cases (e.g. a wrong MFA code), not
+  just whatever seems intuitive, or specs will silently redirect to `/login`
+  instead of exercising the inline error path.
+- Consult current Playwright docs via the context7 MCP plugin
+  (`/microsoft/playwright`) when using an unfamiliar API — its surface moves
+  quickly enough that training data can be stale.
+- The **Playwright MCP server** (`claude mcp add playwright npx @playwright/mcp@latest`)
+  is available for interactively exploring the running app's accessibility
+  tree while authoring/debugging specs (`pnpm start`, then navigate/snapshot
+  through the MCP tools to confirm locators resolve before writing them into
+  a spec). It's an authoring aid only — not used by `pnpm e2e` itself.
+
+### CI (`.github/workflows/frontend-build.yml`)
+
+On PRs and pushes to `main`: `pnpm install --frozen-lockfile` → `ng lint` → `ng build` → `ng test --watch=false` → `playwright install --with-deps chromium` → `pnpm e2e`. A pre-commit hook (Husky + lint-staged) runs `prettier --write` and `eslint --fix` on staged `*.{ts,js,html}` files.

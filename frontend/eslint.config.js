@@ -9,7 +9,7 @@ const ngrx = require('@ngrx/eslint-plugin/v9');
 
 module.exports = defineConfig([
   {
-    ignores: ['.angular/**', '.nx/**', 'coverage/**', 'dist/**', 'libs/ui/**'],
+    ignores: ['.angular/**', '.nx/**', 'coverage/**', 'dist/**', 'libs/ui/**', 'e2e/**', 'playwright.config.ts'],
   },
   {
     files: ['**/*.ts'],

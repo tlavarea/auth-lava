@@ -90,12 +90,18 @@ importers:
       '@ngrx/eslint-plugin':
         specifier: ^21.1.1
         version: 21.1.1(@typescript-eslint/utils@8.63.0(eslint@10.6.0(jiti@2.7.0))(typescript@6.0.3))(eslint@10.6.0(jiti@2.7.0))(typescript-eslint@8.60.1(eslint@10.6.0(jiti@2.7.0))(typescript@6.0.3))(typescript@6.0.3)
+      '@playwright/test':
+        specifier: ^1.61.1
+        version: 1.61.1
       '@spartan-ng/cli':
         specifier: ^1.0.4
-        version: 1.0.4(c6ad6862348ab4ebf5adcc0679652b47)
+        version: 1.0.4(d0f012daef71dfd27db8ac6c30043037)
       '@tailwindcss/postcss':
         specifier: ^4.1.12
         version: 4.3.2
+      '@types/node':
+        specifier: ^26.1.1
+        version: 26.1.1
       angular-eslint:
         specifier: 22.0.0
         version: 22.0.0(@angular/cli@22.0.5(@types/node@26.1.1)(chokidar@5.0.0))(chokidar@5.0.0)(eslint@10.6.0(jiti@2.7.0))(typescript-eslint@8.60.1(eslint@10.6.0(jiti@2.7.0))(typescript@6.0.3))(typescript@6.0.3)
@@ -2312,6 +2318,11 @@ packages:
     resolution: {integrity: sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
+  '@playwright/test@1.61.1':
+    resolution: {integrity: sha512-8nKv6+0RJSL9FE4jYOEGXnPeM/Hg12qZpmqzZjRh3qM0Y7c3z1mrOTfFLids72RDQYVh9WpLEfR5WdpNX4fkig==}
+    engines: {node: '>=18'}
+    hasBin: true
+
   '@rollup/rollup-android-arm-eabi@4.60.2':
     resolution: {integrity: sha512-dnlp69efPPg6Uaw2dVqzWRfAWRnYVb1XJ8CyyhIbZeaq4CA5/mLeZ1IEt9QqQxmbdvagjLIm2ZL8BxXv5lH4Yw==}
     cpu: [arm]
@@ -4135,6 +4146,11 @@ packages:
   fs-monkey@1.1.0:
     resolution: {integrity: sha512-QMUezzXWII9EV5aTFXW1UBVUO77wYPpjqIF8/AviUCThNeSYZykpoTixUeaNNBwmCev0AMDWMAni+f8Hxb1IFw==}
 
+  fsevents@2.3.2:
+    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
+    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
+    os: [darwin]
+
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
@@ -5134,6 +5150,16 @@ packages:
   pkg-dir@7.0.0:
     resolution: {integrity: sha512-Ie9z/WINcxxLp27BKOCHGde4ITq9UklYKDzVo1nhk5sqGEXU3FpkwP5GM2voTGJkGd9B3Otl+Q4uwSOeSUtOBA==}
     engines: {node: '>=14.16'}
+
+  playwright-core@1.61.1:
+    resolution: {integrity: sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==}
+    engines: {node: '>=18'}
+    hasBin: true
+
+  playwright@1.61.1:
+    resolution: {integrity: sha512-DWnY5o3YbLWK4GovuAVwpqL+1VwGNdUGrRr++8j8PtQQzvAVZUIMjKQ90fY689sEJZJBbZVw1rXaOKSTitkzPQ==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   portfinder@1.0.38:
     resolution: {integrity: sha512-rEwq/ZHlJIKw++XtLAO8PPuOQA/zaPJOZJ37BVuN97nLpMJeuDVLVGRwbFoBgLudgdTMP2hdRJP++H+8QOA3vg==}
@@ -8538,16 +8564,16 @@ snapshots:
       node-gyp: 12.4.0
       proc-log: 6.1.0
 
-  '@nx/angular@23.0.1(537f6a1b99fed0fc90203a592e91fbd3)':
+  '@nx/angular@23.0.1(8fd48e6fa94572221358ae9e5cee053f)':
     dependencies:
       '@angular-devkit/core': 22.0.5(chokidar@5.0.0)
       '@angular-devkit/schematics': 22.0.5(chokidar@5.0.0)
       '@nx/devkit': 23.0.1(nx@23.0.1(debug@4.4.3))
       '@nx/eslint': 23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3))
       '@nx/js': 23.0.1(@babel/traverse@7.29.7)(nx@23.0.1(debug@4.4.3))
-      '@nx/module-federation': 23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(lightningcss@1.32.0)(nx@23.0.1)(postcss@8.5.16)
-      '@nx/rspack': 23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(@rspack/core@1.6.8)(less@4.5.1)(lightningcss@1.32.0)(nx@23.0.1)(typescript@6.0.3)
-      '@nx/web': 23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(nx@23.0.1)
+      '@nx/module-federation': 23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(postcss@8.5.16)
+      '@nx/rspack': 23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(@rspack/core@1.6.8)(less@4.5.1)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)
+      '@nx/web': 23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(nx@23.0.1(debug@4.4.3))
       '@nx/webpack': 23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16))
       '@phenomnomnominal/tsquery': 6.2.0(typescript@6.0.3)
       '@schematics/angular': 21.2.14(chokidar@5.0.0)
@@ -8672,11 +8698,11 @@ snapshots:
       - nx
       - supports-color
 
-  '@nx/module-federation@23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(lightningcss@1.32.0)(nx@23.0.1)(postcss@8.5.16)':
+  '@nx/module-federation@23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(postcss@8.5.16)':
     dependencies:
       '@nx/devkit': 23.0.1(nx@23.0.1(debug@4.4.3))
       '@nx/js': 23.0.1(@babel/traverse@7.29.7)(nx@23.0.1(debug@4.4.3))
-      '@nx/web': 23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(nx@23.0.1)
+      '@nx/web': 23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(nx@23.0.1(debug@4.4.3))
       '@rspack/core': 1.6.8
       express: 4.22.2
       http-proxy-middleware: 3.0.7
@@ -8742,12 +8768,12 @@ snapshots:
   '@nx/nx-win32-x64-msvc@23.0.1':
     optional: true
 
-  '@nx/rspack@23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(@rspack/core@1.6.8)(less@4.5.1)(lightningcss@1.32.0)(nx@23.0.1)(typescript@6.0.3)':
+  '@nx/rspack@23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(@rspack/core@1.6.8)(less@4.5.1)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)':
     dependencies:
       '@nx/devkit': 23.0.1(nx@23.0.1(debug@4.4.3))
       '@nx/js': 23.0.1(@babel/traverse@7.29.7)(nx@23.0.1(debug@4.4.3))
-      '@nx/module-federation': 23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(lightningcss@1.32.0)(nx@23.0.1)(postcss@8.5.16)
-      '@nx/web': 23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(nx@23.0.1)
+      '@nx/module-federation': 23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(postcss@8.5.16)
+      '@nx/web': 23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(nx@23.0.1(debug@4.4.3))
       '@phenomnomnominal/tsquery': 6.2.0(typescript@6.0.3)
       autoprefixer: 10.5.2(postcss@8.5.16)
       browserslist: 4.28.5
@@ -8809,7 +8835,7 @@ snapshots:
       - verdaccio
       - webpack-cli
 
-  '@nx/web@23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(nx@23.0.1)':
+  '@nx/web@23.0.1(@babel/traverse@7.29.7)(@nx/eslint@23.0.1(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@10.6.0(jiti@2.7.0))(nx@23.0.1(debug@4.4.3)))(@nx/webpack@23.0.1(@babel/traverse@7.29.7)(@rspack/core@1.6.8)(lightningcss@1.32.0)(nx@23.0.1(debug@4.4.3))(typescript@6.0.3)(webpack@5.105.2(lightningcss@1.32.0)(postcss@8.5.16)))(nx@23.0.1(debug@4.4.3))':
     dependencies:
       '@nx/devkit': 23.0.1(nx@23.0.1(debug@4.4.3))
       '@nx/js': 23.0.1(@babel/traverse@7.29.7)(nx@23.0.1(debug@4.4.3))
@@ -8977,6 +9003,10 @@ snapshots:
       typescript: 6.0.3
 
   '@pkgr/core@0.3.6': {}
+
+  '@playwright/test@1.61.1':
+    dependencies:
+      playwright: 1.61.1
 
   '@rollup/rollup-android-arm-eabi@4.60.2':
     optional: true
@@ -9246,10 +9276,10 @@ snapshots:
       tslib: 2.8.1
       tw-animate-css: 1.4.0
 
-  '@spartan-ng/cli@1.0.4(c6ad6862348ab4ebf5adcc0679652b47)':
+  '@spartan-ng/cli@1.0.4(d0f012daef71dfd27db8ac6c30043037)':
     dependencies:
       '@angular/core': 22.0.5(@angular/compiler@22.0.5)(rxjs@7.8.2)
-      '@nx/angular': 23.0.1(537f6a1b99fed0fc90203a592e91fbd3)
+      '@nx/angular': 23.0.1(8fd48e6fa94572221358ae9e5cee053f)
       '@nx/devkit': 23.0.1(nx@23.0.1(debug@4.4.3))
       '@nx/js': 23.0.1(@babel/traverse@7.29.7)(nx@23.0.1(debug@4.4.3))
       '@nx/workspace': 23.0.1
@@ -10969,6 +10999,9 @@ snapshots:
 
   fs-monkey@1.1.0: {}
 
+  fsevents@2.3.2:
+    optional: true
+
   fsevents@2.3.3:
     optional: true
 
@@ -12108,6 +12141,14 @@ snapshots:
   pkg-dir@7.0.0:
     dependencies:
       find-up: 6.3.0
+
+  playwright-core@1.61.1: {}
+
+  playwright@1.61.1:
+    dependencies:
+      playwright-core: 1.61.1
+    optionalDependencies:
+      fsevents: 2.3.2
 
   portfinder@1.0.38:
     dependencies:
