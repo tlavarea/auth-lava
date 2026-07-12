@@ -4,6 +4,10 @@
       "command": "npx",
       "args": ["-y", "@angular/cli", "mcp"]
     },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    },
     "spartan-ui": {
       "command": "spartan-mcp"
     }
