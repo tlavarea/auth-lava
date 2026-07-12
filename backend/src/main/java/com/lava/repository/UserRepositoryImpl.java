@@ -151,6 +151,17 @@ public class UserRepositoryImpl extends AbstractSpringDAOImpl<UserRecord, User, 
                 .execute();
     }
 
+    @Override
+    @Transactional
+    public void updateEmail(Long userId, String newEmail) {
+        this.dsl
+                .update(USER)
+                .set(USER.EMAIL, normalize(newEmail))
+                .set(USER.EMAIL_VERIFIED, true)
+                .where(USER.ID.eq(userId))
+                .execute();
+    }
+
     // Emails are stored lower-cased so the plain UNIQUE constraint on the column
     // enforces case-insensitive uniqueness without needing CITEXT or a functional index.
     private static String normalize(String email) {

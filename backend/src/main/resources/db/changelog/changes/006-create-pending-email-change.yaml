@@ -1,0 +1,75 @@
+databaseChangeLog:
+  - changeSet:
+      id: "10"
+      author: tlavarea
+      comment: >
+        PENDING_EMAIL_CHANGE - holds the state of an in-progress email address
+        change for an existing, already-authenticated user: the emailed
+        verification code (hashed, never stored raw) and the new_email it's
+        gating. Keyed by user_id (one pending change per user) rather than
+        email, since the user already exists - a fresh /email/change call
+        overwrites any existing row for that user (see
+        PendingEmailChangeRepository#upsertCode), invalidating a stale code
+        from an abandoned attempt. Unlike PENDING_REGISTRATION there's no
+        verified_at/bridge-token step: entering the correct code sent to
+        new_email is itself proof of ownership, so verification commits the
+        change immediately (see EmailChangeServiceImpl#confirm).
+      changes:
+        - createTable:
+            tableName: pending_email_change
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_pending_email_change_user_id
+              - column:
+                  name: new_email
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: code_hash
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attempt_count
+                  type: INT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addAutoIncrement:
+            tableName: pending_email_change
+            columnName: id
+            columnDataType: BIGINT
+            generationType: ALWAYS
+        - addForeignKeyConstraint:
+            constraintName: fk_pending_email_change_user_id
+            baseTableName: pending_email_change
+            baseColumnNames: user_id
+            referencedTableName: user
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS pending_email_change CASCADE;

@@ -104,6 +104,15 @@ export const AuthStore = signalStore(
       async changePassword(currentPassword: string, newPassword: string): Promise<void> {
         await firstValueFrom(authApi.changePassword({ currentPassword, newPassword }));
       },
+
+      async startEmailChange(newEmail: string): Promise<void> {
+        await firstValueFrom(authApi.startEmailChange({ newEmail }));
+      },
+
+      async verifyEmailChange(code: string): Promise<void> {
+        const user = await firstValueFrom(authApi.verifyEmailChange({ code }));
+        patchState(store, { status: 'authenticated', user });
+      },
     };
   })
 );
