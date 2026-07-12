@@ -5,6 +5,7 @@ import com.lava.logging.LogSanitizer;
 import com.lava.model.auth.TokenPair;
 import com.lava.model.web.request.LoginRequest;
 import com.lava.model.web.request.LogoutRequest;
+import com.lava.model.web.request.PasswordChangeRequest;
 import com.lava.model.web.response.UserResponse;
 import com.lava.security.AuthUserPrincipal;
 import com.lava.service.AuthService;
@@ -19,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,6 +34,14 @@ public class AuthController {
 
     private final AuthService authService;
     private final AuthCookieFactory cookieFactory;
+
+    @PatchMapping("/password")
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal AuthUserPrincipal principal, @Valid @RequestBody PasswordChangeRequest request) {
+        log.info("changePassword::userId: {}", LogSanitizer.sanitize(principal.getUserId()));
+        this.authService.changePassword(principal, request.currentPassword(), request.newPassword());
+        return ResponseEntity.noContent().build();
+    }
 
     @PostMapping("/login")
     public ResponseEntity<UserResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {

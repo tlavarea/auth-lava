@@ -12,6 +12,7 @@ import { AuthStore } from '@core/auth/auth.store';
 import { GlobalErrorHandler } from '@core/error-handling/global-error-handler';
 import { authErrorInterceptor } from '@core/http/auth-error-interceptor';
 import { credentialsInterceptor } from '@core/http/credentials-interceptor';
+import { ThemeStore } from '@core/theme/theme.store';
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
@@ -21,5 +22,6 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(withInterceptors([credentialsInterceptor, authErrorInterceptor])),
     provideAppInitializer(() => inject(AuthStore).bootstrap()),
+    provideAppInitializer(() => inject(ThemeStore).initialize()),
   ],
 };

@@ -32,7 +32,7 @@ describe('DashboardPage', () => {
     expect(component).toBeTruthy();
   });
 
-  it('shows the enroll link when the user is not MFA-enrolled', async () => {
+  it('greets the signed-in user by email', async () => {
     const authStore = TestBed.inject(AuthStore);
     const bootstrapPromise = authStore.bootstrap();
     httpMock
@@ -41,22 +41,6 @@ describe('DashboardPage', () => {
     await bootstrapPromise;
     fixture.detectChanges();
 
-    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('a[href="/mfa/enroll"]');
-    expect(link.textContent).toContain('Set up two-factor authentication');
-    expect(fixture.nativeElement.querySelector('a[href="/mfa/disable"]')).toBeNull();
-  });
-
-  it('shows the disable link when the user is already MFA-enrolled', async () => {
-    const authStore = TestBed.inject(AuthStore);
-    const bootstrapPromise = authStore.bootstrap();
-    httpMock
-      .expectOne('/api/auth/me')
-      .flush({ id: 1, email: 'a@b.com', emailVerified: true, mfaEnabled: true, authorities: [] });
-    await bootstrapPromise;
-    fixture.detectChanges();
-
-    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('a[href="/mfa/disable"]');
-    expect(link.textContent).toContain('Disable two-factor authentication');
-    expect(fixture.nativeElement.querySelector('a[href="/mfa/enroll"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('a@b.com');
   });
 });

@@ -2,11 +2,13 @@ package com.lava.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -17,6 +19,8 @@ import com.lava.boot.autoconfigure.app.CorsProperties;
 import com.lava.boot.autoconfigure.app.JwtProperties;
 import com.lava.boot.autoconfigure.app.OAuthProperties;
 import com.lava.configuration.SecurityConfiguration;
+import com.lava.exception.BreachedPasswordException;
+import com.lava.exception.InvalidCurrentPasswordException;
 import com.lava.exception.InvalidRefreshTokenException;
 import com.lava.model.auth.TokenPair;
 import com.lava.model.auth.TokenPairBuilder;
@@ -69,6 +73,67 @@ class AuthControllerTest {
 
     @MockitoBean
     private OAuthAuthenticationFailureHandler oAuthAuthenticationFailureHandler;
+
+    @Test
+    void changePassword_validRequest_returns204AndCallsService() throws Exception {
+        AuthUserPrincipal principal = principal(1L);
+
+        this.mockMvc
+                .perform(patch("/api/auth/password")
+                        .with(csrf())
+                        .with(authentication(authToken(principal)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"old-password\",\"newPassword\":\"new-password\"}"))
+                .andExpect(status().isNoContent());
+
+        verify(this.authService).changePassword(principal, "old-password", "new-password");
+    }
+
+    @Test
+    void changePassword_wrongCurrentPassword_returns401() throws Exception {
+        AuthUserPrincipal principal = principal(1L);
+        doThrow(new InvalidCurrentPasswordException())
+                .when(this.authService)
+                .changePassword(principal, "wrong-password", "new-password");
+
+        this.mockMvc
+                .perform(patch("/api/auth/password")
+                        .with(csrf())
+                        .with(authentication(authToken(principal)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"wrong-password\",\"newPassword\":\"new-password\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Current password is incorrect"));
+    }
+
+    @Test
+    void changePassword_breachedNewPassword_returns400() throws Exception {
+        AuthUserPrincipal principal = principal(1L);
+        doThrow(new BreachedPasswordException())
+                .when(this.authService)
+                .changePassword(principal, "old-password", "breached-password");
+
+        this.mockMvc
+                .perform(patch("/api/auth/password")
+                        .with(csrf())
+                        .with(authentication(authToken(principal)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"old-password\",\"newPassword\":\"breached-password\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void changePassword_blankNewPassword_returns400() throws Exception {
+        AuthUserPrincipal principal = principal(1L);
+
+        this.mockMvc
+                .perform(patch("/api/auth/password")
+                        .with(csrf())
+                        .with(authentication(authToken(principal)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"old-password\",\"newPassword\":\"\"}"))
+                .andExpect(status().isBadRequest());
+    }
 
     @Test
     void login_validCredentials_returnsUserAndSetsCookies() throws Exception {

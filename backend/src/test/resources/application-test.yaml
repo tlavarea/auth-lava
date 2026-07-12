@@ -4,6 +4,8 @@ auth:
     login-lockout-duration: 15m
     mfa-max-attempts: 5
     mfa-lockout-duration: 15m
+    password-change-max-attempts: 5
+    password-change-lockout-duration: 15m
 
 cors:
   allowed-origins: http://localhost:4200

@@ -1,6 +1,7 @@
 package com.lava.controller;
 
 import com.lava.exception.BreachedPasswordException;
+import com.lava.exception.InvalidCurrentPasswordException;
 import com.lava.exception.InvalidRefreshTokenException;
 import com.lava.exception.InvalidRegistrationTokenException;
 import com.lava.exception.InvalidTotpCodeException;
@@ -23,6 +24,7 @@ public class AuthExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler({
         AuthenticationException.class,
+        InvalidCurrentPasswordException.class,
         InvalidRefreshTokenException.class,
         InvalidRegistrationTokenException.class,
         InvalidTotpCodeException.class,

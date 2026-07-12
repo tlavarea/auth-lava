@@ -11,6 +11,7 @@ import {
   MfaDisableRequest,
   MfaEnrollVerifyRequest,
   MfaVerifyRequest,
+  PasswordChangeRequest,
   RegistrationTokenResponse,
   StartRegistrationRequest,
   TotpEnrollment,
@@ -66,5 +67,9 @@ export class AuthApi {
 
   disableMfa(payload: MfaDisableRequest): Observable<UserResponse> {
     return this.http.delete<UserResponse>(`${BASE_URL}/mfa`, { body: payload });
+  }
+
+  changePassword(payload: PasswordChangeRequest): Observable<void> {
+    return this.http.patch<void>(`${BASE_URL}/password`, payload);
   }
 }

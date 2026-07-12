@@ -41,7 +41,7 @@ type DisableFormModel = {
     OtpInput,
   ],
   template: `
-    <div class="flex min-h-dvh items-center justify-center p-4">
+    <div class="flex h-full items-center justify-center p-4">
       <div hlmCard class="w-full max-w-sm">
         <div hlmCardHeader>
           <h1 hlmCardTitle>Disable two-factor authentication</h1>
