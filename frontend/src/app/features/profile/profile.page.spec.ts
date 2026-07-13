@@ -89,7 +89,7 @@ describe('ProfilePage', () => {
     ) as HTMLButtonElement;
     updateButton.click();
 
-    expect(openSpy).toHaveBeenCalledWith(MfaDisableDialog, { showCloseButton: false });
+    expect(openSpy).toHaveBeenCalledWith(MfaDisableDialog, { disableClose: true, showCloseButton: false });
   });
 
   it('does nothing when Update is clicked while MFA is disabled', async () => {
