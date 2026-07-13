@@ -38,6 +38,7 @@ import { ThemeToggle } from '@shared/theme-toggle/theme-toggle';
             size="icon"
             type="button"
             aria-label="Account menu"
+            align="end"
             [hlmDropdownMenuTrigger]="accountMenu">
             <hlm-avatar size="sm">
               <span hlmAvatarFallback>{{ initials() }}</span>

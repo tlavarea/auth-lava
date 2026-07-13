@@ -2,8 +2,10 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { HlmDialogService } from '@spartan-ng/helm/dialog';
 
 import { AuthStore } from '@core/auth/auth.store';
+import { MfaDisableDialog } from '@features/mfa-disable/mfa-disable.dialog';
 import { ProfilePage } from './profile.page';
 
 async function flushAsync(fixture: ComponentFixture<unknown>): Promise<void> {
@@ -45,7 +47,7 @@ describe('ProfilePage', () => {
     expect(component).toBeTruthy();
   });
 
-  it('shows the email and a verified badge, and the enroll link when not MFA-enrolled', async () => {
+  it('shows the email and a verified badge', async () => {
     const authStore = TestBed.inject(AuthStore);
     const bootstrapPromise = authStore.bootstrap();
     httpMock
@@ -56,13 +58,9 @@ describe('ProfilePage', () => {
 
     expect(fixture.nativeElement.textContent).toContain('a@b.com');
     expect(fixture.nativeElement.textContent).toContain('Verified');
-
-    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('a[href="/mfa/enroll"]');
-    expect(link.textContent).toContain('Set up two-factor authentication');
-    expect(fixture.nativeElement.querySelector('a[href="/mfa/disable"]')).toBeNull();
   });
 
-  it('shows an unverified badge and the disable link when MFA-enabled but email unverified', async () => {
+  it('shows an unverified badge when the email is not verified', async () => {
     const authStore = TestBed.inject(AuthStore);
     const bootstrapPromise = authStore.bootstrap();
     httpMock
@@ -72,10 +70,46 @@ describe('ProfilePage', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Unverified');
+  });
 
-    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('a[href="/mfa/disable"]');
-    expect(link.textContent).toContain('Disable two-factor authentication');
-    expect(fixture.nativeElement.querySelector('a[href="/mfa/enroll"]')).toBeNull();
+  it('opens the MFA-disable dialog when Update is clicked while MFA is enabled', async () => {
+    const authStore = TestBed.inject(AuthStore);
+    const dialogService = TestBed.inject(HlmDialogService);
+    const openSpy = vi.spyOn(dialogService, 'open');
+    const bootstrapPromise = authStore.bootstrap();
+    httpMock
+      .expectOne('/api/auth/me')
+      .flush({ id: 1, email: 'a@b.com', emailVerified: true, mfaEnabled: true, authorities: [] });
+    await bootstrapPromise;
+    fixture.detectChanges();
+
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const updateButton: HTMLButtonElement = buttons.find(
+      (button: HTMLButtonElement) => button.textContent?.trim() === 'Update'
+    ) as HTMLButtonElement;
+    updateButton.click();
+
+    expect(openSpy).toHaveBeenCalledWith(MfaDisableDialog, { showCloseButton: false });
+  });
+
+  it('does nothing when Update is clicked while MFA is disabled', async () => {
+    const authStore = TestBed.inject(AuthStore);
+    const dialogService = TestBed.inject(HlmDialogService);
+    const openSpy = vi.spyOn(dialogService, 'open');
+    const bootstrapPromise = authStore.bootstrap();
+    httpMock
+      .expectOne('/api/auth/me')
+      .flush({ id: 1, email: 'a@b.com', emailVerified: true, mfaEnabled: false, authorities: [] });
+    await bootstrapPromise;
+    fixture.detectChanges();
+
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const updateButton: HTMLButtonElement = buttons.find(
+      (button: HTMLButtonElement) => button.textContent?.trim() === 'Update'
+    ) as HTMLButtonElement;
+    updateButton.click();
+
+    expect(openSpy).not.toHaveBeenCalled();
   });
 
   // The form behavior (validation, submission, server errors) is covered by

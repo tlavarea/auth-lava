@@ -1,14 +1,16 @@
-import { Component, computed, inject, Signal, signal, WritableSignal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, Signal, signal, WritableSignal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 
 import { UserResponse } from '@core/auth/auth.models';
 import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
+import { MfaDisableDialog } from '@features/mfa-disable/mfa-disable.dialog';
 import { ChangeEmailForm } from '@features/profile/form/change-email/change-email.form';
 import { ChangePasswordForm } from '@features/profile/form/change-password/change-password.form';
 import { EmailChangeStep } from '@models/models';
 import { Card } from '@shared/card/card';
+import { HlmDialogService } from '@spartan-ng/helm/dialog';
 
 @Component({
   selector: 'app-profile',
@@ -46,18 +48,26 @@ import { Card } from '@shared/card/card';
       </app-card>
 
       <app-card
-        contentClass="max-w-sm"
+        contentClass="flex flex-row justify-between"
         description="Adds an extra layer of protection to your account"
         title="Two-factor authentication">
-        <a hlmBtn variant="outline" [routerLink]="user()?.mfaEnabled ? '/mfa/disable' : '/mfa/enroll'">
-          {{ user()?.mfaEnabled ? 'Disable' : 'Set up' }} two-factor authentication
-        </a>
+        <p class="flex items-center">
+          Two-factor verification is:
+          <span
+            class="relative top-px ml-1 text-base font-bold"
+            [class]="{ 'text-green-800': user()?.mfaEnabled, 'text-destructive': !user()?.mfaEnabled }">
+            {{ user()?.mfaEnabled ? 'ON' : 'OFF' }}
+          </span>
+        </p>
+        <button type="button" hlmBtn (click)="onChangeMfa()">Update</button>
       </app-card>
     </div>
   `,
 })
 export class ProfilePage {
   private readonly authStore: AuthStoreType = inject(AuthStore);
+  private readonly destroyRef: DestroyRef = inject(DestroyRef);
+  private readonly dialogService: HlmDialogService = inject(HlmDialogService);
 
   protected readonly user: Signal<UserResponse | null> = this.authStore.user;
 
@@ -73,5 +83,11 @@ export class ProfilePage {
   protected readonly pendingNewEmail: WritableSignal<string> = signal('');
   protected readonly onPendingEmailChange: (value: string) => void = (value: string): void => {
     this.pendingNewEmail.set(value);
+  };
+  protected readonly onChangeMfa: () => void = (): void => {
+    if (!this.user()?.mfaEnabled) {
+      return;
+    }
+    this.dialogService.open(MfaDisableDialog, { showCloseButton: false });
   };
 }
