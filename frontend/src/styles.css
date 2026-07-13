@@ -98,6 +98,6 @@
  * Only the "default" button size (h-9) is targeted, to match the input's new h-10
  * height — compact (xs/sm), lg, and icon sizes are left alone.
  */
-[data-slot='button'][class*='h-9'] {
+[data-slot='button'][class*='h-9'], [data-slot='dialog-close'][class*='h-9'] {
   @apply h-10 px-3;
 }

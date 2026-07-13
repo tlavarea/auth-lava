@@ -1,5 +1,4 @@
 import { Component, computed, DestroyRef, inject, Signal, signal, WritableSignal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 
@@ -14,7 +13,7 @@ import { HlmDialogService } from '@spartan-ng/helm/dialog';
 
 @Component({
   selector: 'app-profile',
-  imports: [Card, ChangeEmailForm, ChangePasswordForm, HlmBadgeImports, HlmButtonImports, RouterLink],
+  imports: [Card, ChangeEmailForm, ChangePasswordForm, HlmBadgeImports, HlmButtonImports],
   template: `
     <div class="mx-auto flex w-full max-w-sm flex-col gap-4 p-4 sm:max-w-xl lg:max-w-2xl">
       <app-card contentClass="flex flex-col gap-2 text-sm" description="Manage your account details" title="Profile">
@@ -88,6 +87,6 @@ export class ProfilePage {
     if (!this.user()?.mfaEnabled) {
       return;
     }
-    this.dialogService.open(MfaDisableDialog, { showCloseButton: false });
+    this.dialogService.open(MfaDisableDialog, { disableClose: true, showCloseButton: false });
   };
 }
