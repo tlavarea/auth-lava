@@ -81,3 +81,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * Unlayered on purpose: overrides hlm-input's generated (libs/ui/**) padding/text-size/height
+ * classes without editing that generated file, which would be lost on a spartan-ng regen/upgrade.
+ * Cascade layers give unlayered rules top priority over @layer theme/base/components/utilities,
+ * so this wins regardless of specificity or source order.
+ */
+[data-slot='input'] {
+  @apply h-10 px-3 py-2 text-base;
+}
