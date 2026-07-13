@@ -23,6 +23,7 @@ import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
 import { extractErrorMessage } from '@core/auth/extract-error-message';
 import { MfaDisableStep } from '@models/models';
 import { OtpInput } from '@shared/otp-input/otp-input';
+import { HlmSeparatorImports } from '@spartan-ng/helm/separator';
 
 type DisableFormModel = {
   code: string;
@@ -37,25 +38,26 @@ type DisableFormModel = {
     HlmDialogImports,
     HlmFieldImports,
     HlmInputImports,
+    HlmSeparatorImports,
     HlmSpinnerImports,
     OtpInput,
   ],
   template: `
     @switch (step()) {
       @case ('confirm') {
-        <hlm-dialog-header>
+        <hlm-dialog-header class="mb-8">
           <h3 hlmDialogTitle>Are you sure?</h3>
           <p hlmDialogDescription>
             This will remove the extra layer of security to your account. You will now only use your password to log in.
           </p>
         </hlm-dialog-header>
         <hlm-dialog-footer>
-          <button hlmBtn variant="outline" type="button" hlmDialogClose>Not now</button>
+          <button hlmBtn variant="ghost" type="button" hlmDialogClose>Not now</button>
           <button hlmBtn type="button" (click)="advanceToApply()">Turn it off</button>
         </hlm-dialog-footer>
       }
       @case ('apply') {
-        <hlm-dialog-header>
+        <hlm-dialog-header class="mb-8">
           <h3 hlmDialogTitle>Disable two-factor authentication</h3>
           <p hlmDialogDescription>Enter the code from your authenticator app, or a backup code, to confirm.</p>
         </hlm-dialog-header>
@@ -101,7 +103,7 @@ type DisableFormModel = {
           </div>
 
           <hlm-dialog-footer>
-            <button hlmBtn type="button" variant="outline" hlmDialogClose [disabled]="disableForm().submitting()">
+            <button hlmBtn type="button" variant="ghost" hlmDialogClose [disabled]="disableForm().submitting()">
               Cancel
             </button>
             <button hlmBtn type="submit" variant="destructive" [disabled]="disableForm().submitting()">
