@@ -15,6 +15,8 @@
       "@core/*": ["./src/app/core/*"],
       "@env/*": ["./src/environments/*"],
       "@features/*": ["./src/app/features/*"],
+      "@models/*": ["./src/app/models/*"],
+      "@shared/*": ["./src/app/shared/*"],
       "@spartan-ng/helm/accordion": ["./libs/ui/accordion/src/index.ts"],
       "@spartan-ng/helm/alert": ["./libs/ui/alert/src/index.ts"],
       "@spartan-ng/helm/alert-dialog": ["./libs/ui/alert-dialog/src/index.ts"],
