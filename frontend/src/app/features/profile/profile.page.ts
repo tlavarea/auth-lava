@@ -67,8 +67,8 @@ export class ProfilePage {
   };
   protected readonly emailChangeCardDescription: Signal<string> = computed((): string => {
     return this.emailChangeStep() === 'email'
-      ? "We'll send a verification code to your new address"
-      : `Enter the code we sent to ${this.pendingNewEmail()}`;
+      ? "We'll send a verification code to your new address."
+      : `Enter the code we sent to ${this.pendingNewEmail()}.`;
   });
   protected readonly pendingNewEmail: WritableSignal<string> = signal('');
   protected readonly onPendingEmailChange: (value: string) => void = (value: string): void => {

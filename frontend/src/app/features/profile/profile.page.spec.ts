@@ -82,13 +82,13 @@ describe('ProfilePage', () => {
   // ChangeEmailForm/ChangePasswordForm's own specs. This verifies that ProfilePage
   // correctly wires the change-email form's outputs into its own card description.
   it('updates the change-email card description as the child form moves between steps', async () => {
-    expect(fixture.nativeElement.textContent).toContain("We'll send a verification code to your new address");
+    expect(fixture.nativeElement.textContent).toContain("We'll send a verification code to your new address.");
 
     submitNewEmail(fixture, 'new@example.com');
     await flushAsync(fixture);
     httpMock.expectOne('/api/auth/email/change').flush(null);
     await flushAsync(fixture);
 
-    expect(fixture.nativeElement.textContent).toContain('Enter the code we sent to new@example.com');
+    expect(fixture.nativeElement.textContent).toContain('Enter the code we sent to new@example.com.');
   });
 });
