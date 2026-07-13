@@ -33,22 +33,28 @@ export const routes: Routes = [
     ],
   },
   {
-    path: 'login',
-    title: 'Sign in',
-    canActivate: [guestGuard],
-    loadComponent: () => import('./features/login/login.page').then((m) => m.LoginPage),
-  },
-  {
-    path: 'register',
-    title: 'Create account',
-    canActivate: [guestGuard],
-    loadComponent: () => import('./features/register/register.page').then((m) => m.RegisterPage),
-  },
-  {
-    path: 'mfa/verify',
-    title: 'Two-factor verification',
-    canActivate: [mfaPendingGuard],
-    loadComponent: () => import('./features/mfa-verify/mfa-verify.page').then((m) => m.MfaVerifyPage),
+    path: '',
+    loadComponent: () => import('./shared/layout/guest-shell').then((m) => m.GuestShell),
+    children: [
+      {
+        path: 'login',
+        title: 'Sign in',
+        canActivate: [guestGuard],
+        loadComponent: () => import('./features/login/login.page').then((m) => m.LoginPage),
+      },
+      {
+        path: 'register',
+        title: 'Create account',
+        canActivate: [guestGuard],
+        loadComponent: () => import('./features/register/register.page').then((m) => m.RegisterPage),
+      },
+      {
+        path: 'mfa/verify',
+        title: 'Two-factor verification',
+        canActivate: [mfaPendingGuard],
+        loadComponent: () => import('./features/mfa-verify/mfa-verify.page').then((m) => m.MfaVerifyPage),
+      },
+    ],
   },
   {
     path: '**',

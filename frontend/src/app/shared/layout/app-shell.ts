@@ -1,7 +1,7 @@
 import { Component, computed, inject, Signal, signal, WritableSignal } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideLogOut, lucideMoon, lucideSun, lucideUser } from '@ng-icons/lucide';
+import { lucideLogOut, lucideUser } from '@ng-icons/lucide';
 import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
@@ -9,7 +9,7 @@ import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
 import { UserResponse } from '@core/auth/auth.models';
 import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
-import { Theme, ThemeStore, ThemeStoreType } from '@core/theme/theme.store';
+import { ThemeToggle } from '@shared/theme-toggle/theme-toggle';
 
 @Component({
   selector: 'app-shell',
@@ -21,23 +21,16 @@ import { Theme, ThemeStore, ThemeStoreType } from '@core/theme/theme.store';
     HlmButtonImports,
     HlmDropdownMenuImports,
     HlmSpinnerImports,
+    ThemeToggle,
   ],
-  viewProviders: [provideIcons({ lucideLogOut, lucideMoon, lucideSun, lucideUser })],
+  viewProviders: [provideIcons({ lucideLogOut, lucideUser })],
   template: `
     <div class="flex min-h-dvh flex-col">
       <header class="flex items-center justify-between border-b border-border px-4 py-3">
         <a routerLink="/" class="text-sm font-semibold">auth-lava</a>
 
         <div class="flex items-center gap-2">
-          <button
-            hlmBtn
-            variant="ghost"
-            size="icon"
-            type="button"
-            [attr.aria-label]="theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
-            (click)="themeStore.toggle()">
-            <ng-icon [name]="theme() === 'dark' ? 'lucideSun' : 'lucideMoon'" />
-          </button>
+          <app-theme-toggle />
 
           <button
             hlmBtn
@@ -83,10 +76,8 @@ import { Theme, ThemeStore, ThemeStoreType } from '@core/theme/theme.store';
 export class AppShell {
   private readonly authStore: AuthStoreType = inject(AuthStore);
   private readonly router: Router = inject(Router);
-  protected readonly themeStore: ThemeStoreType = inject(ThemeStore);
 
   protected readonly user: Signal<UserResponse | null> = this.authStore.user;
-  protected readonly theme: Signal<Theme> = this.themeStore.theme;
   protected readonly loggingOut: WritableSignal<boolean> = signal(false);
 
   protected readonly initials: Signal<string> = computed(() => {
