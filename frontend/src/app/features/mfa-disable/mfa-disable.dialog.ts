@@ -8,7 +8,6 @@ import {
   minLength,
   required,
   SchemaPathTree,
-  submit,
   ValidationError,
 } from '@angular/forms/signals';
 import { BrnDialogRef } from '@spartan-ng/brain/dialog';
@@ -85,8 +84,7 @@ type DisableFormModel = {
                 [disabled]="disableForm().submitting()"
                 [maxLength]="6"
                 [value]="model().code"
-                (valueChange)="updateFormModel($event)"
-                (completed)="disableMfa()" />
+                (valueChange)="updateFormModel($event)" />
             } @else {
               <label hlmFieldLabel for="backupCode">Code</label>
               <input
@@ -144,27 +142,20 @@ export class MfaDisableDialog {
     },
     {
       submission: {
-        action: (field: FieldTree<DisableFormModel>): Promise<ValidationError | ValidationError[] | undefined> =>
-          this.disableMfaWithCode(field().value().code),
+        action: async (
+          field: FieldTree<DisableFormModel>
+        ): Promise<ValidationError | ValidationError[] | undefined> => {
+          try {
+            await this.authStore.disableMfa(field().value().code);
+          } catch (error) {
+            this.updateFormModel('');
+            return { kind: 'serverError', message: extractErrorMessage(error) };
+          }
+
+          this.dialogRef.close();
+          return;
+        },
       },
     }
   );
-
-  protected readonly disableMfa: () => void = (): void => {
-    submit(this.disableForm, (): Promise<ValidationError | ValidationError[] | undefined> =>
-      this.disableMfaWithCode(this.model().code)
-    );
-  };
-
-  private async disableMfaWithCode(code: string): Promise<ValidationError | ValidationError[] | undefined> {
-    try {
-      await this.authStore.disableMfa(code);
-    } catch (error) {
-      this.updateFormModel('');
-      return { kind: 'serverError', message: extractErrorMessage(error) };
-    }
-
-    this.dialogRef.close();
-    return;
-  }
 }

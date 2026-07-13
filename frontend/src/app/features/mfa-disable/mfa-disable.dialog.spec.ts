@@ -19,6 +19,11 @@ function clickButtonWithText(fixture: ComponentFixture<unknown>, text: string): 
   button.click();
 }
 
+function submitDisableForm(fixture: ComponentFixture<unknown>): void {
+  const form: HTMLFormElement = fixture.nativeElement.querySelector('form');
+  form.dispatchEvent(new Event('submit', { cancelable: true }));
+}
+
 describe('MfaDisableDialog', () => {
   let component: MfaDisableDialog;
   let fixture: ComponentFixture<MfaDisableDialog>;
@@ -77,11 +82,21 @@ describe('MfaDisableDialog', () => {
       fixture.detectChanges();
     });
 
-    it('entering a 6-digit code disables MFA and closes the dialog on success', async () => {
+    it('does not call the API just from entering a 6-digit code', async () => {
       const otpInput: HTMLInputElement = fixture.nativeElement.querySelector('#otp');
       otpInput.value = '123456';
       otpInput.dispatchEvent(new Event('input'));
       await fixture.whenStable();
+
+      httpMock.expectNone('/api/auth/mfa');
+    });
+
+    it('clicking "Disable two-factor authentication" disables MFA and closes the dialog on success', async () => {
+      const otpInput: HTMLInputElement = fixture.nativeElement.querySelector('#otp');
+      otpInput.value = '123456';
+      otpInput.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      submitDisableForm(fixture);
 
       const req = httpMock.expectOne('/api/auth/mfa');
       expect(req.request.method).toBe('DELETE');
@@ -97,6 +112,7 @@ describe('MfaDisableDialog', () => {
       otpInput.value = '123456';
       otpInput.dispatchEvent(new Event('input'));
       await fixture.whenStable();
+      submitDisableForm(fixture);
 
       httpMock.expectOne('/api/auth/mfa').flush({ error: 'Invalid code' }, { status: 401, statusText: 'Unauthorized' });
       await flushAsync(fixture);
