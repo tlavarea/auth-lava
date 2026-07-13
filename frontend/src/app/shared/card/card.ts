@@ -14,6 +14,9 @@ import { HlmCardImports } from '@spartan-ng/helm/card';
           @if (description()) {
             <p hlmCardDescription>{{ description() }}</p>
           }
+          <div class="self-center" hlmCardAction>
+            <ng-content select=".card-action" />
+          </div>
         </div>
       }
       <div hlmCardContent [class]="contentClass()">

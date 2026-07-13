@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { Card } from './card';
@@ -66,9 +66,19 @@ describe('Card', () => {
 
 @Component({
   imports: [Card],
-  template: `<app-card><span>Projected content</span></app-card>`,
+  template: `
+    <app-card [title]="title()">
+      <span>Projected content</span>
+      @if (showAction()) {
+        <button class="card-action" type="button">Edit</button>
+      }
+    </app-card>
+  `,
 })
-class CardHost {}
+class CardHost {
+  readonly title = input<string | undefined>(undefined);
+  readonly showAction = input(false);
+}
 
 describe('Card content projection', () => {
   it('projects content into the card', async () => {
@@ -80,5 +90,37 @@ describe('Card content projection', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Projected content');
+  });
+});
+
+describe('Card action projection', () => {
+  it('projects .card-action content into the header when a title is present', async () => {
+    await TestBed.configureTestingModule({
+      imports: [CardHost],
+    }).compileComponents();
+
+    const fixture: ComponentFixture<CardHost> = TestBed.createComponent(CardHost);
+    fixture.componentRef.setInput('title', 'Profile');
+    fixture.componentRef.setInput('showAction', true);
+    fixture.detectChanges();
+
+    const header: HTMLElement = fixture.nativeElement.querySelector('[hlmCardHeader]');
+    const action: HTMLElement | null = fixture.nativeElement.querySelector('.card-action');
+    expect(action).toBeTruthy();
+    expect(header.contains(action)).toBe(true);
+    expect(action?.textContent).toContain('Edit');
+  });
+
+  it('does not render .card-action content when neither title nor description is provided', async () => {
+    await TestBed.configureTestingModule({
+      imports: [CardHost],
+    }).compileComponents();
+
+    const fixture: ComponentFixture<CardHost> = TestBed.createComponent(CardHost);
+    fixture.componentRef.setInput('showAction', true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[hlmCardHeader]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.card-action')).toBeNull();
   });
 });
