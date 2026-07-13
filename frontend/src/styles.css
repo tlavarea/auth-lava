@@ -91,3 +91,13 @@
 [data-slot='input'] {
   @apply h-10 px-3 py-2 text-base;
 }
+
+/*
+ * Same rationale as the [data-slot='input'] override above: unlayered so it wins
+ * over hlm-button's generated (libs/ui/**) classes without editing that file.
+ * Only the "default" button size (h-9) is targeted, to match the input's new h-10
+ * height — compact (xs/sm), lg, and icon sizes are left alone.
+ */
+[data-slot='button'][class*='h-9'] {
+  @apply h-10 px-3;
+}
