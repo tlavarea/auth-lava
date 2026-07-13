@@ -13,6 +13,7 @@ test.describe('MFA disable', () => {
     await dialog.getByRole('button', { name: 'Turn it off' }).click();
 
     await dialog.getByLabel('Verification code').pressSequentially(MFA_CODE);
+    await dialog.getByRole('button', { name: 'Disable two-factor authentication' }).click();
 
     await expect(dialog).toBeHidden();
     await expect(page.getByText('Two-factor verification is: OFF', { exact: true })).toBeVisible();
@@ -50,6 +51,7 @@ test.describe('MFA disable', () => {
     const dialog = page.getByRole('dialog');
     await dialog.getByRole('button', { name: 'Turn it off' }).click();
     await dialog.getByLabel('Verification code').pressSequentially('000000');
+    await dialog.getByRole('button', { name: 'Disable two-factor authentication' }).click();
 
     await expect(dialog.getByText('Invalid verification code')).toBeVisible();
     await expect(dialog).toBeVisible();
