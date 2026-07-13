@@ -25,11 +25,6 @@ export const routes: Routes = [
         title: 'Set up two-factor authentication',
         loadComponent: () => import('./features/mfa-enroll/mfa-enroll.page').then((m) => m.MfaEnrollPage),
       },
-      {
-        path: 'mfa/disable',
-        title: 'Disable two-factor authentication',
-        loadComponent: () => import('./features/mfa-disable/mfa-disable.page').then((m) => m.MfaDisablePage),
-      },
     ],
   },
   {
