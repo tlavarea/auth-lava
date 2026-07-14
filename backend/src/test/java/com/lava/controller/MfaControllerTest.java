@@ -117,7 +117,9 @@ class MfaControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"mfaMethodId\":10,\"code\":\"123456\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.backupCodes.length()").value(2));
+                .andExpect(jsonPath("$.backupCodes.length()").value(2))
+                .andExpect(jsonPath("$.user.email").value("user@example.com"))
+                .andExpect(jsonPath("$.user.mfaEnabled").value(true));
     }
 
     @Test

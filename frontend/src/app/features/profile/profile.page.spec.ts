@@ -6,6 +6,7 @@ import { HlmDialogService } from '@spartan-ng/helm/dialog';
 
 import { AuthStore } from '@core/auth/auth.store';
 import { MfaDisableDialog } from '@features/mfa-disable/mfa-disable.dialog';
+import { MfaEnrollDialog } from '@features/mfa-enroll/mfa-enroll.dialog';
 import { ProfilePage } from './profile.page';
 
 async function flushAsync(fixture: ComponentFixture<unknown>): Promise<void> {
@@ -92,7 +93,7 @@ describe('ProfilePage', () => {
     expect(openSpy).toHaveBeenCalledWith(MfaDisableDialog, { disableClose: true, showCloseButton: false });
   });
 
-  it('does nothing when Update is clicked while MFA is disabled', async () => {
+  it('opens the MFA-enroll dialog when Update is clicked while MFA is disabled', async () => {
     const authStore = TestBed.inject(AuthStore);
     const dialogService = TestBed.inject(HlmDialogService);
     const openSpy = vi.spyOn(dialogService, 'open');
@@ -109,7 +110,12 @@ describe('ProfilePage', () => {
     ) as HTMLButtonElement;
     updateButton.click();
 
-    expect(openSpy).not.toHaveBeenCalled();
+    expect(openSpy).toHaveBeenCalledWith(MfaEnrollDialog);
+
+    await fixture.whenStable();
+    httpMock
+      .expectOne('/api/auth/mfa/enroll')
+      .flush({ mfaMethodId: 1, secret: 'secret', otpAuthUri: 'otpauth://', qrCodeDataUri: 'data:image/png;x' });
   });
 
   // The form behavior (validation, submission, server errors) is covered by

@@ -5,6 +5,7 @@ import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { UserResponse } from '@core/auth/auth.models';
 import { AuthStore, AuthStoreType } from '@core/auth/auth.store';
 import { MfaDisableDialog } from '@features/mfa-disable/mfa-disable.dialog';
+import { MfaEnrollDialog } from '@features/mfa-enroll/mfa-enroll.dialog';
 import { ChangeEmailForm } from '@features/profile/form/change-email/change-email.form';
 import { ChangePasswordForm } from '@features/profile/form/change-password/change-password.form';
 import { EmailChangeStep } from '@models/models';
@@ -84,9 +85,10 @@ export class ProfilePage {
     this.pendingNewEmail.set(value);
   };
   protected readonly onChangeMfa: () => void = (): void => {
-    if (!this.user()?.mfaEnabled) {
-      return;
+    if (this.user()?.mfaEnabled) {
+      this.dialogService.open(MfaDisableDialog, { disableClose: true, showCloseButton: false });
+    } else {
+      this.dialogService.open(MfaEnrollDialog);
     }
-    this.dialogService.open(MfaDisableDialog, { disableClose: true, showCloseButton: false });
   };
 }

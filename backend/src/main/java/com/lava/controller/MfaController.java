@@ -50,8 +50,10 @@ public class MfaController {
             @AuthenticationPrincipal AuthUserPrincipal principal, @Valid @RequestBody EnrollTotpVerifyRequest request) {
         List<String> backupCodes = this.mfaService.confirmEnrollment(principal, request.mfaMethodId(), request.code());
         log.info("enrollVerify::userId: {}", LogSanitizer.sanitize(principal.getUserId()));
-        return ResponseEntity.ok(
-                BackupCodesResponseBuilder.builder().backupCodes(backupCodes).build());
+        return ResponseEntity.ok(BackupCodesResponseBuilder.builder()
+                .backupCodes(backupCodes)
+                .user(UserResponse.from(principal, true))
+                .build());
     }
 
     @DeleteMapping
