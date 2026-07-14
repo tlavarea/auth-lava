@@ -25,8 +25,8 @@ import { ThemeToggle } from '@shared/theme-toggle/theme-toggle';
   ],
   viewProviders: [provideIcons({ lucideLogOut, lucideUser })],
   template: `
-    <div class="flex min-h-dvh flex-col">
-      <header class="flex items-center justify-between border-b border-border px-4 py-3">
+    <div class="flex h-dvh flex-col overflow-hidden">
+      <header class="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 shadow-sm">
         <a routerLink="/" class="text-sm font-semibold">auth-lava</a>
 
         <div class="flex items-center gap-2">
@@ -68,7 +68,7 @@ import { ThemeToggle } from '@shared/theme-toggle/theme-toggle';
         </ng-template>
       </header>
 
-      <div class="flex-1">
+      <div class="min-h-0 flex-1 overflow-y-auto">
         <router-outlet />
       </div>
     </div>
