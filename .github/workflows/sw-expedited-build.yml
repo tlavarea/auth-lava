@@ -1,0 +1,33 @@
+name: sw-expedited Build and Test
+
+on:
+  pull_request:
+    paths:
+      - "sw-expedited/**"
+      - ".github/workflows/sw-expedited-build.yml"
+  push:
+    branches: [main]
+    paths:
+      - "sw-expedited/**"
+      - ".github/workflows/sw-expedited-build.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sw-expedited
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+          cache-dependency-path: sw-expedited/pom.xml
+
+      - name: Build and test
+        run: ./mvnw -B verify

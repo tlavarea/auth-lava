@@ -6,14 +6,20 @@ import com.lava.security.MfaAuthorities;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
+import java.security.GeneralSecurityException;
+import java.security.Key;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.interfaces.RSAKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import javax.crypto.SecretKey;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.FactorGrantedAuthority;
@@ -23,18 +29,45 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class JwtServiceImpl implements JwtService {
 
+    private static final int MIN_RSA_KEY_BITS = 2048;
+    private static final String RSA_ALGORITHM = "RSA";
+
     private final JwtProperties properties;
-    private final SecretKey signingKey;
+    private final PrivateKey privateKey;
+    private final PublicKey publicKey;
 
     public JwtServiceImpl(JwtProperties properties) {
         this.properties = properties;
-        byte[] keyBytes = Decoders.BASE64.decode(properties.secret());
+        this.privateKey = decodePrivateKey(properties.privateKey());
+        this.publicKey = decodePublicKey(properties.publicKey());
+    }
 
-        if (keyBytes.length < 32) {
-            throw new IllegalStateException("jwt.secret must decode to at least 256 bits");
+    private static PrivateKey decodePrivateKey(String base64) {
+        try {
+            KeyFactory keyFactory = KeyFactory.getInstance(RSA_ALGORITHM);
+            PrivateKey key = keyFactory.generatePrivate(new PKCS8EncodedKeySpec(Decoders.BASE64.decode(base64)));
+            validateKeySize(key, "jwt.private-key");
+            return key;
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("jwt.private-key is not a valid RSA PKCS8 key", e);
         }
+    }
 
-        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+    private static PublicKey decodePublicKey(String base64) {
+        try {
+            KeyFactory keyFactory = KeyFactory.getInstance(RSA_ALGORITHM);
+            PublicKey key = keyFactory.generatePublic(new X509EncodedKeySpec(Decoders.BASE64.decode(base64)));
+            validateKeySize(key, "jwt.public-key");
+            return key;
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("jwt.public-key is not a valid RSA X509 key", e);
+        }
+    }
+
+    private static void validateKeySize(Key key, String propertyName) {
+        if (key instanceof RSAKey rsaKey && rsaKey.getModulus().bitLength() < MIN_RSA_KEY_BITS) {
+            throw new IllegalStateException(propertyName + " must be at least " + MIN_RSA_KEY_BITS + " bits");
+        }
     }
 
     @Override
@@ -57,6 +90,9 @@ public class JwtServiceImpl implements JwtService {
         }
 
         return Jwts.builder()
+                .header()
+                .keyId(properties.keyId())
+                .and()
                 .subject(String.valueOf(principal.getUserId()))
                 .claim("email", principal.getEmail())
                 .claim("emailVerified", principal.isEmailVerified())
@@ -66,7 +102,7 @@ public class JwtServiceImpl implements JwtService {
                 .issuer(properties.issuer())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(properties.accessTokenTtl())))
-                .signWith(signingKey, Jwts.SIG.HS256)
+                .signWith(privateKey, Jwts.SIG.RS256)
                 .compact();
     }
 
@@ -91,22 +127,35 @@ public class JwtServiceImpl implements JwtService {
         Instant now = Instant.now();
 
         return Jwts.builder()
+                .header()
+                .keyId(properties.keyId())
+                .and()
                 .subject(email)
                 .claim(REGISTRATION_TOKEN_PURPOSE_CLAIM, REGISTRATION_TOKEN_PURPOSE)
                 .issuer(properties.issuer())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(ttl)))
-                .signWith(signingKey, Jwts.SIG.HS256)
+                .signWith(privateKey, Jwts.SIG.RS256)
                 .compact();
     }
 
     @Override
     public Claims parseAndValidate(String token) {
         return Jwts.parser()
-                .verifyWith(signingKey)
+                .verifyWith(publicKey)
                 .requireIssuer(properties.issuer())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    @Override
+    public PublicKey getPublicKey() {
+        return publicKey;
+    }
+
+    @Override
+    public String getKeyId() {
+        return properties.keyId();
     }
 }

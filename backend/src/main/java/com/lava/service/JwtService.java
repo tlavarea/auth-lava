@@ -2,6 +2,7 @@ package com.lava.service;
 
 import com.lava.security.AuthUserPrincipal;
 import io.jsonwebtoken.Claims;
+import java.security.PublicKey;
 import java.time.Duration;
 
 public interface JwtService {
@@ -38,4 +39,21 @@ public interface JwtService {
     String generateRegistrationToken(String email, Duration ttl);
 
     Claims parseAndValidate(String token);
+
+    /**
+     * The RSA public key used to verify tokens issued by {@link #generateAccessToken} /
+     * {@link #generateRegistrationToken}, exposed so it can be published via {@code JwksController} for other services
+     * to verify tokens independently.
+     *
+     * @return the public key.
+     */
+    PublicKey getPublicKey();
+
+    /**
+     * The key ID (`kid`) header stamped on every token this service issues, matching the JWK published at
+     * {@code /.well-known/jwks.json}.
+     *
+     * @return the key ID.
+     */
+    String getKeyId();
 }

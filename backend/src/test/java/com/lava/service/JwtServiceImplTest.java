@@ -10,43 +10,42 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Encoders;
-import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
-import java.security.SecureRandom;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.crypto.SecretKey;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 class JwtServiceImplTest {
 
-    private static final String VALID_SECRET = randomBase64Secret();
+    private static final KeyPair VALID_KEY_PAIR = Jwts.SIG.RS256.keyPair().build();
 
     @Test
-    void constructor_validSecret_succeeds() {
-        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
+    void constructor_validKeys_succeeds() {
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_KEY_PAIR));
 
         assertThat(service).isNotNull();
     }
 
     @Test
-    void constructor_secretDecodesToFewerThan256Bits_throwsIllegalStateException() {
-        String shortSecret = Encoders.BASE64.encode(new byte[16]);
+    void constructor_keySmallerThan2048Bits_throwsIllegalStateException() {
+        JwtProperties shortKeyProperties = properties(shortKeyPair());
 
-        assertThatThrownBy(() -> new JwtServiceImpl(properties(shortSecret)))
+        assertThatThrownBy(() -> new JwtServiceImpl(shortKeyProperties))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("256 bits");
+                .hasMessageContaining("2048 bits");
     }
 
     @Test
     void generateAccessToken_containsExpectedClaims() {
-        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_KEY_PAIR));
         AuthUserPrincipal principal = principal();
 
         String token = service.generateAccessToken(principal, false, false);
@@ -62,7 +61,7 @@ class JwtServiceImplTest {
 
     @Test
     void generateAccessToken_mfaEnrolled_addsMfaEnrolledAuthorityButNotTotpFactor() {
-        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_KEY_PAIR));
         AuthUserPrincipal principal = principal();
 
         String token = service.generateAccessToken(principal, true, false);
@@ -76,7 +75,7 @@ class JwtServiceImplTest {
 
     @Test
     void generateAccessToken_totpVerified_addsTotpFactorClaim() {
-        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_KEY_PAIR));
         AuthUserPrincipal principal = principal();
 
         String token = service.generateAccessToken(principal, true, true);
@@ -93,7 +92,7 @@ class JwtServiceImplTest {
 
     @Test
     void generateAccessToken_totpVerifiedButNotEnrolled_factorsAndAuthoritiesAreIndependent() {
-        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_KEY_PAIR));
         AuthUserPrincipal principal = principal();
 
         String token = service.generateAccessToken(principal, false, true);
@@ -108,7 +107,7 @@ class JwtServiceImplTest {
 
     @Test
     void getAccessTokenTtlSeconds_matchesConfiguredTtl() {
-        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_KEY_PAIR));
 
         assertThat(service.getAccessTokenTtlSeconds())
                 .isEqualTo(Duration.ofMinutes(15).toSeconds());
@@ -116,7 +115,7 @@ class JwtServiceImplTest {
 
     @Test
     void parseAndValidate_roundTripsGeneratedToken() {
-        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_KEY_PAIR));
         String token = service.generateAccessToken(principal(), false, false);
 
         Claims claims = service.parseAndValidate(token);
@@ -126,8 +125,8 @@ class JwtServiceImplTest {
 
     @Test
     void parseAndValidate_wrongIssuer_throwsJwtException() {
-        JwtServiceImpl issuerA = new JwtServiceImpl(properties(VALID_SECRET, "issuer-a"));
-        JwtServiceImpl issuerB = new JwtServiceImpl(properties(VALID_SECRET, "issuer-b"));
+        JwtServiceImpl issuerA = new JwtServiceImpl(properties(VALID_KEY_PAIR, "issuer-a"));
+        JwtServiceImpl issuerB = new JwtServiceImpl(properties(VALID_KEY_PAIR, "issuer-b"));
         String token = issuerA.generateAccessToken(principal(), false, false);
 
         assertThatThrownBy(() -> issuerB.parseAndValidate(token)).isInstanceOf(JwtException.class);
@@ -135,15 +134,14 @@ class JwtServiceImplTest {
 
     @Test
     void parseAndValidate_expiredToken_throwsExpiredJwtException() {
-        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
-        SecretKey key = Keys.hmacShaKeyFor(io.jsonwebtoken.io.Decoders.BASE64.decode(VALID_SECRET));
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_KEY_PAIR));
         Instant past = Instant.now().minus(Duration.ofHours(1));
         String expiredToken = Jwts.builder()
                 .subject("42")
                 .issuer("auth-lava-test")
                 .issuedAt(Date.from(past.minus(Duration.ofMinutes(15))))
                 .expiration(Date.from(past))
-                .signWith(key, Jwts.SIG.HS256)
+                .signWith(VALID_KEY_PAIR.getPrivate(), Jwts.SIG.RS256)
                 .compact();
 
         assertThatThrownBy(() -> service.parseAndValidate(expiredToken)).isInstanceOf(ExpiredJwtException.class);
@@ -151,15 +149,16 @@ class JwtServiceImplTest {
 
     @Test
     void parseAndValidate_malformedToken_throwsJwtException() {
-        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_SECRET));
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_KEY_PAIR));
 
         assertThatThrownBy(() -> service.parseAndValidate("not-a-jwt")).isInstanceOf(JwtException.class);
     }
 
     @Test
     void parseAndValidate_signedWithDifferentKey_throwsSignatureException() {
-        JwtServiceImpl serviceA = new JwtServiceImpl(properties(VALID_SECRET));
-        JwtServiceImpl serviceB = new JwtServiceImpl(properties(randomBase64Secret()));
+        JwtServiceImpl serviceA = new JwtServiceImpl(properties(VALID_KEY_PAIR));
+        JwtServiceImpl serviceB =
+                new JwtServiceImpl(properties(Jwts.SIG.RS256.keyPair().build()));
         String token = serviceA.generateAccessToken(principal(), false, false);
 
         assertThatThrownBy(() -> serviceB.parseAndValidate(token)).isInstanceOf(SignatureException.class);
@@ -176,17 +175,27 @@ class JwtServiceImplTest {
                 .build();
     }
 
-    private static JwtProperties properties(String secret) {
-        return properties(secret, "auth-lava-test");
+    private static JwtProperties properties(KeyPair keyPair) {
+        return properties(keyPair, "auth-lava-test");
     }
 
-    private static JwtProperties properties(String secret, String issuer) {
-        return new JwtProperties(secret, issuer, Duration.ofMinutes(15), Duration.ofDays(30));
+    private static JwtProperties properties(KeyPair keyPair, String issuer) {
+        return new JwtProperties(
+                Encoders.BASE64.encode(keyPair.getPrivate().getEncoded()),
+                Encoders.BASE64.encode(keyPair.getPublic().getEncoded()),
+                "test-key-1",
+                issuer,
+                Duration.ofMinutes(15),
+                Duration.ofDays(30));
     }
 
-    private static String randomBase64Secret() {
-        byte[] bytes = new byte[32];
-        new SecureRandom().nextBytes(bytes);
-        return Base64.getEncoder().encodeToString(bytes);
+    private static KeyPair shortKeyPair() {
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(1024);
+            return generator.generateKeyPair();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

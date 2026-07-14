@@ -33,6 +33,7 @@
     <java.version>25</java.version>
     <jcommander.version>1.82</jcommander.version>
     <jjwt.version>0.13.0</jjwt.version>
+    <nimbus-jose-jwt.version>10.9</nimbus-jose-jwt.version>
     <owasp-encoder.version>1.4.0</owasp-encoder.version>
     <palantir.version>2.91.0</palantir.version>
     <record-builder.version>53</record-builder.version>
@@ -149,6 +150,11 @@
       <artifactId>record-builder-core</artifactId>
       <version>${record-builder.version}</version>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>${nimbus-jose-jwt.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
