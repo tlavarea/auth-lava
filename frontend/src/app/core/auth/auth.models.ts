@@ -47,6 +47,7 @@ export type MfaEnrollVerifyRequest = {
 
 export type BackupCodesResponse = {
   backupCodes: string[];
+  user: UserResponse;
 };
 
 export type MfaVerifyRequest = {
