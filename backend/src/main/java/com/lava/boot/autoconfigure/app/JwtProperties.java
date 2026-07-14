@@ -9,7 +9,9 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "jwt")
 @Validated
 public record JwtProperties(
-        @NotBlank String secret,
+        @NotBlank String privateKey,
+        @NotBlank String publicKey,
+        @NotBlank String keyId,
         @NotBlank String issuer,
         @NotNull Duration accessTokenTtl,
         @NotNull Duration refreshTokenTtl) {}

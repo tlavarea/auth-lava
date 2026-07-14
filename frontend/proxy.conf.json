@@ -1,4 +1,11 @@
 {
+  "/api/sw-expedited": {
+    "target": "http://localhost:8081",
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api/sw-expedited": "/api"
+    }
+  },
   "/api": {
     "target": "http://localhost:8080",
     "changeOrigin": true

@@ -37,7 +37,8 @@ class RefreshTokenServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        JwtProperties properties = new JwtProperties("secret", "issuer", Duration.ofMinutes(15), Duration.ofDays(30));
+        JwtProperties properties = new JwtProperties(
+                "private-key", "public-key", "key-id", "issuer", Duration.ofMinutes(15), Duration.ofDays(30));
         this.service = new RefreshTokenServiceImpl(properties, this.refreshTokenRepository, new SecureRandom());
     }
 
