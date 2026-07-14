@@ -20,7 +20,9 @@ email-change:
   resend-cooldown: ${EMAIL_CHANGE_RESEND_COOLDOWN:60s}
 
 jwt:
-  secret: ${JWT_SECRET:}
+  private-key: ${JWT_PRIVATE_KEY:}
+  public-key: ${JWT_PUBLIC_KEY:}
+  key-id: ${JWT_KEY_ID:auth-lava-key-1}
   issuer: ${JWT_ISSUER:auth-lava}
   access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:15m}
   refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:30d}

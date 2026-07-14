@@ -90,6 +90,11 @@ public class SecurityConfiguration {
                         // show-details is "never" (application.yaml) so it only ever reveals UP/DOWN,
                         // never dependency internals, to an anonymous caller.
                         "/actuator/health",
+                        // Published for other services to verify JWTs issued by this one - a JWKS
+                        // document only ever contains public key material, so it's safe to expose
+                        // without authentication (and other services can't authenticate against
+                        // this app's session model anyway).
+                        "/.well-known/jwks.json",
                         // Spring Boot's default error handling forwards internally to /error when
                         // a filter calls response.sendError(...), and Spring Security re-runs the
                         // filter chain for that forwarded dispatch. Without this, a denial (e.g.

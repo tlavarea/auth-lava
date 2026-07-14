@@ -10,8 +10,8 @@ import org.springframework.http.ResponseCookie;
 
 class AuthCookieFactoryTest {
 
-    private static final JwtProperties JWT_PROPERTIES =
-            new JwtProperties("secret", "issuer", Duration.ofMinutes(15), Duration.ofDays(30));
+    private static final JwtProperties JWT_PROPERTIES = new JwtProperties(
+            "private-key", "public-key", "key-id", "issuer", Duration.ofMinutes(15), Duration.ofDays(30));
 
     @Test
     void accessTokenCookie_hasExpectedAttributes() {
