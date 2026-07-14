@@ -20,11 +20,6 @@ export const routes: Routes = [
         title: 'Profile',
         loadComponent: () => import('./features/profile/profile.page').then((m) => m.ProfilePage),
       },
-      {
-        path: 'mfa/enroll',
-        title: 'Set up two-factor authentication',
-        loadComponent: () => import('./features/mfa-enroll/mfa-enroll.page').then((m) => m.MfaEnrollPage),
-      },
     ],
   },
   {

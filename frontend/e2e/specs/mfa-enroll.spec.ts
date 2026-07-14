@@ -3,27 +3,33 @@ import { expect, test } from '../support/fixtures';
 
 test.describe('MFA enrollment', () => {
   test('enrolls, verifies the code, and confirms backup codes', async ({ page, backend, context }) => {
-    backend.withAuthenticatedUser();
+    backend.withAuthenticatedUser({ mfaEnabled: false });
     await context.grantPermissions(['clipboard-write'], { origin: 'http://localhost:4200' });
-    await page.goto('/mfa/enroll');
+    await page.goto('/profile');
 
-    await expect(page.getByAltText('QR code for authenticator app enrollment')).toBeVisible();
-    await page.getByLabel('Verification code').pressSequentially(MFA_CODE);
+    await page.getByRole('button', { name: 'Update' }).click();
 
-    await expect(page.getByText(/Save these backup codes/)).toBeVisible();
-    await page.getByRole('button', { name: 'Copy all' }).click();
-    await expect(page.getByRole('button', { name: 'Continue' })).toBeEnabled();
-    await page.getByRole('button', { name: 'Continue' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByAltText('QR code for authenticator app enrollment')).toBeVisible();
+    await dialog.getByLabel('Verification code').pressSequentially(MFA_CODE);
 
-    await expect(page).toHaveURL('/');
+    await expect(dialog.getByText(/Save these backup codes/)).toBeVisible();
+    await dialog.getByRole('button', { name: 'Copy all' }).click();
+    await expect(dialog.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    await dialog.getByRole('button', { name: 'Continue' }).click();
+
+    await expect(dialog).toBeHidden();
+    await expect(page.getByText('Two-factor verification is: ON', { exact: true })).toBeVisible();
   });
 
   test('shows an error for an incorrect verification code', async ({ page, backend }) => {
-    backend.withAuthenticatedUser();
-    await page.goto('/mfa/enroll');
+    backend.withAuthenticatedUser({ mfaEnabled: false });
+    await page.goto('/profile');
 
-    await page.getByLabel('Verification code').pressSequentially('000000');
+    await page.getByRole('button', { name: 'Update' }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByLabel('Verification code').pressSequentially('000000');
 
-    await expect(page.getByText('Invalid verification code')).toBeVisible();
+    await expect(dialog.getByText('Invalid verification code')).toBeVisible();
   });
 });

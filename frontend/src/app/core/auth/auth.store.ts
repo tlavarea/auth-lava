@@ -88,7 +88,9 @@ export const AuthStore = signalStore(
       },
 
       async verifyEnrollment(mfaMethodId: number, code: string): Promise<BackupCodesResponse> {
-        return firstValueFrom(authApi.verifyEnrollment({ mfaMethodId, code }));
+        const result = await firstValueFrom(authApi.verifyEnrollment({ mfaMethodId, code }));
+        patchState(store, { status: 'authenticated', user: result.user });
+        return result;
       },
 
       async verifyMfa(code: string): Promise<void> {

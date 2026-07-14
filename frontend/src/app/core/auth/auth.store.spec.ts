@@ -71,6 +71,20 @@ describe('AuthStore', () => {
     expect(store.status()).toBe('mfa-pending');
   });
 
+  it('verifyEnrollment() patches the authenticated user from the response', async () => {
+    const enrolledUser: UserResponse = { ...user, mfaEnabled: true };
+
+    const verifyPromise = store.verifyEnrollment(1, '123456');
+    httpMock
+      .expectOne('/api/auth/mfa/enroll/verify')
+      .flush({ backupCodes: ['aaaa-1111', 'bbbb-2222'], user: enrolledUser });
+    const result = await verifyPromise;
+
+    expect(result).toEqual({ backupCodes: ['aaaa-1111', 'bbbb-2222'], user: enrolledUser });
+    expect(store.status()).toBe('authenticated');
+    expect(store.user()).toEqual(enrolledUser);
+  });
+
   it('logout() clears local state even when the backend returns 403', async () => {
     const logoutPromise = store.logout();
     httpMock.expectOne('/api/auth/logout').flush(null, { status: 403, statusText: 'Forbidden' });

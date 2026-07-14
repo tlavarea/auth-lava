@@ -166,7 +166,10 @@ export class FakeAuthBackend {
         const { mfaMethodId, code } = request.postDataJSON() as MfaEnrollVerifyRequest;
         if (mfaMethodId === this.mfaMethodId && code === this.mfaCode) {
           this.user = { ...this.user, mfaEnabled: true };
-          const backupCodes: BackupCodesResponse = { backupCodes: ['aaaa-1111', 'bbbb-2222', 'cccc-3333'] };
+          const backupCodes: BackupCodesResponse = {
+            backupCodes: ['aaaa-1111', 'bbbb-2222', 'cccc-3333'],
+            user: this.user,
+          };
           await route.fulfill({ status: 200, json: backupCodes });
         } else {
           await route.fulfill({ status: 401, json: errorBody('Invalid verification code') });
