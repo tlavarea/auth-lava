@@ -30,8 +30,11 @@
   <properties>
     <jacoco.version>0.8.14</jacoco.version>
     <java.version>25</java.version>
+    <jsoup.version>1.22.1</jsoup.version>
+    <owasp-encoder.version>1.4.0</owasp-encoder.version>
     <palantir.version>2.91.0</palantir.version>
     <spotless.version>3.6.0</spotless.version>
+    <wiremock.version>3.9.2</wiremock.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -52,6 +55,22 @@
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-batch</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-batch-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jooq</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-liquibase</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
     </dependency>
     <dependency>
@@ -68,9 +87,18 @@
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-zipkin</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-devtools</artifactId>
       <scope>runtime</scope>
       <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>org.projectlombok</groupId>
@@ -79,10 +107,54 @@
     </dependency>
     <!-- Spring boot dependencies end -->
 
+    <!-- 3rd party dependencies start -->
+    <dependency>
+      <groupId>org.apache.httpcomponents.client5</groupId>
+      <artifactId>httpclient5</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-csv</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jooq</groupId>
+      <artifactId>jooq-codegen</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jooq</groupId>
+      <artifactId>jooq-meta</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jsoup</groupId>
+      <artifactId>jsoup</artifactId>
+      <version>${jsoup.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.owasp.encoder</groupId>
+      <artifactId>encoder</artifactId>
+      <version>${owasp-encoder.version}</version>
+    </dependency>
+    <!-- 3rd party dependencies end -->
+
     <!-- Test dependencies start -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-batch-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jooq-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-liquibase-test</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -93,6 +165,27 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.wiremock</groupId>
+      <artifactId>wiremock-standalone</artifactId>
+      <version>${wiremock.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- Test dependencies end -->
@@ -110,6 +203,42 @@
             </exclude>
           </excludes>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>default-compile</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+            <configuration>
+              <annotationProcessorPaths>
+                <path>
+                  <groupId>org.projectlombok</groupId>
+                  <artifactId>lombok</artifactId>
+                </path>
+              </annotationProcessorPaths>
+            </configuration>
+          </execution>
+          <execution>
+            <id>default-testCompile</id>
+            <phase>test-compile</phase>
+            <goals>
+              <goal>testCompile</goal>
+            </goals>
+            <configuration>
+              <annotationProcessorPaths>
+                <path>
+                  <groupId>org.projectlombok</groupId>
+                  <artifactId>lombok</artifactId>
+                </path>
+              </annotationProcessorPaths>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>com.diffplug.spotless</groupId>
@@ -135,6 +264,66 @@
             <phase>compile</phase>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.jooq</groupId>
+        <artifactId>jooq-codegen-maven</artifactId>
+        <version>${jooq.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq-meta-extensions-liquibase</artifactId>
+            <version>${jooq.version}</version>
+          </dependency>
+        </dependencies>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <generator>
+            <database>
+              <name>org.jooq.meta.extensions.liquibase.LiquibaseDatabase</name>
+              <properties>
+                <property>
+                  <key>rootPath</key>
+                  <value>${basedir}/src/main/resources</value>
+                </property>
+                <property>
+                  <key>scripts</key>
+                  <value>db/changelog/db.changelog-master.yaml</value>
+                </property>
+                <property>
+                  <key>includeLiquibaseTables</key>
+                  <value>false</value>
+                </property>
+                <property>
+                  <key>changeLogParameters.contexts</key>
+                  <value>!test</value>
+                </property>
+              </properties>
+            </database>
+            <generate>
+              <interfaces>false</interfaces>
+              <javaTimeTypes>true</javaTimeTypes>
+              <pojos>true</pojos>
+              <pojosAsJavaRecordClasses>true</pojosAsJavaRecordClasses>
+              <pojosEqualsAndHashCode>false</pojosEqualsAndHashCode>
+              <pojosToString>false</pojosToString>
+              <springAnnotations>true</springAnnotations>
+              <springDao>true</springDao>
+              <validationAnnotations>true</validationAnnotations>
+            </generate>
+            <target>
+              <packageName>com.lava.swexpedited.model.database</packageName>
+              <directory>target/generated-sources/jooq</directory>
+            </target>
+          </generator>
+        </configuration>
       </plugin>
       <plugin>
         <!-- 0.8.14 is the minimum version supporting Java 25 class files (major version 69) -->
@@ -184,6 +373,15 @@
         </executions>
         <configuration>
           <excludes>
+            <!-- jOOQ-generated code directly under com.lava.swexpedited.model.database -->
+            <exclude>com/lava/swexpedited/model/database/Tables.class</exclude>
+            <exclude>com/lava/swexpedited/model/database/Indexes.class</exclude>
+            <exclude>com/lava/swexpedited/model/database/Keys.class</exclude>
+            <exclude>com/lava/swexpedited/model/database/DefaultCatalog.class</exclude>
+            <exclude>com/lava/swexpedited/model/database/DefaultSchema.class</exclude>
+            <exclude>com/lava/swexpedited/model/database/AbstractSpringDAOImpl.class</exclude>
+            <!-- jOOQ-generated tables/records/pojos -->
+            <exclude>com/lava/swexpedited/model/database/tables/**</exclude>
             <!-- application bootstrap, no logic -->
             <exclude>com/lava/swexpedited/SwExpeditedApplication.class</exclude>
           </excludes>

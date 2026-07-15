@@ -1,0 +1,94 @@
+databaseChangeLog:
+  - changeSet:
+      id: "1"
+      author: tlavarea
+      comment: >
+        SHIPMENT_LISTING - a live snapshot of currently-available GFM/ATR shipment offers,
+        synced periodically from the DoD GFM system. Keyed on offer_id (the CSV's natural
+        row identifier). Each sync run replaces the full table contents in one transaction
+        (delete + bulk insert) rather than diffing/upserting - the CSV itself represents
+        "what's available right now", not a history of changes, so there is nothing to merge.
+      changes:
+        - createTable:
+            tableName: shipment_listing
+            columns:
+              - column:
+                  name: offer_id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expiration_date
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false
+              - column:
+                  name: shipment_id
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: shipment_type
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: rank
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: gbloc
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: origin
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: destination
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: equip_type
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: conveyances_offered
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: conveyances_accepted
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: pickup_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: required_delivery_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS shipment_listing CASCADE;
