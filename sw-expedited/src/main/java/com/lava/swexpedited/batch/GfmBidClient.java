@@ -1,13 +1,15 @@
 package com.lava.swexpedited.batch;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lava.swexpedited.boot.autoconfigure.app.GfmProperties;
 import com.lava.swexpedited.configuration.GfmFetchMetadataHeaders;
+import com.lava.swexpedited.gfm.model.Bid;
+import com.lava.swexpedited.gfm.model.Equipment;
+import com.lava.swexpedited.gfm.model.GfmGetBidResponse;
+import com.lava.swexpedited.gfm.model.GfmShipment;
 import com.lava.swexpedited.shipment.ShipmentDetailRow;
 import java.io.UncheckedIOException;
-import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
@@ -24,11 +26,14 @@ import org.springframework.web.util.UriComponentsBuilder;
 /**
  * Fetches the GFM/ATR "getBid" response for one shipment offer, over the same authenticated session
  * {@code FetchAndLoadShipmentsTasklet}'s login chain already established for this job run - no separate login happens
- * here. Only a handful of fields the UI is likely to filter/sort/display on are pulled out of the response via
- * {@link JsonNode} path navigation; everything else is kept as the raw response body rather than modeled into Java
- * classes, since the payload is deeply nested and owned by a system outside our control (see
- * 002-create-shipment-detail.yaml). Path navigation also degrades gracefully if GFM adds/renames fields, unlike strict
- * deserialization into a matching class tree.
+ * here. The response is deserialized into the {@code com.lava.swexpedited.gfm.model} classes generated (via
+ * {@code jsonschema2pojo-maven-plugin}, bound to {@code generate-sources}) from
+ * {@code src/main/resources/schema/gfm-bid-response.schema.json}; only the fields this app actually surfaces are
+ * modeled in that schema, and the rest fall into each generated class's {@code additionalProperties} map
+ * (jsonschema2pojo's {@code includeAdditionalProperties} defaults to true) rather than failing deserialization if GFM
+ * adds/renames fields. {@code rawResponse} is still kept in full alongside the typed fields, since the payload is owned
+ * by a system outside our control (see 002-create-shipment-detail.yaml) and nothing the UI's detail view needs should
+ * be lost to under-modeling it.
  *
  * <p>Builds its own {@link ObjectMapper} rather than injecting Spring's auto-configured one - Spring Boot 4.1's own
  * Jackson auto-configuration is for Jackson 3 ({@code tools.jackson.databind}), so no bean of this (Jackson 2,
@@ -71,38 +76,39 @@ public class GfmBidClient {
                 .retrieve()
                 .body(String.class));
 
-        JsonNode root;
-        try {
-            root = objectMapper.readTree(rawResponse);
-        } catch (JsonProcessingException e) {
-            throw new UncheckedIOException("Failed to parse getBid response for offer " + offerId, e);
-        }
-        JsonNode bid = root.path("bid");
-        JsonNode shipment = bid.path("equipment").path("shipment");
+        Bid bid = parseBid(rawResponse, offerId);
+        GfmShipment shipment = shipmentOf(bid);
 
         return new ShipmentDetailRow(
                 offerId,
-                decimal(bid, "totalAmount"),
-                decimal(bid, "lineHaulCost"),
-                decimal(bid, "rateUsed"),
-                text(bid, "scac"),
-                text(bid, "scacName"),
-                text(bid, "tenderNumber"),
-                text(bid, "equipmentDesc"),
-                text(shipment, "requestorName"),
-                text(shipment, "requestorEmail"),
+                bid.getTotalAmount(),
+                bid.getLineHaulCost(),
+                bid.getRateUsed(),
+                bid.getScac(),
+                bid.getScacName(),
+                bid.getTenderNumber(),
+                bid.getEquipmentDesc(),
+                shipment.getRequestorName(),
+                shipment.getRequestorEmail(),
                 rawResponse,
                 null);
     }
 
-    private BigDecimal decimal(JsonNode node, String field) {
-        JsonNode value = node.path(field);
-        return value.isMissingNode() || value.isNull() ? null : value.decimalValue();
+    private Bid parseBid(String rawResponse, long offerId) {
+        GfmGetBidResponse response;
+        try {
+            response = objectMapper.readValue(rawResponse, GfmGetBidResponse.class);
+        } catch (JsonProcessingException e) {
+            throw new UncheckedIOException("Failed to parse getBid response for offer " + offerId, e);
+        }
+        Bid bid = response.getBid();
+        return bid != null ? bid : new Bid();
     }
 
-    private String text(JsonNode node, String field) {
-        JsonNode value = node.path(field);
-        return value.isMissingNode() || value.isNull() ? null : value.asText();
+    private GfmShipment shipmentOf(Bid bid) {
+        Equipment equipment = bid.getEquipment();
+        GfmShipment shipment = equipment != null ? equipment.getShipment() : null;
+        return shipment != null ? shipment : new GfmShipment();
     }
 
     private <T> T retrying(Supplier<T> call) {

@@ -3,7 +3,7 @@ import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '@env/environment';
-import { ShipmentDetailResponse, ShipmentListingRow } from './shipments.models';
+import { OfferResponseRequest, ShipmentDetailResponse, ShipmentListingRow } from './shipments.models';
 
 const BASE_URL = `${environment.apiUrl}/api/sw-expedited/shipments`;
 
@@ -17,5 +17,9 @@ export class ShipmentsApi {
 
   detail(offerId: number): Observable<ShipmentDetailResponse> {
     return this.http.get<ShipmentDetailResponse>(`${BASE_URL}/${offerId}`);
+  }
+
+  respondToOffer(offerId: number, request: OfferResponseRequest): Observable<void> {
+    return this.http.post<void>(`${BASE_URL}/${offerId}/respond`, request);
   }
 }

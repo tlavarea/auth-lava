@@ -40,6 +40,7 @@ describe('ShipmentsStore', () => {
     requestorEmail: 'jane@example.com',
     rawResponse: '{}',
     syncedAt: '2026-07-14T00:00:00',
+    bidDetail: null,
   };
 
   beforeEach(() => {
@@ -96,5 +97,25 @@ describe('ShipmentsStore', () => {
 
     expect(store.selectedDetail()).toBeNull();
     expect(store.detailStatus()).toBe('idle');
+  });
+
+  it('respondToOffer() posts the response and resolves on success', async () => {
+    const responsePromise = store.respondToOffer(42, { response: 'ACCEPT', conveyancesAvailable: 1 });
+    const req = httpMock.expectOne('/api/sw-expedited/shipments/42/respond');
+    expect(req.request.body).toEqual({ response: 'ACCEPT', conveyancesAvailable: 1 });
+    req.flush(null);
+    await responsePromise;
+
+    expect(store.respondStatus()).toBe('idle');
+  });
+
+  it('respondToOffer() marks respondStatus as error and rethrows on failure', async () => {
+    const responsePromise = store.respondToOffer(42, { response: 'DECLINE', conveyancesAvailable: 0 });
+    httpMock
+      .expectOne('/api/sw-expedited/shipments/42/respond')
+      .flush(null, { status: 501, statusText: 'Not Implemented' });
+
+    await expect(responsePromise).rejects.toBeTruthy();
+    expect(store.respondStatus()).toBe('error');
   });
 });

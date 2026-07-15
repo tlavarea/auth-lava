@@ -13,25 +13,25 @@ import { ShipmentListingRow } from '../shipments.models';
       <table hlmTable>
         <thead hlmTHead>
           <tr hlmTr>
-            <th hlmTh>Shipment</th>
-            <th hlmTh>Status</th>
-            <th hlmTh>Origin</th>
-            <th hlmTh>Destination</th>
-            <th hlmTh>Pickup</th>
-            <th hlmTh>Required delivery</th>
+            <th hlmTh class="px-3">Shipment</th>
+            <th hlmTh class="px-3">Status</th>
+            <th hlmTh class="px-3">Origin</th>
+            <th hlmTh class="px-3">Destination</th>
+            <th hlmTh class="px-3">Pickup</th>
+            <th hlmTh class="px-3">Required delivery</th>
           </tr>
         </thead>
         <tbody hlmTBody>
           @for (shipment of shipments(); track shipment.offerId) {
             <tr hlmTr class="cursor-pointer" [routerLink]="[shipment.offerId]">
-              <td hlmTd>{{ shipment.shipmentId }}</td>
-              <td hlmTd>
+              <td hlmTd class="px-3 py-3">{{ shipment.shipmentId }}</td>
+              <td hlmTd class="px-3 py-3">
                 <span hlmBadge [variant]="statusVariant(shipment.status)">{{ shipment.status }}</span>
               </td>
-              <td hlmTd>{{ shipment.origin }}</td>
-              <td hlmTd>{{ shipment.destination }}</td>
-              <td hlmTd>{{ shipment.pickupDate }}</td>
-              <td hlmTd>{{ shipment.requiredDeliveryDate }}</td>
+              <td hlmTd class="px-3 py-3">{{ shipment.origin }}</td>
+              <td hlmTd class="px-3 py-3">{{ shipment.destination }}</td>
+              <td hlmTd class="px-3 py-3">{{ shipment.pickupDate }}</td>
+              <td hlmTd class="px-3 py-3">{{ shipment.requiredDeliveryDate }}</td>
             </tr>
           }
         </tbody>
