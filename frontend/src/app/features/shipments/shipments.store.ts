@@ -3,7 +3,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 
 import { ShipmentsApi } from './shipments-api';
-import { ShipmentDetailResponse, ShipmentListingRow } from './shipments.models';
+import { OfferResponseRequest, ShipmentDetailResponse, ShipmentListingRow } from './shipments.models';
 
 export type ShipmentsRequestStatus = 'idle' | 'loading' | 'error';
 
@@ -12,6 +12,7 @@ type ShipmentsState = {
   listStatus: ShipmentsRequestStatus;
   selectedDetail: ShipmentDetailResponse | null;
   detailStatus: ShipmentsRequestStatus;
+  respondStatus: ShipmentsRequestStatus;
 };
 
 const initialState: ShipmentsState = {
@@ -19,6 +20,7 @@ const initialState: ShipmentsState = {
   listStatus: 'idle',
   selectedDetail: null,
   detailStatus: 'idle',
+  respondStatus: 'idle',
 };
 
 // Route-scoped (provided by ShipmentsPage, not `root`) so list + selected-detail state resets per visit
@@ -51,6 +53,17 @@ export const ShipmentsStore = signalStore(
 
       clearSelectedDetail(): void {
         patchState(store, { selectedDetail: null, detailStatus: 'idle' });
+      },
+
+      async respondToOffer(offerId: number, request: OfferResponseRequest): Promise<void> {
+        patchState(store, { respondStatus: 'loading' });
+        try {
+          await firstValueFrom(shipmentsApi.respondToOffer(offerId, request));
+          patchState(store, { respondStatus: 'idle' });
+        } catch (error) {
+          patchState(store, { respondStatus: 'error' });
+          throw error;
+        }
       },
     };
   })

@@ -1,11 +1,12 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Component, inject, OnInit, Signal, signal, WritableSignal } from '@angular/core';
+import { Component, computed, inject, OnInit, Signal, signal, WritableSignal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterOutlet } from '@angular/router';
 import { map } from 'rxjs';
 
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
+import { ShipmentDetailPage } from './shipment-detail/shipment-detail.page';
 import { ShipmentItem } from './shipment-item/shipment-item';
 import { ShipmentTable } from './shipment-table/shipment-table';
 import { ShipmentListingRow } from './shipments.models';
@@ -19,8 +20,8 @@ const DESKTOP_QUERY = '(min-width: 1024px)';
   imports: [HlmSpinnerImports, RouterOutlet, ShipmentItem, ShipmentTable],
   providers: [ShipmentsStore],
   template: `
-    <div class="relative h-full">
-      <section class="h-full overflow-y-auto p-4">
+    <div class="relative flex h-full">
+      <section [class]="masterClasses()" [attr.inert]="detailOpen() && !isDesktop() ? '' : null">
         @switch (listStatus()) {
           @case ('loading') {
             <div class="flex h-full items-center justify-center">
@@ -31,16 +32,16 @@ const DESKTOP_QUERY = '(min-width: 1024px)';
             <p class="text-destructive">Couldn't load shipments.</p>
           }
           @default {
-            @if (isDesktop()) {
+            @if (isDesktop() && !detailOpen()) {
               <app-shipment-table [shipments]="shipments()" />
             } @else {
-              <app-shipment-item [shipments]="shipments()" />
+              <app-shipment-item [shipments]="shipments()" [selectedId]="selectedId()" />
             }
           }
         }
       </section>
 
-      @if (detailOpen()) {
+      @if (detailOpen() && !isDesktop()) {
         <button
           type="button"
           class="fixed inset-0 z-40 bg-black/50"
@@ -48,8 +49,8 @@ const DESKTOP_QUERY = '(min-width: 1024px)';
           (click)="closeDetail()"></button>
       }
 
-      <div [class]="panelClasses" [class.translate-x-full]="!detailOpen()" [attr.inert]="detailOpen() ? null : ''">
-        <router-outlet (activate)="detailOpen.set(true)" (deactivate)="detailOpen.set(false)" />
+      <div [class]="panelClasses()" [attr.inert]="!detailOpen() && !isDesktop() ? '' : null">
+        <router-outlet (activate)="activeDetail.set($event)" (deactivate)="activeDetail.set(null)" />
       </div>
     </div>
   `,
@@ -59,18 +60,39 @@ export class ShipmentsPage implements OnInit {
   private readonly breakpointObserver: BreakpointObserver = inject(BreakpointObserver);
   private readonly router: Router = inject(Router);
 
-  protected readonly panelClasses =
-    'fixed inset-y-0 end-0 z-50 flex w-full flex-col overflow-y-auto border-s border-border ' +
-    'bg-popover text-popover-foreground shadow-lg transition-transform duration-200 ease-in-out sm:max-w-xl';
-
   protected readonly shipments: Signal<ShipmentListingRow[]> = this.store.shipments;
   protected readonly listStatus: Signal<ShipmentsRequestStatus> = this.store.listStatus;
-  protected readonly detailOpen: WritableSignal<boolean> = signal(false);
+
+  protected readonly activeDetail: WritableSignal<ShipmentDetailPage | null> = signal(null);
+  protected readonly detailOpen: Signal<boolean> = computed(() => this.activeDetail() !== null);
+  protected readonly selectedId: Signal<number | null> = computed(() => {
+    const id = this.activeDetail()?.id();
+    return id !== undefined ? Number(id) : null;
+  });
 
   protected readonly isDesktop: Signal<boolean> = toSignal(
     this.breakpointObserver.observe(DESKTOP_QUERY).pipe(map((state) => state.matches)),
     { initialValue: this.breakpointObserver.isMatched(DESKTOP_QUERY) }
   );
+
+  // On desktop, an open detail shrinks the master column to an item-view sidebar; closed, it's full width.
+  // Scrolling is frozen while a detail is open so the selected row can never be scrolled out of view.
+  protected readonly masterClasses: Signal<string> = computed(() =>
+    this.isDesktop() && this.detailOpen()
+      ? 'h-full w-full max-w-md shrink-0 overflow-hidden bg-muted/20 p-4 [scrollbar-width:none]'
+      : 'h-full w-full overflow-y-auto p-4 [scrollbar-width:none]'
+  );
+
+  // Mobile keeps the slide-over sheet; desktop is an inline split pane with no overlay.
+  protected readonly panelClasses: Signal<string> = computed(() => {
+    if (!this.isDesktop()) {
+      const base =
+        'fixed inset-y-0 end-0 z-50 flex w-full flex-col overflow-y-auto border-s border-border ' +
+        'bg-popover text-popover-foreground shadow-lg transition-transform duration-200 ease-in-out sm:max-w-xl';
+      return this.detailOpen() ? base : `${base} translate-x-full`;
+    }
+    return this.detailOpen() ? 'flex-1 h-full overflow-y-auto bg-accent p-6 shadow-md shadow-neutral-400' : 'hidden';
+  });
 
   ngOnInit(): void {
     void this.store.loadShipments();
