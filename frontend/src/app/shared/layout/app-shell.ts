@@ -1,5 +1,5 @@
 import { Component, computed, inject, Signal, signal, WritableSignal } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideLogOut, lucideUser } from '@ng-icons/lucide';
 import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
@@ -15,6 +15,7 @@ import { ThemeToggle } from '@shared/theme-toggle/theme-toggle';
   selector: 'app-shell',
   imports: [
     RouterLink,
+    RouterLinkActive,
     RouterOutlet,
     NgIcon,
     HlmAvatarImports,
@@ -26,10 +27,17 @@ import { ThemeToggle } from '@shared/theme-toggle/theme-toggle';
   viewProviders: [provideIcons({ lucideLogOut, lucideUser })],
   template: `
     <div class="flex h-dvh flex-col overflow-hidden">
-      <header class="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 shadow-sm">
-        <nav class="flex items-center gap-4">
+      <header class="flex h-20 shrink-0 items-center justify-between border-b border-border px-4 shadow-sm">
+        <nav class="flex items-center gap-8">
           <a routerLink="/" class="text-sm font-semibold">auth-lava</a>
-          <a routerLink="/shipments" class="text-sm text-muted-foreground hover:text-foreground">Shipments</a>
+          <div class="flex items-center gap-4">
+            <a
+              routerLink="/shipments"
+              routerLinkActive="border-b-3 border-b-neutral-900 bg-neutral-100 text-neutral-900 font-medium"
+              class="px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-neutral-200">
+              Shipments
+            </a>
+          </div>
         </nav>
 
         <div class="flex items-center gap-2">
