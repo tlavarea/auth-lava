@@ -22,3 +22,6 @@ out/
 .claude/agent-memory-local
 .claude/first-run
 .claude/assistant-daemon-state.json
+
+# Playwright MCP server session output
+.playwright-mcp/
