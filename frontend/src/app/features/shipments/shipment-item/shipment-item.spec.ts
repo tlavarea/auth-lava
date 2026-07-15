@@ -42,11 +42,31 @@ describe('ShipmentItem', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
-  it('renders a card per shipment with a link to its detail route', () => {
+  it('renders the whole row as a link to its detail route', () => {
     expect(fixture.nativeElement.textContent).toContain('SHP-42');
     expect(fixture.nativeElement.textContent).toContain('Fort Liberty, NC');
 
-    const detailLink: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a[href="/42"]');
-    expect(detailLink?.textContent).toContain('View details');
+    const row: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a[href="/42"]');
+    expect(row).toBeTruthy();
+    expect(row?.querySelector('button, a')).toBeFalsy();
+  });
+
+  it('highlights the row matching selectedId and marks it aria-current', () => {
+    fixture.componentRef.setInput('selectedId', 42);
+    fixture.detectChanges();
+
+    const row: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a[href="/42"]');
+    expect(row?.getAttribute('aria-current')).toBe('page');
+    expect(row?.classList.contains('bg-accent')).toBe(true);
+    expect(row?.classList.contains('border-e-0')).toBe(true);
+    expect(row?.classList.contains('w-[calc(100%+1rem)]')).toBe(true);
+    expect(row?.classList.contains('hover:bg-muted/50')).toBe(false);
+  });
+
+  it('does not highlight any row when selectedId is null, and unselected rows get a hover class', () => {
+    const row: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a[href="/42"]');
+    expect(fixture.nativeElement.querySelector('[aria-current="page"]')).toBeFalsy();
+    expect(row?.classList.contains('bg-accent')).toBe(false);
+    expect(row?.classList.contains('hover:bg-muted/50')).toBe(true);
   });
 });

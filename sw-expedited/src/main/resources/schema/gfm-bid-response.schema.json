@@ -1,0 +1,159 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "GfmGetBidResponse",
+  "javaType": "com.lava.swexpedited.gfm.model.GfmGetBidResponse",
+  "type": "object",
+  "description": "The GFM/ATR 'getBid' response body (/atr/getBid). Only the subset of fields this app actually surfaces is modeled here - everything else falls into each generated class's additionalProperties map (includeAdditionalProperties defaults to true) rather than failing deserialization, so an unmodeled or renamed GFM field degrades to 'not captured' instead of a hard error.",
+  "properties": {
+    "bid": {
+      "$ref": "#/definitions/bid"
+    }
+  },
+  "definitions": {
+    "bid": {
+      "type": "object",
+      "javaType": "com.lava.swexpedited.gfm.model.Bid",
+      "properties": {
+        "totalAmount": { "type": "number" },
+        "lineHaulCost": { "type": "number" },
+        "rateUsed": { "type": "number" },
+        "scac": { "type": "string" },
+        "scacName": { "type": "string" },
+        "tenderNumber": { "type": "string" },
+        "equipmentDesc": { "type": "string" },
+        "equipmentCode": { "type": "string" },
+        "contractNumber": { "type": "string" },
+        "carrierPhone": { "type": "string" },
+        "commodityCode": { "type": "string" },
+        "ratedMiles": { "type": "integer" },
+        "rateQualifier": { "type": "string" },
+        "ratedQuantityLimits": { "type": "string" },
+        "serviceCost": { "type": "number" },
+        "miscCost": { "type": "number" },
+        "fuelAdjust": { "type": "number" },
+        "fuelCost": { "type": "number" },
+        "fuelSurcharge": { "type": "number" },
+        "rank": {
+          "type": "integer",
+          "description": "The bid's competitive rank among carriers for this offer - unrelated to ShipmentListingRow.rank (military rank, e.g. 'E-5')."
+        },
+        "tenderEffectiveDate": { "type": "string" },
+        "tenderExpirationDate": { "type": "string" },
+        "sdg3Comments": { "type": "string" },
+        "rinList": {
+          "type": "string",
+          "description": "Comma-separated string as-is from GFM (e.g. '101,111,120') - displayed verbatim, not a real list in the source UI either."
+        },
+        "status": { "$ref": "#/definitions/status" },
+        "carrierBidServices": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/carrierBidService" }
+        },
+        "equipment": { "$ref": "#/definitions/equipment" }
+      }
+    },
+    "status": {
+      "type": "object",
+      "javaType": "com.lava.swexpedited.gfm.model.BidStatus",
+      "properties": {
+        "value": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "carrierBidService": {
+      "type": "object",
+      "javaType": "com.lava.swexpedited.gfm.model.CarrierBidService",
+      "properties": {
+        "serviceDesc": { "type": "string" },
+        "serviceCode": { "type": "string" },
+        "charge": { "type": "number" },
+        "carrierBidServiceParams": {
+          "type": "array",
+          "description": "Shape unconfirmed against real data - every sample pulled from sw_expedited_db had an empty array here despite the ATR UI showing a populated sub-row example. Left as a generic object so unknown fields land in additionalProperties rather than being dropped; revisit field names once a real populated example is available.",
+          "items": {
+            "type": "object",
+            "javaType": "com.lava.swexpedited.gfm.model.CarrierBidServiceParam"
+          }
+        }
+      }
+    },
+    "equipment": {
+      "type": "object",
+      "javaType": "com.lava.swexpedited.gfm.model.Equipment",
+      "properties": {
+        "quantity": { "type": "integer" },
+        "quantityUom": { "type": "string" },
+        "commodityCode": { "type": "string" },
+        "numOfEquipment": { "type": "integer" },
+        "equipmentLevelUnits": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/equipmentLevelUnit" }
+        },
+        "shipment": { "$ref": "#/definitions/shipment" }
+      }
+    },
+    "equipmentLevelUnit": {
+      "type": "object",
+      "javaType": "com.lava.swexpedited.gfm.model.EquipmentLevelUnit",
+      "properties": {
+        "ciic": { "type": "string" },
+        "commodityCode": { "type": "string" },
+        "commodityDesc": { "type": "string" },
+        "nsn": { "type": "string" },
+        "quantity": { "type": "integer" },
+        "quantityUom": { "type": "string" },
+        "equipmentItems": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/equipmentItem" }
+        }
+      }
+    },
+    "equipmentItem": {
+      "type": "object",
+      "javaType": "com.lava.swexpedited.gfm.model.EquipmentItem",
+      "properties": {
+        "description": { "type": "string" },
+        "packType": { "type": "string" },
+        "packCount": { "type": "integer", "description": "Piece count - the screenshot's 'Pieces' column." },
+        "quantity": { "type": "integer" },
+        "quantityUom": { "type": "string" },
+        "length": { "type": "integer" },
+        "width": { "type": "integer" },
+        "height": { "type": "integer" },
+        "cube": { "type": "integer" }
+      }
+    },
+    "shipment": {
+      "type": "object",
+      "javaType": "com.lava.swexpedited.gfm.model.GfmShipment",
+      "properties": {
+        "gbloc": { "type": "string" },
+        "requestorName": { "type": "string" },
+        "requestorEmail": { "type": "string" },
+        "requestorPhone": { "type": "string" },
+        "remarks": { "type": "string" },
+        "atrModeDesc": { "type": "string" },
+        "offerExpirationTimeDisplay": { "type": "string" },
+        "earliestPickupDateDisplay": { "type": "string" },
+        "latestPickupDateDisplay": { "type": "string" },
+        "deliveryDueDateDisplay": { "type": "string" },
+        "originSplc": { "type": "string" },
+        "originName": { "type": "string" },
+        "originAddress1": { "type": "string" },
+        "originAddress2": { "type": "string" },
+        "originCity": { "type": "string" },
+        "originState": { "type": "string" },
+        "originZip": { "type": "string" },
+        "originCountry": { "type": "string" },
+        "destinationSplc": { "type": "string" },
+        "destinationName": { "type": "string" },
+        "destinationAddress1": { "type": "string" },
+        "destinationAddress2": { "type": "string" },
+        "destinationCity": { "type": "string" },
+        "destinationState": { "type": "string" },
+        "destinationZip": { "type": "string" },
+        "destinationCountry": { "type": "string" }
+      }
+    }
+  }
+}

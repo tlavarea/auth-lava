@@ -30,6 +30,7 @@
   <properties>
     <jacoco.version>0.8.14</jacoco.version>
     <java.version>25</java.version>
+    <jsonschema2pojo.version>1.2.2</jsonschema2pojo.version>
     <jsoup.version>1.22.1</jsoup.version>
     <owasp-encoder.version>1.4.0</owasp-encoder.version>
     <palantir.version>2.91.0</palantir.version>
@@ -326,6 +327,29 @@
         </configuration>
       </plugin>
       <plugin>
+        <groupId>org.jsonschema2pojo</groupId>
+        <artifactId>jsonschema2pojo-maven-plugin</artifactId>
+        <version>${jsonschema2pojo.version}</version>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <sourceType>jsonschema</sourceType>
+          <sourceDirectory>${basedir}/src/main/resources/schema</sourceDirectory>
+          <targetPackage>com.lava.swexpedited.gfm.model</targetPackage>
+          <outputDirectory>${project.build.directory}/generated-sources/jsonschema2pojo</outputDirectory>
+          <annotationStyle>jackson2</annotationStyle>
+          <useBigDecimals>true</useBigDecimals>
+          <!-- includeAdditionalProperties defaults to true - unmodeled/renamed GFM fields land in each
+               generated class's additionalProperties map instead of failing deserialization. -->
+        </configuration>
+      </plugin>
+      <plugin>
         <!-- 0.8.14 is the minimum version supporting Java 25 class files (major version 69) -->
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
@@ -382,6 +406,8 @@
             <exclude>com/lava/swexpedited/model/database/AbstractSpringDAOImpl.class</exclude>
             <!-- jOOQ-generated tables/records/pojos -->
             <exclude>com/lava/swexpedited/model/database/tables/**</exclude>
+            <!-- jsonschema2pojo-generated GFM getBid response classes (gfm-bid-response.schema.json) -->
+            <exclude>com/lava/swexpedited/gfm/model/**</exclude>
             <!-- application bootstrap, no logic -->
             <exclude>com/lava/swexpedited/SwExpeditedApplication.class</exclude>
           </excludes>
