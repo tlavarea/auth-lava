@@ -1,0 +1,65 @@
+databaseChangeLog:
+  - changeSet:
+      id: "2"
+      author: tlavarea
+      comment: >
+        SHIPMENT_DETAIL - the GFM/ATR "getBid" response for each currently-listed shipment offer, fetched once per
+        sync cycle in the same authenticated GFM session the CSV listing download establishes. A handful of fields
+        likely to be filtered/sorted/displayed in a summary are pulled out as typed columns; raw_response holds the
+        entire response body so nothing the UI's detail view needs is lost to under-modeling a deeply nested,
+        DoD-owned payload. FK'd to shipment_listing with ON DELETE CASCADE so a listing replace (see
+        001-create-shipment-listing.yaml) empties this table for free instead of needing its own delete/upsert logic.
+      changes:
+        - createTable:
+            tableName: shipment_detail
+            columns:
+              - column:
+                  name: offer_id
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    references: shipment_listing(offer_id)
+                    foreignKeyName: fk_shipment_detail_offer_id
+                    deleteCascade: true
+              - column:
+                  name: total_amount
+                  type: NUMERIC(12,2)
+              - column:
+                  name: line_haul_cost
+                  type: NUMERIC(12,2)
+              - column:
+                  name: rate_used
+                  type: NUMERIC(12,2)
+              - column:
+                  name: scac
+                  type: VARCHAR
+              - column:
+                  name: scac_name
+                  type: VARCHAR
+              - column:
+                  name: tender_number
+                  type: VARCHAR
+              - column:
+                  name: equipment_desc
+                  type: VARCHAR
+              - column:
+                  name: requestor_name
+                  type: VARCHAR
+              - column:
+                  name: requestor_email
+                  type: VARCHAR
+              - column:
+                  name: raw_response
+                  type: JSON
+                  constraints:
+                    nullable: false
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS shipment_detail CASCADE;

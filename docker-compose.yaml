@@ -28,6 +28,7 @@ services:
     restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d
 
   zipkin:
     image: ghcr.io/openzipkin/zipkin-slim:${TAG:-latest}

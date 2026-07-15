@@ -6,7 +6,7 @@ import {
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
 
 import { AuthStore } from '@core/auth/auth.store';
 import { GlobalErrorHandler } from '@core/error-handling/global-error-handler';
@@ -19,7 +19,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     { provide: ErrorHandler, useClass: GlobalErrorHandler },
-    provideRouter(routes),
+    provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withInterceptors([credentialsInterceptor, authErrorInterceptor])),
     provideAppInitializer(() => inject(AuthStore).bootstrap()),
     provideAppInitializer(() => inject(ThemeStore).initialize()),

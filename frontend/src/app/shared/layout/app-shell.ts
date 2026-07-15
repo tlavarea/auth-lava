@@ -27,7 +27,10 @@ import { ThemeToggle } from '@shared/theme-toggle/theme-toggle';
   template: `
     <div class="flex h-dvh flex-col overflow-hidden">
       <header class="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 shadow-sm">
-        <a routerLink="/" class="text-sm font-semibold">auth-lava</a>
+        <nav class="flex items-center gap-4">
+          <a routerLink="/" class="text-sm font-semibold">auth-lava</a>
+          <a routerLink="/shipments" class="text-sm text-muted-foreground hover:text-foreground">Shipments</a>
+        </nav>
 
         <div class="flex items-center gap-2">
           <app-theme-toggle />
