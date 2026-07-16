@@ -1,0 +1,71 @@
+databaseChangeLog:
+  - changeSet:
+      id: "3"
+      author: tlavarea
+      comment: >
+        SAMSARA_DRIVER - the current active driver roster, synced periodically from Samsara's
+        /fleet/drivers endpoint. Keyed on Samsara's own driver id (a string, unlike GFM's
+        numeric offer_id). Each sync run replaces the full table contents in one transaction
+        (delete + bulk insert) - the endpoint returns "who's active right now", not a change
+        log, so a deactivated driver is expected to simply disappear on the next sync rather
+        than needing a soft-delete. A handful of fields likely to be filtered/sorted/displayed
+        are pulled out as typed columns; raw_response holds the entire driver payload so the
+        detail view can surface additional fields later without needing a schema change.
+      changes:
+        - createTable:
+            tableName: samsara_driver
+            columns:
+              - column:
+                  name: id
+                  type: VARCHAR
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: username
+                  type: VARCHAR
+              - column:
+                  name: email
+                  type: VARCHAR
+              - column:
+                  name: phone
+                  type: VARCHAR
+              - column:
+                  name: license_number
+                  type: VARCHAR
+              - column:
+                  name: license_state
+                  type: VARCHAR
+              - column:
+                  name: activation_status
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tags
+                  type: VARCHAR
+              - column:
+                  name: created_at_time
+                  type: TIMESTAMPTZ
+              - column:
+                  name: updated_at_time
+                  type: TIMESTAMPTZ
+              - column:
+                  name: raw_response
+                  type: JSON
+                  constraints:
+                    nullable: false
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS samsara_driver CASCADE;

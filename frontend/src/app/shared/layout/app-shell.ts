@@ -33,9 +33,15 @@ import { ThemeToggle } from '@shared/theme-toggle/theme-toggle';
           <div class="flex items-center gap-4">
             <a
               routerLink="/shipments"
-              routerLinkActive="border-b-3 border-b-neutral-800 dark:border-b-neutral-400 bg-neutral-900 text-neutral-900 dark:text-neutral-50 font-medium"
+              routerLinkActive="border-b-3 border-b-neutral-800 dark:border-b-neutral-400 dark:bg-neutral-900 bg-neutral-100 text-neutral-900 dark:text-neutral-50 font-medium"
               class="px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-neutral-200 dark:hover:bg-neutral-800">
               Shipments
+            </a>
+            <a
+              routerLink="/drivers"
+              routerLinkActive="border-b-3 border-b-neutral-800 dark:border-b-neutral-400 dark:bg-neutral-900 bg-neutral-100 text-neutral-900 dark:text-neutral-50 font-medium"
+              class="px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-neutral-200 dark:hover:bg-neutral-800">
+              Drivers
             </a>
           </div>
         </nav>

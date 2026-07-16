@@ -1,0 +1,58 @@
+databaseChangeLog:
+  - changeSet:
+      id: "5"
+      author: tlavarea
+      comment: >
+        SAMSARA_VEHICLE_LOCATION - the current GPS location of every vehicle, synced frequently
+        (roughly every minute) from Samsara's /fleet/vehicles/locations endpoint. Keyed on
+        Samsara's vehicle id, deliberately with no FK to samsara_driver_vehicle_assignment - a
+        vehicle can have a location with no driver currently assigned to it, and this table is
+        replaced on a much faster cadence than the driver/assignment tables, so the two are
+        joined only at read time in the service layer, never at write time. No raw_response
+        column - the location payload is already fully modeled by these columns.
+      changes:
+        - createTable:
+            tableName: samsara_vehicle_location
+            columns:
+              - column:
+                  name: vehicle_id
+                  type: VARCHAR
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: vehicle_name
+                  type: VARCHAR
+              - column:
+                  name: latitude
+                  type: NUMERIC(9,6)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: longitude
+                  type: NUMERIC(9,6)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: heading
+                  type: NUMERIC(5,2)
+              - column:
+                  name: speed
+                  type: NUMERIC(6,2)
+              - column:
+                  name: location_time
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false
+              - column:
+                  name: formatted_location
+                  type: VARCHAR
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS samsara_vehicle_location CASCADE;
