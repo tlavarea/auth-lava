@@ -15,8 +15,8 @@ export const SORT_OPTION_LABELS: Record<SortOption, string> = {
   'pickupDate-desc': 'Pickup date (latest)',
   'requiredDeliveryDate-asc': 'Required delivery (soonest)',
   'requiredDeliveryDate-desc': 'Required delivery (latest)',
-  'rank-asc': 'Rank (lowest first)',
-  'rank-desc': 'Rank (highest first)',
+  'rank-asc': 'Rank (highest first)',
+  'rank-desc': 'Rank (lowest first)',
 };
 
 export type ShipmentFilters = {
