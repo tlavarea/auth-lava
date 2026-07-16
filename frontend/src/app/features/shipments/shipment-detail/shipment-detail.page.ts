@@ -40,7 +40,7 @@ import { ShipmentBidSections } from './shipment-bid-sections';
   ],
   viewProviders: [provideIcons({ lucideMoveLeft, lucideX })],
   template: `
-    <div class="flex h-full flex-col gap-4 rounded-md bg-white p-6">
+    <div class="flex h-full flex-col gap-4 rounded-md bg-card p-6">
       <header class="flex h-16 shrink-0 items-center justify-between border-b">
         <a hlmBtn variant="ghost" size="sm" routerLink=".." class="lg:hidden">
           <ng-icon name="lucideMoveLeft" />

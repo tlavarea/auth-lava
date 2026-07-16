@@ -14,7 +14,7 @@ describe('ShipmentItem', () => {
       expirationDate: null,
       shipmentId: 'SHP-42',
       shipmentType: 'HHG',
-      rank: 'E-5',
+      rank: '15',
       gbloc: 'ABCD',
       origin: 'Fort Liberty, NC',
       destination: 'Joint Base Lewis-McChord, WA',
@@ -42,13 +42,21 @@ describe('ShipmentItem', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
-  it('renders the whole row as a link to its detail route', () => {
-    expect(fixture.nativeElement.textContent).toContain('SHP-42');
-    expect(fixture.nativeElement.textContent).toContain('Fort Liberty, NC');
+  it('renders the whole row as a link to its detail route, titled by route state', () => {
+    expect(fixture.nativeElement.textContent).toContain('NC');
+    expect(fixture.nativeElement.textContent).toContain('WA');
+    expect(fixture.nativeElement.textContent).toContain('Rank 15');
+    expect(fixture.nativeElement.textContent).not.toContain('SHP-42');
 
     const row: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a[href="/42"]');
     expect(row).toBeTruthy();
     expect(row?.querySelector('button, a')).toBeFalsy();
+  });
+
+  it('shows exactly pickup date, required delivery, and equipment on the second line', () => {
+    expect(fixture.nativeElement.textContent).toContain('Pickup 2026-08-01');
+    expect(fixture.nativeElement.textContent).toContain('Required 2026-08-10');
+    expect(fixture.nativeElement.textContent).toContain('53ft Van');
   });
 
   it('highlights the row matching selectedId and marks it aria-current', () => {
@@ -68,5 +76,22 @@ describe('ShipmentItem', () => {
     expect(fixture.nativeElement.querySelector('[aria-current="page"]')).toBeFalsy();
     expect(row?.classList.contains('bg-accent')).toBe(false);
     expect(row?.classList.contains('hover:bg-muted/50')).toBe(true);
+  });
+
+  it('colors the rank and status badges via the shared helpers', () => {
+    fixture.componentRef.setInput('shipments', [
+      { ...shipments[0], offerId: 1, rank: '15', status: 'Open' },
+      { ...shipments[0], offerId: 2, rank: '85', status: 'Awaiting Award' },
+    ]);
+    fixture.detectChanges();
+
+    const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('a[data-slot="item"]'));
+    const firstBadges = Array.from(rows[0].querySelectorAll('[hlmbadge]'));
+    const secondBadges = Array.from(rows[1].querySelectorAll('[hlmbadge]'));
+
+    expect(firstBadges[0].getAttribute('data-variant')).toBe('success'); // rank 15
+    expect(firstBadges[1].getAttribute('data-variant')).toBe('success'); // Open
+    expect(secondBadges[0].getAttribute('data-variant')).toBe('destructive'); // rank 85
+    expect(secondBadges[1].getAttribute('data-variant')).toBe('info'); // Awaiting Award
   });
 });
