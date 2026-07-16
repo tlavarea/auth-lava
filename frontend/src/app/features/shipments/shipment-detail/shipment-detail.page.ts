@@ -1,44 +1,22 @@
-import {
-  Component,
-  computed,
-  DestroyRef,
-  effect,
-  inject,
-  input,
-  InputSignal,
-  Signal,
-  signal,
-  WritableSignal,
-} from '@angular/core';
+import { Component, DestroyRef, effect, inject, input, InputSignal, Signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideMoveLeft, lucideX } from '@ng-icons/lucide';
-import { HlmAlertImports } from '@spartan-ng/helm/alert';
+import { lucideMoveLeft, lucideThumbsDown, lucideThumbsUp, lucideX } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
-import { HlmFieldImports } from '@spartan-ng/helm/field';
-import { HlmInputImports } from '@spartan-ng/helm/input';
+import { HlmDialogService } from '@spartan-ng/helm/dialog';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
-import { HlmToggleGroupImports } from '@spartan-ng/helm/toggle-group';
 
-import { OfferResponseType, ShipmentDetailResponse } from '../shipments.models';
+import { ShipmentDetailResponse } from '../shipments.models';
 import { ShipmentsRequestStatus, ShipmentsStore, ShipmentsStoreType } from '../shipments.store';
+import { AcceptOfferDialog } from './accept-offer.dialog';
+import { DeclineOfferDialog } from './decline-offer.dialog';
 import { ShipmentBidSections } from './shipment-bid-sections';
 
 @Component({
   selector: 'app-shipment-detail',
-  imports: [
-    HlmAlertImports,
-    HlmButtonImports,
-    HlmFieldImports,
-    HlmInputImports,
-    HlmSpinnerImports,
-    HlmToggleGroupImports,
-    NgIcon,
-    RouterLink,
-    ShipmentBidSections,
-  ],
-  viewProviders: [provideIcons({ lucideMoveLeft, lucideX })],
+  imports: [HlmButtonImports, HlmSpinnerImports, NgIcon, RouterLink, ShipmentBidSections],
+  viewProviders: [provideIcons({ lucideMoveLeft, lucideThumbsDown, lucideThumbsUp, lucideX })],
   template: `
     <div class="flex h-full flex-col gap-4 rounded-md bg-card p-6">
       <header class="flex h-16 shrink-0 items-center justify-between border-b">
@@ -48,15 +26,37 @@ import { ShipmentBidSections } from './shipment-bid-sections';
         </a>
 
         <h1 class="hidden font-medium lg:flex">Shipment Offer {{ id() }}</h1>
-        <a
-          hlmBtn
-          variant="ghost"
-          size="icon"
-          routerLink=".."
-          class="hidden lg:inline-flex"
-          aria-label="Back to shipments">
-          <ng-icon name="lucideX" />
-        </a>
+        <div class="flex items-center gap-1">
+          <button
+            hlmBtn
+            variant="ghost"
+            size="icon"
+            type="button"
+            aria-label="Accept offer"
+            [disabled]="detail() === null"
+            (click)="openAcceptDialog()">
+            <ng-icon name="lucideThumbsUp" />
+          </button>
+          <button
+            hlmBtn
+            variant="ghost"
+            size="icon"
+            type="button"
+            aria-label="Decline offer"
+            [disabled]="detail() === null"
+            (click)="openDeclineDialog()">
+            <ng-icon name="lucideThumbsDown" />
+          </button>
+          <a
+            hlmBtn
+            variant="ghost"
+            size="icon"
+            routerLink=".."
+            class="hidden lg:inline-flex"
+            aria-label="Back to shipments">
+            <ng-icon name="lucideX" />
+          </a>
+        </div>
       </header>
 
       @switch (status()) {
@@ -170,57 +170,6 @@ import { ShipmentBidSections } from './shipment-bid-sections';
               </dl>
 
               <app-shipment-bid-sections [bidDetail]="detail.bidDetail" />
-
-              <div class="flex flex-col gap-4 rounded-md border border-border p-4">
-                <div class="flex flex-wrap items-end gap-4">
-                  <div hlmField>
-                    <span hlmFieldLabel id="offer-response-label">Offer Response</span>
-                    <hlm-toggle-group
-                      type="single"
-                      variant="outline"
-                      aria-labelledby="offer-response-label"
-                      [value]="offerResponseChoice()"
-                      (valueChange)="offerResponseChoice.set($any($event))">
-                      <button hlmToggleGroupItem type="button" value="ACCEPT">Accept</button>
-                      <button hlmToggleGroupItem type="button" value="DECLINE">Decline</button>
-                    </hlm-toggle-group>
-                    <hlm-field-error [forceShow]="offerResponseChoice() === null">
-                      No offer response selected.
-                    </hlm-field-error>
-                  </div>
-
-                  <div hlmField class="w-40">
-                    <label hlmFieldLabel for="conveyances-available">Conveyances Available</label>
-                    <input
-                      hlmInput
-                      id="conveyances-available"
-                      type="number"
-                      min="0"
-                      [value]="conveyancesAvailable()"
-                      (input)="onConveyancesInput($event)" />
-                  </div>
-
-                  <button
-                    hlmBtn
-                    type="button"
-                    [disabled]="!canSubmitOfferResponse()"
-                    (click)="onSubmitOfferResponse(detail.listing.offerId)">
-                    @if (submitting()) {
-                      <hlm-spinner />
-                      Submitting...
-                    } @else {
-                      Submit
-                    }
-                  </button>
-                  <a hlmBtn variant="outline" routerLink="..">Close</a>
-                </div>
-
-                @if (submitError(); as submitError) {
-                  <div hlmAlert variant="destructive">
-                    <p hlmAlertDescription>{{ submitError }}</p>
-                  </div>
-                }
-              </div>
             </div>
           }
         }
@@ -231,21 +180,13 @@ import { ShipmentBidSections } from './shipment-bid-sections';
 export class ShipmentDetailPage {
   private readonly store: ShipmentsStoreType = inject(ShipmentsStore);
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
+  private readonly dialogService: HlmDialogService = inject(HlmDialogService);
 
   // Bound from the `:id` route param by withComponentInputBinding() in app.config.ts.
   readonly id: InputSignal<string> = input.required<string>();
 
   protected readonly detail: Signal<ShipmentDetailResponse | null> = this.store.selectedDetail;
   protected readonly status: Signal<ShipmentsRequestStatus> = this.store.detailStatus;
-
-  protected readonly offerResponseChoice: WritableSignal<OfferResponseType | null> = signal(null);
-  protected readonly conveyancesAvailable: WritableSignal<number> = signal(0);
-  protected readonly submitError: WritableSignal<string | null> = signal(null);
-
-  protected readonly submitting: Signal<boolean> = computed(() => this.store.respondStatus() === 'loading');
-  protected readonly canSubmitOfferResponse: Signal<boolean> = computed(
-    () => this.offerResponseChoice() !== null && !this.submitting()
-  );
 
   constructor() {
     effect(() => {
@@ -258,32 +199,30 @@ export class ShipmentDetailPage {
     this.destroyRef.onDestroy(() => this.store.clearSelectedDetail());
   }
 
-  protected onConveyancesInput(event: Event): void {
-    const value = Number((event.target as HTMLInputElement).value);
-    this.conveyancesAvailable.set(Number.isNaN(value) ? 0 : value);
-  }
-
-  protected async onSubmitOfferResponse(offerId: number): Promise<void> {
-    const response = this.offerResponseChoice();
-    if (response === null) {
+  protected openAcceptDialog(): void {
+    const detail = this.detail();
+    if (!detail) {
       return;
     }
 
-    this.submitError.set(null);
-    try {
-      await this.store.respondToOffer(offerId, {
-        response,
-        conveyancesAvailable: this.conveyancesAvailable(),
-      });
-    } catch (error) {
-      this.submitError.set(this.extractSubmitErrorMessage(error));
-    }
+    this.dialogService.open(AcceptOfferDialog, {
+      contentClass: 'min-w-md',
+      context: {
+        offerId: detail.listing.offerId,
+        conveyancesAvailable: detail.bidDetail?.numberOfConveyances ?? 0,
+        store: this.store,
+      },
+    });
   }
 
-  private extractSubmitErrorMessage(error: unknown): string {
-    if (error && typeof error === 'object' && 'status' in error && (error as { status: number }).status === 501) {
-      return "This feature isn't available yet.";
+  protected openDeclineDialog(): void {
+    const detail = this.detail();
+    if (!detail) {
+      return;
     }
-    return 'Something went wrong submitting your response. Please try again.';
+
+    this.dialogService.open(DeclineOfferDialog, {
+      context: { offerId: detail.listing.offerId, store: this.store },
+    });
   }
 }

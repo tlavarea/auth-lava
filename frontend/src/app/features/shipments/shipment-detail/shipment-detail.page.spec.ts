@@ -151,17 +151,23 @@ describe('ShipmentDetailPage', () => {
     expect(text).toContain('105,111,120,123,131,141,332,351');
   });
 
-  it('disables offer response submission until a response is chosen', async () => {
+  it('disables the accept/decline header actions until the detail loads, then enables them', async () => {
+    const acceptButton = (): HTMLButtonElement | null =>
+      fixture.nativeElement.querySelector('button[aria-label="Accept offer"]');
+    const declineButton = (): HTMLButtonElement | null =>
+      fixture.nativeElement.querySelector('button[aria-label="Decline offer"]');
+
+    expect(acceptButton()?.disabled).toBe(true);
+    expect(declineButton()?.disabled).toBe(true);
+
     httpMock.expectOne('/api/sw-expedited/shipments/42').flush(detail);
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
-    const submitButton: HTMLButtonElement | undefined = buttons.find((button) =>
-      button.textContent?.includes('Submit')
-    );
-
-    expect(submitButton?.disabled).toBe(true);
+    expect(acceptButton()?.disabled).toBe(false);
+    expect(declineButton()?.disabled).toBe(false);
+    expect(acceptButton()?.querySelector('ng-icon')?.getAttribute('name')).toBe('lucideThumbsUp');
+    expect(declineButton()?.querySelector('ng-icon')?.getAttribute('name')).toBe('lucideThumbsDown');
   });
 
   it('renders a labeled mobile back link and an icon-only desktop close link', () => {
