@@ -77,11 +77,17 @@ export class ShipmentsPage implements OnInit {
 
   // On desktop, an open detail shrinks the master column to an item-view sidebar; closed, it's full width.
   // Scrolling is frozen while a detail is open so the selected row can never be scrolled out of view.
-  protected readonly masterClasses: Signal<string> = computed(() =>
-    this.isDesktop() && this.detailOpen()
+  // Desktop-with-no-detail renders ShipmentTable, which manages its own internal scroll region (toolbar
+  // and pagination stay fixed, only the card list scrolls) so the section itself must not scroll there.
+  // Mobile keeps document-style scrolling since ShipmentItem has no sticky toolbar of its own.
+  protected readonly masterClasses: Signal<string> = computed(() => {
+    if (!this.isDesktop()) {
+      return 'h-full w-full overflow-y-auto p-4 [scrollbar-width:none]';
+    }
+    return this.detailOpen()
       ? 'h-full w-full max-w-md shrink-0 overflow-hidden bg-muted/20 p-4 [scrollbar-width:none]'
-      : 'h-full w-full overflow-y-auto p-4 [scrollbar-width:none]'
-  );
+      : 'h-full w-full overflow-hidden p-4 [scrollbar-width:none]';
+  });
 
   // Mobile keeps the slide-over sheet; desktop is an inline split pane with no overlay.
   protected readonly panelClasses: Signal<string> = computed(() => {
@@ -91,7 +97,9 @@ export class ShipmentsPage implements OnInit {
         'bg-popover text-popover-foreground shadow-lg transition-transform duration-200 ease-in-out sm:max-w-xl';
       return this.detailOpen() ? base : `${base} translate-x-full`;
     }
-    return this.detailOpen() ? 'flex-1 h-full overflow-y-auto bg-accent p-6 shadow-md shadow-neutral-400' : 'hidden';
+    return this.detailOpen()
+      ? 'flex-1 h-full overflow-y-auto bg-accent p-6 shadow-md shadow-neutral-400 dark:shadow-neutral-700'
+      : 'hidden';
   });
 
   ngOnInit(): void {
