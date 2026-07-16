@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
-import org.jooq.InsertValuesStep3;
+import org.jooq.InsertValuesStep8;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +33,37 @@ public class SamsaraDriverDutyStatusRepositoryImpl implements SamsaraDriverDutyS
         }
 
         LocalDateTime syncedAt = LocalDateTime.now();
-        InsertValuesStep3<SamsaraDriverDutyStatusRecord, String, String, LocalDateTime> insert = this.dsl.insertInto(
-                SAMSARA_DRIVER_DUTY_STATUS,
-                SAMSARA_DRIVER_DUTY_STATUS.DRIVER_ID,
-                SAMSARA_DRIVER_DUTY_STATUS.DUTY_STATUS,
-                SAMSARA_DRIVER_DUTY_STATUS.SYNCED_AT);
+        InsertValuesStep8<
+                        SamsaraDriverDutyStatusRecord,
+                        String,
+                        String,
+                        Long,
+                        Long,
+                        Long,
+                        Long,
+                        LocalDateTime,
+                        LocalDateTime>
+                insert = this.dsl.insertInto(
+                        SAMSARA_DRIVER_DUTY_STATUS,
+                        SAMSARA_DRIVER_DUTY_STATUS.DRIVER_ID,
+                        SAMSARA_DRIVER_DUTY_STATUS.DUTY_STATUS,
+                        SAMSARA_DRIVER_DUTY_STATUS.DRIVE_REMAINING_DURATION_MS,
+                        SAMSARA_DRIVER_DUTY_STATUS.SHIFT_REMAINING_DURATION_MS,
+                        SAMSARA_DRIVER_DUTY_STATUS.CYCLE_REMAINING_DURATION_MS,
+                        SAMSARA_DRIVER_DUTY_STATUS.TIME_UNTIL_BREAK_DURATION_MS,
+                        SAMSARA_DRIVER_DUTY_STATUS.DUTY_STATUS_SINCE,
+                        SAMSARA_DRIVER_DUTY_STATUS.SYNCED_AT);
 
         for (SamsaraDriverDutyStatusRow row : rows) {
-            insert.values(row.driverId(), row.dutyStatus(), syncedAt);
+            insert.values(
+                    row.driverId(),
+                    row.dutyStatus(),
+                    row.driveRemainingDurationMs(),
+                    row.shiftRemainingDurationMs(),
+                    row.cycleRemainingDurationMs(),
+                    row.timeUntilBreakDurationMs(),
+                    row.dutyStatusSince(),
+                    syncedAt);
         }
 
         insert.execute();
@@ -63,6 +86,14 @@ public class SamsaraDriverDutyStatusRepositoryImpl implements SamsaraDriverDutyS
     }
 
     private SamsaraDriverDutyStatusRow toRow(SamsaraDriverDutyStatus row) {
-        return new SamsaraDriverDutyStatusRow(row.driverId(), row.dutyStatus(), row.syncedAt());
+        return new SamsaraDriverDutyStatusRow(
+                row.driverId(),
+                row.dutyStatus(),
+                row.driveRemainingDurationMs(),
+                row.shiftRemainingDurationMs(),
+                row.cycleRemainingDurationMs(),
+                row.timeUntilBreakDurationMs(),
+                row.dutyStatusSince(),
+                row.syncedAt());
     }
 }

@@ -11,10 +11,14 @@ import com.lava.swexpedited.samsara.model.DriverVehicleAssignmentV2ObjectRespons
 import com.lava.swexpedited.samsara.model.DriverVehicleAssignmentsV2GetDriverVehicleAssignmentsResponseBody;
 import com.lava.swexpedited.samsara.model.HosClocksForDriver;
 import com.lava.swexpedited.samsara.model.HosClocksResponse;
+import com.lava.swexpedited.samsara.model.HosLogEntry;
+import com.lava.swexpedited.samsara.model.HosLogsForDriver;
+import com.lava.swexpedited.samsara.model.HosLogsResponse;
 import com.lava.swexpedited.samsara.model.VehicleStatsResponse;
 import com.lava.swexpedited.samsara.model.VehicleStatsResponseData;
 import java.io.UncheckedIOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -175,11 +179,72 @@ public class SamsaraFleetClient {
         return locations;
     }
 
+    /**
+     * Single-vehicle variant of {@link #fetchVehicleLocations()}, called on-demand (not from a scheduled tasklet) by
+     * {@code SamsaraDriverLiveLocationService} so the driver detail screen can poll one open driver's position faster
+     * than {@code SamsaraLocationSyncScheduler}'s roster-wide ~1 min cadence, without re-fetching the whole fleet.
+     * Still uses the same cursor-paginated envelope as every other endpoint, though a single {@code vehicleId} is never
+     * expected to span more than one page.
+     */
+    public List<VehicleStatsResponseData> fetchVehicleLocation(String vehicleId) {
+        List<VehicleStatsResponseData> locations = new ArrayList<>();
+        String cursor = null;
+        boolean hasNextPage = true;
+        while (hasNextPage) {
+            String body = fetchPageBody("/fleet/vehicles/stats", cursor, "types", "gps", "vehicleIds", vehicleId);
+            VehicleStatsResponse page = readValue(body, VehicleStatsResponse.class, "/fleet/vehicles/stats");
+            locations.addAll(page.getData());
+            hasNextPage = Boolean.TRUE.equals(page.getPagination().getHasNextPage());
+            cursor = page.getPagination().getEndCursor();
+        }
+        return locations;
+    }
+
+    /**
+     * Fetches HOS log entries (duty-status-change history, each with a start/end time and recorded location) for one
+     * driver within {@code [startTime, endTime]} - called on-demand by {@code SamsaraDriverActivityService} for the
+     * driver detail screen's activity feed. Unlike drivers/assignments/locations/duty-statuses, this is inherently a
+     * historical query rather than a "current state" snapshot, so there's no persisted table or scheduled sync for it;
+     * every request goes straight to Samsara. {@code /fleet/hos/logs} doesn't support a {@code limit} param (unlike
+     * every other endpoint this client calls), hence {@code includeLimit=false}.
+     */
+    public List<HosLogEntry> fetchDriverHosLogs(String driverId, Instant startTime, Instant endTime) {
+        List<HosLogEntry> hosLogs = new ArrayList<>();
+        String cursor = null;
+        boolean hasNextPage = true;
+        while (hasNextPage) {
+            String body = fetchPageBody(
+                    "/fleet/hos/logs",
+                    cursor,
+                    false,
+                    "driverIds",
+                    driverId,
+                    "startTime",
+                    startTime.toString(),
+                    "endTime",
+                    endTime.toString());
+            HosLogsResponse page = readValue(body, HosLogsResponse.class, "/fleet/hos/logs");
+            for (HosLogsForDriver hosLogsForDriver : page.getData()) {
+                hosLogs.addAll(hosLogsForDriver.getHosLogs());
+            }
+            hasNextPage = Boolean.TRUE.equals(page.getPagination().getHasNextPage());
+            cursor = page.getPagination().getEndCursor();
+        }
+        return hosLogs;
+    }
+
     private String fetchPageBody(String path, String cursor, String... extraParams) {
+        return fetchPageBody(path, cursor, true, extraParams);
+    }
+
+    private String fetchPageBody(String path, String cursor, boolean includeLimit, String... extraParams) {
         return retrying(() -> samsaraRestClient
                 .get()
                 .uri(uriBuilder -> {
-                    uriBuilder.path(path).queryParam("limit", PAGE_LIMIT);
+                    uriBuilder.path(path);
+                    if (includeLimit) {
+                        uriBuilder.queryParam("limit", PAGE_LIMIT);
+                    }
                     if (cursor != null) {
                         uriBuilder.queryParam("after", cursor);
                     }

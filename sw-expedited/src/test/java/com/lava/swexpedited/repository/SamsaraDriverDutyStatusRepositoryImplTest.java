@@ -3,6 +3,7 @@ package com.lava.swexpedited.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.lava.swexpedited.samsara.SamsaraDriverDutyStatusRow;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -83,7 +84,23 @@ class SamsaraDriverDutyStatusRepositoryImplTest extends AbstractRepositoryIntegr
                 .isEqualTo("driving");
     }
 
+    @Test
+    void replaceAll_storesClockFieldsAndDutyStatusSince() {
+        LocalDateTime dutyStatusSince = LocalDateTime.now().minusMinutes(103).withNano(0);
+        this.samsaraDriverDutyStatusRepository.replaceAll(List.of(new SamsaraDriverDutyStatusRow(
+                "41000123", "driving", 1_000L, 2_000L, 3_000L, 4_000L, dutyStatusSince, null)));
+
+        SamsaraDriverDutyStatusRow found = this.samsaraDriverDutyStatusRepository
+                .findByDriverId("41000123")
+                .orElseThrow();
+        assertThat(found.driveRemainingDurationMs()).isEqualTo(1_000L);
+        assertThat(found.shiftRemainingDurationMs()).isEqualTo(2_000L);
+        assertThat(found.cycleRemainingDurationMs()).isEqualTo(3_000L);
+        assertThat(found.timeUntilBreakDurationMs()).isEqualTo(4_000L);
+        assertThat(found.dutyStatusSince()).isEqualTo(dutyStatusSince);
+    }
+
     private SamsaraDriverDutyStatusRow row(String driverId, String dutyStatus) {
-        return new SamsaraDriverDutyStatusRow(driverId, dutyStatus, null);
+        return new SamsaraDriverDutyStatusRow(driverId, dutyStatus, null, null, null, null, null, null);
     }
 }

@@ -4,8 +4,14 @@ import com.lava.swexpedited.repository.SamsaraDriverDutyStatusRepository;
 import com.lava.swexpedited.repository.SamsaraDriverRepository;
 import com.lava.swexpedited.samsara.SamsaraDriverDutyStatusRow;
 import com.lava.swexpedited.samsara.SamsaraDriverRow;
+import com.lava.swexpedited.samsara.model.HosClocks;
 import com.lava.swexpedited.samsara.model.HosClocksForDriver;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
@@ -45,9 +51,14 @@ public class SamsaraDriverDutyStatusSyncTasklet extends SamsaraTasklet implement
                 .map(SamsaraDriverRow::id)
                 .toList();
 
+        Map<String, SamsaraDriverDutyStatusRow> previousByDriverId =
+                samsaraDriverDutyStatusRepository.findAll().stream()
+                        .collect(Collectors.toMap(SamsaraDriverDutyStatusRow::driverId, Function.identity()));
+        LocalDateTime now = LocalDateTime.now();
+
         List<SamsaraDriverDutyStatusRow> rows = samsaraFleetClient.fetchDriverDutyStatuses(driverIds).stream()
                 .filter(hosClocksForDriver -> hosClocksForDriver.getDriver() != null)
-                .map(SamsaraDriverDutyStatusSyncTasklet::toRow)
+                .map(hosClocksForDriver -> toRow(hosClocksForDriver, previousByDriverId, now))
                 .toList();
         samsaraDriverDutyStatusRepository.replaceAll(rows);
         log.info("execute::stored {} samsara driver duty statuses", rows.size());
@@ -58,15 +69,49 @@ public class SamsaraDriverDutyStatusSyncTasklet extends SamsaraTasklet implement
      * Maps one {@code /fleet/hos/clocks} entry to a samsara_driver_duty_status row.
      *
      * @param hosClocksForDriver - the Samsara API response entry as a {@link HosClocksForDriver} object.
+     * @param previousByDriverId - the table's contents from before this sync, keyed by driver id, used to derive
+     *     dutyStatusSince (see below).
+     * @param now - this sync's timestamp, reused as dutyStatusSince for any driver whose dutyStatus is new or changed.
      * @return the response entry transformed to a {@link SamsaraDriverDutyStatusRow} object.
      */
-    private static SamsaraDriverDutyStatusRow toRow(HosClocksForDriver hosClocksForDriver) {
+    private static SamsaraDriverDutyStatusRow toRow(
+            HosClocksForDriver hosClocksForDriver,
+            Map<String, SamsaraDriverDutyStatusRow> previousByDriverId,
+            LocalDateTime now) {
+        String driverId = hosClocksForDriver.getDriver().getId();
         String hosStatusType = hosClocksForDriver.getCurrentDutyStatus() != null
                 ? hosClocksForDriver.getCurrentDutyStatus().getHosStatusType()
                 : null;
         // Samsara sends "" rather than omitting hosStatusType when a driver's app is disconnected - blank is stored
         // as null, not a literal empty string (see CurrentDutyStatus's javadoc in the vendored samsara-api.json).
         String dutyStatus = StringUtils.isNotBlank(hosStatusType) ? hosStatusType : null;
-        return new SamsaraDriverDutyStatusRow(hosClocksForDriver.getDriver().getId(), dutyStatus, null);
+
+        HosClocks clocks = hosClocksForDriver.getClocks();
+        Long driveRemainingDurationMs =
+                clocks != null && clocks.getDrive() != null ? clocks.getDrive().getDriveRemainingDurationMs() : null;
+        Long shiftRemainingDurationMs =
+                clocks != null && clocks.getShift() != null ? clocks.getShift().getShiftRemainingDurationMs() : null;
+        Long cycleRemainingDurationMs =
+                clocks != null && clocks.getCycle() != null ? clocks.getCycle().getCycleRemainingDurationMs() : null;
+        Long timeUntilBreakDurationMs =
+                clocks != null && clocks.getBreak() != null ? clocks.getBreak().getTimeUntilBreakDurationMs() : null;
+
+        // Samsara's response has no "since" timestamp for the current duty status - carry the previous sync's value
+        // forward when dutyStatus hasn't changed, otherwise this driver just transitioned (or is new), so "now" is
+        // the start of their current status.
+        SamsaraDriverDutyStatusRow previous = previousByDriverId.get(driverId);
+        LocalDateTime dutyStatusSince = previous != null && Objects.equals(previous.dutyStatus(), dutyStatus)
+                ? previous.dutyStatusSince()
+                : now;
+
+        return new SamsaraDriverDutyStatusRow(
+                driverId,
+                dutyStatus,
+                driveRemainingDurationMs,
+                shiftRemainingDurationMs,
+                cycleRemainingDurationMs,
+                timeUntilBreakDurationMs,
+                dutyStatusSince,
+                null);
     }
 }

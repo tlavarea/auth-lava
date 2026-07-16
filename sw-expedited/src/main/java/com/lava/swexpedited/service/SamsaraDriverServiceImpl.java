@@ -111,6 +111,19 @@ public class SamsaraDriverServiceImpl implements SamsaraDriverService {
                 driver.licenseState(),
                 driver.activationStatus(),
                 dutyStatus.map(SamsaraDriverDutyStatusRow::dutyStatus).orElse(null),
+                dutyStatus
+                        .map(SamsaraDriverDutyStatusRow::driveRemainingDurationMs)
+                        .orElse(null),
+                dutyStatus
+                        .map(SamsaraDriverDutyStatusRow::shiftRemainingDurationMs)
+                        .orElse(null),
+                dutyStatus
+                        .map(SamsaraDriverDutyStatusRow::cycleRemainingDurationMs)
+                        .orElse(null),
+                dutyStatus
+                        .map(SamsaraDriverDutyStatusRow::timeUntilBreakDurationMs)
+                        .orElse(null),
+                dutyStatus.map(SamsaraDriverDutyStatusRow::dutyStatusSince).orElse(null),
                 driver.tags(),
                 assignment.map(SamsaraDriverVehicleAssignmentRow::vehicleId).orElse(null),
                 assignment.map(SamsaraDriverVehicleAssignmentRow::vehicleName).orElse(null),

@@ -1,0 +1,47 @@
+databaseChangeLog:
+  - changeSet:
+      id: "7"
+      author: tlavarea
+      comment: >
+        Adds the HOS remaining-time clocks (drive/shift/cycle/break, all in milliseconds) and a
+        derived duty_status_since timestamp to samsara_driver_duty_status. Samsara's
+        /fleet/hos/clocks response carries these clocks alongside currentDutyStatus - previously
+        vendored out of schema/samsara-api.json as unused, now needed for the driver detail
+        screen's HOS clock rings. duty_status_since has no Samsara source field; it's set by
+        SamsaraDriverDutyStatusSyncTasklet to the sync time a driver's dutyStatus is first
+        observed or changes, and carried forward on syncs where it hasn't. All nullable since a
+        given driver's HOS clocks may be momentarily absent from Samsara's response the same way
+        duty_status itself already can be.
+      changes:
+        - addColumn:
+            tableName: samsara_driver_duty_status
+            columns:
+              - column:
+                  name: drive_remaining_duration_ms
+                  type: BIGINT
+              - column:
+                  name: shift_remaining_duration_ms
+                  type: BIGINT
+              - column:
+                  name: cycle_remaining_duration_ms
+                  type: BIGINT
+              - column:
+                  name: time_until_break_duration_ms
+                  type: BIGINT
+              - column:
+                  name: duty_status_since
+                  type: TIMESTAMPTZ
+      rollback:
+        - dropColumn:
+            tableName: samsara_driver_duty_status
+            columns:
+              - column:
+                  name: drive_remaining_duration_ms
+              - column:
+                  name: shift_remaining_duration_ms
+              - column:
+                  name: cycle_remaining_duration_ms
+              - column:
+                  name: time_until_break_duration_ms
+              - column:
+                  name: duty_status_since

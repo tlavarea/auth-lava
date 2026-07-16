@@ -1,5 +1,7 @@
 package com.lava.swexpedited.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -7,8 +9,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.lava.swexpedited.boot.autoconfigure.app.CorsProperties;
 import com.lava.swexpedited.configuration.SecurityConfiguration;
+import com.lava.swexpedited.samsara.DriverActivityEntry;
 import com.lava.swexpedited.samsara.DriverDetailResponse;
 import com.lava.swexpedited.samsara.DriverListingRow;
+import com.lava.swexpedited.samsara.DriverLiveLocationResponse;
+import com.lava.swexpedited.service.SamsaraDriverActivityService;
+import com.lava.swexpedited.service.SamsaraDriverLiveLocationService;
 import com.lava.swexpedited.service.SamsaraDriverService;
 import jakarta.servlet.http.Cookie;
 import java.math.BigDecimal;
@@ -39,6 +45,12 @@ class DriverControllerTest {
 
     @MockitoBean
     private SamsaraDriverService samsaraDriverService;
+
+    @MockitoBean
+    private SamsaraDriverLiveLocationService samsaraDriverLiveLocationService;
+
+    @MockitoBean
+    private SamsaraDriverActivityService samsaraDriverActivityService;
 
     @Test
     void drivers_withoutCookie_returns401() throws Exception {
@@ -94,6 +106,11 @@ class DriverControllerTest {
                 "TX",
                 "active",
                 "driving",
+                2_000L,
+                3_000L,
+                4_000L,
+                1_000L,
+                LocalDateTime.now().minusMinutes(103),
                 "expedited",
                 "281474",
                 "Truck 12",
@@ -115,6 +132,67 @@ class DriverControllerTest {
                 .andExpect(jsonPath("$.dutyStatus").value("driving"))
                 .andExpect(jsonPath("$.formattedLocation").value("Fort Worth, TX"))
                 .andExpect(jsonPath("$.rawResponse.id").value("41000123"));
+    }
+
+    @Test
+    void liveLocation_withoutCookie_returns401() throws Exception {
+        this.mockMvc.perform(get("/api/drivers/41000123/location")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void liveLocation_noCurrentAssignment_returns404() throws Exception {
+        Jwt jwt = authenticatedJwt();
+        when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
+        when(this.samsaraDriverLiveLocationService.findLiveLocation("41000123")).thenReturn(Optional.empty());
+
+        this.mockMvc
+                .perform(get("/api/drivers/41000123/location").cookie(new Cookie("ACCESS_TOKEN", "token-value")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void liveLocation_found_returnsLiveLocation() throws Exception {
+        Jwt jwt = authenticatedJwt();
+        when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
+        DriverLiveLocationResponse liveLocation = new DriverLiveLocationResponse(
+                new BigDecimal("32.735000"),
+                new BigDecimal("-97.108000"),
+                new BigDecimal("180.50"),
+                new BigDecimal("62.30"),
+                LocalDateTime.now(),
+                "Fort Worth, TX");
+        when(this.samsaraDriverLiveLocationService.findLiveLocation("41000123")).thenReturn(Optional.of(liveLocation));
+
+        this.mockMvc
+                .perform(get("/api/drivers/41000123/location").cookie(new Cookie("ACCESS_TOKEN", "token-value")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latitude").value(32.735000))
+                .andExpect(jsonPath("$.formattedLocation").value("Fort Worth, TX"));
+    }
+
+    @Test
+    void activity_withoutCookie_returns401() throws Exception {
+        this.mockMvc.perform(get("/api/drivers/41000123/activity")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void activity_found_returnsActivityFeed() throws Exception {
+        Jwt jwt = authenticatedJwt();
+        when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
+        DriverActivityEntry entry = new DriverActivityEntry(
+                "driving",
+                LocalDateTime.now().minusHours(1),
+                null,
+                new BigDecimal("32.735000"),
+                new BigDecimal("-97.108000"),
+                null);
+        when(this.samsaraDriverActivityService.findActivity(eq("41000123"), any(Instant.class)))
+                .thenReturn(List.of(entry));
+
+        this.mockMvc
+                .perform(get("/api/drivers/41000123/activity").cookie(new Cookie("ACCESS_TOKEN", "token-value")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].dutyStatus").value("driving"));
     }
 
     private Jwt authenticatedJwt() {

@@ -14,7 +14,9 @@ import java.time.LocalDateTime;
  * (latitude through formattedLocation) are null when there's no assignment, or the assigned vehicle has no location
  * synced yet - both are expected states, not errors, and the frontend renders them as "not available" rather than
  * treating a null as a failed request. dutyStatus is null when no HOS clock data has been synced for the driver yet, or
- * their Samsara Driver app is disconnected.
+ * their Samsara Driver app is disconnected. driveRemainingDurationMs through timeUntilBreakDurationMs are the HOS clock
+ * fields backing the driver detail screen's clock rings, null under the same conditions as dutyStatus; dutyStatusSince
+ * is when the driver's current dutyStatus started, as derived by SamsaraDriverDutyStatusSyncTasklet.
  */
 public record DriverDetailResponse(
         String id,
@@ -26,6 +28,11 @@ public record DriverDetailResponse(
         String licenseState,
         String activationStatus,
         String dutyStatus,
+        Long driveRemainingDurationMs,
+        Long shiftRemainingDurationMs,
+        Long cycleRemainingDurationMs,
+        Long timeUntilBreakDurationMs,
+        LocalDateTime dutyStatusSince,
         String tags,
         String currentVehicleId,
         String currentVehicleName,
