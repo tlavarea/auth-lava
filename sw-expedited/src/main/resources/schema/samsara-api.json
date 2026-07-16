@@ -687,9 +687,41 @@
         },
         "type": "object"
       },
-      "HosClocksForDriver": {
-        "description": "One driver's current HOS duty status (trimmed to just driver/currentDutyStatus - clocks/currentVehicle/violations dropped, unused by this app - see this file's top-level description).",
+      "HosBreak": {
+        "description": "Remaining durations for the HOS rest break requirement.",
         "properties": {
+          "timeUntilBreakDurationMs": {
+            "description": "Time until the driver has a required break in milliseconds.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "HosClocks": {
+        "description": "Remaining durations and start times (where applicable) for various HOS rules.",
+        "properties": {
+          "break": {
+            "$ref": "#/components/schemas/HosBreak"
+          },
+          "cycle": {
+            "$ref": "#/components/schemas/HosCycle"
+          },
+          "drive": {
+            "$ref": "#/components/schemas/HosDrive"
+          },
+          "shift": {
+            "$ref": "#/components/schemas/HosShift"
+          }
+        },
+        "type": "object"
+      },
+      "HosClocksForDriver": {
+        "description": "One driver's current HOS duty status and clocks (trimmed to driver/currentDutyStatus/clocks - currentVehicle/violations dropped, unused by this app - see this file's top-level description).",
+        "properties": {
+          "clocks": {
+            "$ref": "#/components/schemas/HosClocks"
+          },
           "currentDutyStatus": {
             "$ref": "#/components/schemas/CurrentDutyStatus"
           },
@@ -720,6 +752,128 @@
           "data",
           "pagination"
         ],
+        "type": "object"
+      },
+      "HosCycle": {
+        "description": "Remaining durations and start time for the HOS driving cycle.",
+        "properties": {
+          "cycleRemainingDurationMs": {
+            "description": "Remaining on duty or driving time the driver has in the current cycle in milliseconds. For property-carrying drivers, this is the amount of time the driver can be on duty or driving before hitting the 60/70-hour limit in 7/8 days.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "cycleTomorrowDurationMs": {
+            "description": "Remaining on duty or driving time the driver has available tomorrow in milliseconds. For property-carrying drivers this is calculated based on the 60/70-hour limit in 7/8 days rule.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "HosDrive": {
+        "description": "Remaining durations for the HOS driving shift limits.",
+        "properties": {
+          "driveRemainingDurationMs": {
+            "description": "Remaining driving time the driver has in the current shift in milliseconds. For property-carrying drivers, this is the amount of time the driver can drive before hitting the 11-hour limit.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "HosLogEntry": {
+        "description": "A single HOS log entry (trimmed to hosStatusType/logStartTime/logEndTime/logRecordedLocation/remark/vehicle - codrivers dropped, unused by this app).",
+        "properties": {
+          "hosStatusType": {
+            "description": "The Hours of Service status type.",
+            "example": "offDuty",
+            "type": "string"
+          },
+          "logEndTime": {
+            "$ref": "#/components/schemas/time"
+          },
+          "logRecordedLocation": {
+            "$ref": "#/components/schemas/HosLogLocation"
+          },
+          "logStartTime": {
+            "$ref": "#/components/schemas/time"
+          },
+          "remark": {
+            "description": "Remark associated with the log entry.",
+            "example": "Lunch Break",
+            "type": "string"
+          },
+          "vehicle": {
+            "$ref": "#/components/schemas/vehicleTinyResponse"
+          }
+        },
+        "type": "object"
+      },
+      "HosLogLocation": {
+        "description": "The location a single HOS log entry was recorded at - unlike VehicleStatsGps, this has no reverse-geocoded formatted address, only raw coordinates.",
+        "properties": {
+          "latitude": {
+            "description": "GPS latitude represented in degrees",
+            "example": 122.142,
+            "format": "double",
+            "type": "number"
+          },
+          "longitude": {
+            "description": "GPS longitude represented in degrees",
+            "example": -93.343,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "HosLogsForDriver": {
+        "description": "One driver's HOS logs for the requested time range.",
+        "properties": {
+          "driver": {
+            "$ref": "#/components/schemas/driverTinyResponse"
+          },
+          "hosLogs": {
+            "items": {
+              "$ref": "#/components/schemas/HosLogEntry"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "HosLogsForDrivers": {
+        "description": "List of HOS logs for the specified drivers.",
+        "items": {
+          "$ref": "#/components/schemas/HosLogsForDriver"
+        },
+        "type": "array"
+      },
+      "HosLogsResponse": {
+        "description": "Drivers HOS logs and pagination info.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/HosLogsForDrivers"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/paginationResponse"
+          }
+        },
+        "required": [
+          "data",
+          "pagination"
+        ],
+        "type": "object"
+      },
+      "HosShift": {
+        "description": "Remaining durations and start time for the HOS on duty shift limits.",
+        "properties": {
+          "shiftRemainingDurationMs": {
+            "description": "Remaining on duty or driving time the driver has in the current shift in milliseconds. For property-carrying drivers, this is the amount of time the driver can be on duty or driving before hitting the 14-hour limit.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
         "type": "object"
       },
       "ListDriversResponse": {
@@ -1065,11 +1219,27 @@
         "description": "UTC timestamp in RFC 3339 format. Example: `2020-01-27T07:06:25Z`.",
         "example": "2020-01-27T07:06:25Z",
         "type": "string"
+      },
+      "vehicleTinyResponse": {
+        "description": "A minified vehicle object.",
+        "properties": {
+          "id": {
+            "description": "ID of the vehicle.",
+            "example": "123456789",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name of the vehicle.",
+            "example": "Midwest Truck #4",
+            "type": "string"
+          }
+        },
+        "type": "object"
       }
     }
   },
   "info": {
-    "description": "Vendored, trimmed subset of https://developers.samsara.com/openapi/samsara-api.json - only /fleet/drivers, /fleet/driver-vehicle-assignments, /fleet/vehicles/stats (queried with types=gps; the older /fleet/vehicles/locations endpoint was replaced per Samsara's own deprecation note pointing at Vehicle Stats), and /fleet/hos/clocks (current driver duty status) plus their transitive schema closure. VehicleStatsResponse_data is hand-narrowed to id/name/gps only - the real schema has one optional property per stat type (63 total), since /fleet/vehicles/stats is a general-purpose endpoint and this app only ever requests the gps type. HosClocksForDriver is hand-narrowed to driver/currentDutyStatus only - this app has no use for the clocks/currentVehicle/violations fields Samsara's real schema also has. Regenerate by re-downloading the full spec and re-running the trim script if these fields ever change. CurrentDutyStatus.hosStatusType is vendored as a plain string rather than Samsara's real enum type, since the documented disconnected-app empty-string value falls outside the enum and openapi-generator's generated enum throws on unrecognized values at deserialize time.",
+    "description": "Vendored, trimmed subset of https://developers.samsara.com/openapi/samsara-api.json - only /fleet/drivers, /fleet/driver-vehicle-assignments, /fleet/vehicles/stats (queried with types=gps; the older /fleet/vehicles/locations endpoint was replaced per Samsara's own deprecation note pointing at Vehicle Stats), /fleet/hos/clocks (current driver duty status plus remaining-time clocks), and /fleet/hos/logs (HOS log/duty-status-change history for the driver detail screen's activity feed) plus their transitive schema closure. VehicleStatsResponse_data is hand-narrowed to id/name/gps only - the real schema has one optional property per stat type (63 total), since /fleet/vehicles/stats is a general-purpose endpoint and this app only ever requests the gps type. HosClocksForDriver is hand-narrowed to driver/currentDutyStatus/clocks only - this app has no use for the currentVehicle/violations fields Samsara's real schema also has. HosLogEntry is hand-narrowed to drop codrivers, unused by this app. Regenerate by re-downloading the full spec and re-running the trim script if these fields ever change. CurrentDutyStatus.hosStatusType is vendored as a plain string rather than Samsara's real enum type, since the documented disconnected-app empty-string value falls outside the enum and openapi-generator's generated enum throws on unrecognized values at deserialize time.",
     "title": "Samsara Fleet API (trimmed)",
     "version": "2025-10-23"
   },
@@ -1401,6 +1571,67 @@
           }
         },
         "summary": "Get HOS clocks",
+        "tags": [
+          "Hours of Service"
+        ]
+      }
+    },
+    "/fleet/hos/logs": {
+      "get": {
+        "description": "Get the last known HOS log entries (duty status changes) for the specified drivers within the given time range. To use this endpoint, select **Read ELD Compliance Settings (US)** under the Compliance category when creating or editing an API token - the same scope already required for /fleet/hos/clocks.",
+        "operationId": "getHosLogs",
+        "parameters": [
+          {
+            "description": "A filter on the data based on this comma-separated list of driver IDs. Example: `driverIds=1234,5678`",
+            "explode": false,
+            "in": "query",
+            "name": "driverIds",
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "form"
+          },
+          {
+            "description": "A start time in RFC 3339 format. Defaults to now if not provided.",
+            "in": "query",
+            "name": "startTime",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "An end time in RFC 3339 format. Defaults to now if not provided.",
+            "in": "query",
+            "name": "endTime",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "If specified, this should be the endCursor value from the previous page of results. When present, this request will return the next page of results that occur immediately after the previous page of results.",
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HosLogsResponse"
+                }
+              }
+            },
+            "description": "HOS log entries for the specified drivers."
+          }
+        },
+        "summary": "Get HOS logs",
         "tags": [
           "Hours of Service"
         ]

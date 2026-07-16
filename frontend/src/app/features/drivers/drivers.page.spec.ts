@@ -37,6 +37,7 @@ beforeEach(() => {
       Marker: vi.fn(function () {
         return { setMap: vi.fn(), setPosition: vi.fn() };
       }),
+      SymbolPath: { FORWARD_CLOSED_ARROW: 1 },
     },
   };
   /* eslint-enable prefer-arrow-callback */
@@ -128,6 +129,11 @@ describe('DriversPage', () => {
       licenseState: 'NC',
       activationStatus: 'active',
       dutyStatus: 'driving',
+      driveRemainingDurationMs: null,
+      shiftRemainingDurationMs: null,
+      cycleRemainingDurationMs: null,
+      timeUntilBreakDurationMs: null,
+      dutyStatusSince: null,
       tags: null,
       currentVehicleId: 'vehicle-7',
       currentVehicleName: 'Truck 7',
@@ -158,6 +164,7 @@ describe('DriversPage', () => {
 
     httpMock.expectOne('/api/sw-expedited/drivers').flush(drivers);
     httpMock.expectOne('/api/sw-expedited/drivers/driver-42').flush(detail);
+    httpMock.expectOne((req) => req.url.startsWith('/api/sw-expedited/drivers/driver-42/activity')).flush([]);
     harness.detectChanges();
     await harness.fixture.whenStable();
     harness.detectChanges();

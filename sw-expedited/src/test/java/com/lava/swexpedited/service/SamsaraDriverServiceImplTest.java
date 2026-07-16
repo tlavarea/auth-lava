@@ -117,6 +117,11 @@ class SamsaraDriverServiceImplTest {
         assertThat(response.currentVehicleId()).isEqualTo("281474");
         assertThat(response.currentVehicleName()).isEqualTo("Truck 12");
         assertThat(response.dutyStatus()).isEqualTo("driving");
+        assertThat(response.timeUntilBreakDurationMs()).isEqualTo(1_000L);
+        assertThat(response.driveRemainingDurationMs()).isEqualTo(2_000L);
+        assertThat(response.shiftRemainingDurationMs()).isEqualTo(3_000L);
+        assertThat(response.cycleRemainingDurationMs()).isEqualTo(4_000L);
+        assertThat(response.dutyStatusSince()).isNotNull();
         assertThat(response.latitude()).isEqualByComparingTo("32.735000");
         assertThat(response.longitude()).isEqualByComparingTo("-97.108000");
         assertThat(response.formattedLocation()).isEqualTo("Fort Worth, TX");
@@ -199,7 +204,15 @@ class SamsaraDriverServiceImplTest {
     }
 
     private SamsaraDriverDutyStatusRow dutyStatusRow(String driverId, String dutyStatus) {
-        return new SamsaraDriverDutyStatusRow(driverId, dutyStatus, LocalDateTime.now());
+        return new SamsaraDriverDutyStatusRow(
+                driverId,
+                dutyStatus,
+                2_000L,
+                3_000L,
+                4_000L,
+                1_000L,
+                LocalDateTime.now().minusMinutes(103),
+                LocalDateTime.now());
     }
 
     private SamsaraVehicleLocationRow locationRow(String vehicleId) {

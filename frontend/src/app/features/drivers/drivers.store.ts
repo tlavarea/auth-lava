@@ -2,8 +2,9 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 
+import { startOfTodayIso } from './date-utils';
 import { DriversApi } from './drivers-api';
-import { DriverDetailResponse, DriverListingRow } from './drivers.models';
+import { DriverActivityEntry, DriverDetailResponse, DriverListingRow } from './drivers.models';
 
 export type DriversRequestStatus = 'idle' | 'loading' | 'error';
 
@@ -12,6 +13,8 @@ type DriversState = {
   listStatus: DriversRequestStatus;
   selectedDetail: DriverDetailResponse | null;
   detailStatus: DriversRequestStatus;
+  activity: DriverActivityEntry[];
+  activityStatus: DriversRequestStatus;
 };
 
 const initialState: DriversState = {
@@ -19,6 +22,8 @@ const initialState: DriversState = {
   listStatus: 'idle',
   selectedDetail: null,
   detailStatus: 'idle',
+  activity: [],
+  activityStatus: 'idle',
 };
 
 // Route-scoped (provided by DriversPage, not `root`) so list + selected-detail state resets per visit
@@ -61,8 +66,49 @@ export const DriversStore = signalStore(
         }
       },
 
+      // Patches only the position fields of the currently-selected driver's detail from a live, on-demand
+      // single-vehicle Samsara call (see DriversApi.liveLocation/backend's SamsaraDriverLiveLocationService) - polled
+      // faster than refreshDriverDetail's ~60s cadence so the map's arrow visibly moves. A no-op if selectedDetail
+      // has since been cleared (e.g. the detail view was closed mid-request) or driverId no longer matches it.
+      async pollLiveLocation(driverId: string): Promise<void> {
+        try {
+          const liveLocation = await firstValueFrom(driversApi.liveLocation(driverId));
+          const current = store.selectedDetail();
+          if (current === null || current.id !== driverId) {
+            return;
+          }
+          patchState(store, { selectedDetail: { ...current, ...liveLocation } });
+        } catch {
+          // Silent: a transient poll failure shouldn't disrupt an already-open detail view - the next poll retries.
+        }
+      },
+
+      // Scoped to today (the viewer's local calendar day) rather than DriversApi.activity's own rolling-24h
+      // server-side default, matching the panel's "Today" framing.
+      async loadDriverActivity(driverId: string): Promise<void> {
+        patchState(store, { activityStatus: 'loading', activity: [] });
+        try {
+          const activity = await firstValueFrom(driversApi.activity(driverId, startOfTodayIso()));
+          patchState(store, { activity, activityStatus: 'idle' });
+        } catch {
+          patchState(store, { activityStatus: 'error' });
+        }
+      },
+
+      // Re-fetches the currently-selected driver's activity feed without resetting activityStatus/activity to
+      // loading/empty first, mirroring refreshDriverDetail - polled on the same ~60s cadence, since duty-status
+      // changes aren't a sub-minute event.
+      async refreshDriverActivity(driverId: string): Promise<void> {
+        try {
+          const activity = await firstValueFrom(driversApi.activity(driverId, startOfTodayIso()));
+          patchState(store, { activity });
+        } catch {
+          // Silent: a transient refresh failure shouldn't disrupt an already-open detail view.
+        }
+      },
+
       clearSelectedDetail(): void {
-        patchState(store, { selectedDetail: null, detailStatus: 'idle' });
+        patchState(store, { selectedDetail: null, detailStatus: 'idle', activity: [], activityStatus: 'idle' });
       },
     };
   })

@@ -5,18 +5,44 @@ import { timer } from 'rxjs';
 
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideMoveLeft, lucideX } from '@ng-icons/lucide';
+import { HlmAccordionImports } from '@spartan-ng/helm/accordion';
+import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
-import { DriverDetailResponse } from '../drivers.models';
+import { driverDutyStatusLabel, driverDutyStatusVariant } from '../driver-status';
+import { DriverActivityEntry, DriverDetailResponse } from '../drivers.models';
 import { DriversRequestStatus, DriversStore, DriversStoreType } from '../drivers.store';
+import { formatDurationMs } from '../format-duration';
+import { DriverActivityFeed } from './driver-activity-feed';
 import { DriverLocationMap } from './driver-location-map';
+import { HosClockRing } from './hos-clock-ring';
 
 const REFRESH_INTERVAL_MS = 60_000;
+const LIVE_LOCATION_POLL_INTERVAL_MS = 15_000;
+
+// Presentational denominators for the HOS clock rings below - the FMCSA property-carrying-driver defaults (11hr
+// drive, 14hr shift, 8hr time-until-break, 70hr/8-day cycle). Samsara's response only carries each clock's *remaining*
+// duration, not the driver's actual applicable ruleset (which varies by carrier config, e.g. 60hr/7-day cycles) - these
+// are only used to size each ring's fill percentage, not asserted as the driver's real limit.
+const DRIVE_CLOCK_TOTAL_MS = 11 * 3_600_000;
+const SHIFT_CLOCK_TOTAL_MS = 14 * 3_600_000;
+const BREAK_CLOCK_TOTAL_MS = 8 * 3_600_000;
+const CYCLE_CLOCK_TOTAL_MS = 70 * 3_600_000;
 
 @Component({
   selector: 'app-driver-detail',
-  imports: [HlmButtonImports, HlmSpinnerImports, NgIcon, RouterLink, DriverLocationMap],
+  imports: [
+    HlmAccordionImports,
+    HlmBadgeImports,
+    HlmButtonImports,
+    HlmSpinnerImports,
+    NgIcon,
+    RouterLink,
+    DriverLocationMap,
+    HosClockRing,
+    DriverActivityFeed,
+  ],
   viewProviders: [provideIcons({ lucideMoveLeft, lucideX })],
   template: `
     <div class="flex h-full flex-col gap-4 rounded-md bg-card p-6">
@@ -77,14 +103,87 @@ const REFRESH_INTERVAL_MS = 60_000;
                 <dd>{{ detail.locationTime ?? '—' }}</dd>
               </dl>
 
-              @if (detail.latitude !== null && detail.longitude !== null) {
-                <app-driver-location-map
-                  [latitude]="detail.latitude"
-                  [longitude]="detail.longitude"
-                  [formattedLocation]="detail.formattedLocation" />
+              @if (detail.dutyStatus !== null) {
+                <hlm-accordion class="shrink-0">
+                  <div hlmAccordionItem [isOpened]="true">
+                    <hlm-accordion-trigger>Hours of Service</hlm-accordion-trigger>
+                    <hlm-accordion-content>
+                      <div class="flex flex-wrap items-center gap-8">
+                        <div class="flex flex-col items-center gap-1">
+                          <span
+                            hlmBadge
+                            class="flex h-10 w-10 items-center justify-center rounded-full p-0 text-base"
+                            aria-hidden="true"
+                            [variant]="driverDutyStatusVariant(detail.dutyStatus)">
+                            {{ driverDutyStatusLabel(detail.dutyStatus).charAt(0) }}
+                          </span>
+                          <span class="text-sm font-medium">{{
+                            formatDurationMs(elapsedSinceDutyStatus(detail))
+                          }}</span>
+                          <span class="text-xs text-muted-foreground">{{
+                            driverDutyStatusLabel(detail.dutyStatus)
+                          }}</span>
+                        </div>
+                        <app-hos-clock-ring
+                          label="Break"
+                          [remainingMs]="detail.timeUntilBreakDurationMs"
+                          [totalMs]="BREAK_CLOCK_TOTAL_MS" />
+                        <app-hos-clock-ring
+                          label="Drive"
+                          [remainingMs]="detail.driveRemainingDurationMs"
+                          [totalMs]="DRIVE_CLOCK_TOTAL_MS" />
+                        <app-hos-clock-ring
+                          label="Shift"
+                          [remainingMs]="detail.shiftRemainingDurationMs"
+                          [totalMs]="SHIFT_CLOCK_TOTAL_MS" />
+                        <app-hos-clock-ring
+                          label="Cycle"
+                          [remainingMs]="detail.cycleRemainingDurationMs"
+                          [totalMs]="CYCLE_CLOCK_TOTAL_MS" />
+                      </div>
+                    </hlm-accordion-content>
+                  </div>
+                </hlm-accordion>
               } @else {
-                <p class="shrink-0 text-sm text-muted-foreground">No current location available for this driver.</p>
+                <p class="shrink-0 text-sm text-muted-foreground">No HOS data available for this driver.</p>
               }
+
+              <div class="relative min-h-0 flex-1">
+                @if (detail.latitude !== null && detail.longitude !== null) {
+                  <app-driver-location-map
+                    class="absolute inset-0"
+                    [latitude]="detail.latitude"
+                    [longitude]="detail.longitude"
+                    [heading]="detail.heading"
+                    [speed]="detail.speed"
+                    [formattedLocation]="detail.formattedLocation" />
+                } @else {
+                  <p class="text-sm text-muted-foreground">No current location available for this driver.</p>
+                }
+
+                <!-- Desktop: floats over the map's start (left) side, always expanded (no collapse trigger). -->
+                <section
+                  class="absolute inset-y-20 inset-s-4 z-10 hidden w-96 flex-col overflow-y-auto rounded-md border bg-card/95 p-4 shadow-lg backdrop-blur lg:flex">
+                  <h2 class="mb-2 font-medium">Activity</h2>
+                  <app-driver-activity-feed
+                    [entries]="activity()"
+                    [asOf]="detail.locationTime ?? detail.syncedAt"
+                    [currentLocation]="detail.formattedLocation" />
+                </section>
+              </div>
+
+              <!-- Mobile: closed-by-default accordion below the map. -->
+              <hlm-accordion class="shrink-0 lg:hidden">
+                <div hlmAccordionItem [isOpened]="false">
+                  <hlm-accordion-trigger>Activity</hlm-accordion-trigger>
+                  <hlm-accordion-content>
+                    <app-driver-activity-feed
+                      [entries]="activity()"
+                      [asOf]="detail.locationTime ?? detail.syncedAt"
+                      [currentLocation]="detail.formattedLocation" />
+                  </hlm-accordion-content>
+                </div>
+              </hlm-accordion>
             </div>
           }
         }
@@ -101,17 +200,46 @@ export class DriverDetailPage {
 
   protected readonly detail: Signal<DriverDetailResponse | null> = this.store.selectedDetail;
   protected readonly status: Signal<DriversRequestStatus> = this.store.detailStatus;
+  protected readonly activity: Signal<DriverActivityEntry[]> = this.store.activity;
+
+  protected readonly driverDutyStatusVariant = driverDutyStatusVariant;
+  protected readonly driverDutyStatusLabel = driverDutyStatusLabel;
+  protected readonly formatDurationMs = formatDurationMs;
+
+  protected readonly DRIVE_CLOCK_TOTAL_MS = DRIVE_CLOCK_TOTAL_MS;
+  protected readonly SHIFT_CLOCK_TOTAL_MS = SHIFT_CLOCK_TOTAL_MS;
+  protected readonly BREAK_CLOCK_TOTAL_MS = BREAK_CLOCK_TOTAL_MS;
+  protected readonly CYCLE_CLOCK_TOTAL_MS = CYCLE_CLOCK_TOTAL_MS;
+
+  // Not a signal - deliberately recomputed once per change-detection pass (same "as of last sync" freshness as every
+  // other field on `detail`) rather than ticking live every second, to avoid a dedicated per-second timer for a
+  // display-only elapsed time.
+  protected elapsedSinceDutyStatus(detail: DriverDetailResponse): number | null {
+    return detail.dutyStatusSince === null ? null : Date.now() - new Date(detail.dutyStatusSince).getTime();
+  }
 
   constructor() {
     effect(() => {
       void this.store.loadDriverDetail(this.id());
+      void this.store.loadDriverActivity(this.id());
     });
 
-    // Vehicle locations re-sync roughly every minute server-side (SamsaraLocationSyncScheduler) - poll on the same
-    // cadence while this detail view is open so the map stays roughly live without a manual refresh.
+    // Full detail (HOS clocks, vehicle assignment, etc) re-syncs roughly every minute server-side
+    // (SamsaraLocationSyncScheduler/SamsaraDriverDutyStatusSyncScheduler) - poll on the same cadence while this detail
+    // view is open so the rest of the page stays roughly live without a manual refresh.
     timer(REFRESH_INTERVAL_MS, REFRESH_INTERVAL_MS)
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => void this.store.refreshDriverDetail(this.id()));
+      .subscribe(() => {
+        void this.store.refreshDriverDetail(this.id());
+        void this.store.refreshDriverActivity(this.id());
+      });
+
+    // The map's position, polled separately and faster: an on-demand, single-vehicle Samsara call (see
+    // DriversApi.liveLocation) rather than a wait for the batch cadence above, so the arrow visibly moves while this
+    // view is open instead of jumping once a minute.
+    timer(LIVE_LOCATION_POLL_INTERVAL_MS, LIVE_LOCATION_POLL_INTERVAL_MS)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => void this.store.pollLiveLocation(this.id()));
 
     this.destroyRef.onDestroy(() => this.store.clearSelectedDetail());
   }

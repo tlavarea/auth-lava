@@ -17,8 +17,10 @@ import com.lava.swexpedited.samsara.SamsaraDriverWithRaw;
 import com.lava.swexpedited.samsara.model.DriverActivationStatus;
 import com.lava.swexpedited.samsara.model.DriverVehicleAssignmentV2ObjectResponseBody;
 import com.lava.swexpedited.samsara.model.HosClocksForDriver;
+import com.lava.swexpedited.samsara.model.HosLogEntry;
 import com.lava.swexpedited.samsara.model.VehicleStatsResponseData;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestClient;
@@ -277,6 +279,81 @@ class SamsaraFleetClientTest {
 
         assertThat(locations).isEmpty();
         verify(2, getRequestedFor(urlPathEqualTo("/fleet/vehicles/stats")));
+    }
+
+    @Test
+    void fetchVehicleLocation_singleVehicle_scopesRequestToThatVehicle(WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/fleet/vehicles/stats"))
+                .withQueryParam("types", equalTo("gps"))
+                .withQueryParam("vehicleIds", equalTo("281474"))
+                .withQueryParam("limit", equalTo("512"))
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [
+                                    {
+                                      "id": "281474",
+                                      "name": "Truck 12",
+                                      "gps": {
+                                        "latitude": 32.735,
+                                        "longitude": -97.108,
+                                        "headingDegrees": 180.5,
+                                        "speedMilesPerHour": 62.3,
+                                        "time": "2026-07-16T12:00:00Z",
+                                        "reverseGeo": {"formattedLocation": "Fort Worth, TX"}
+                                      }
+                                    }
+                                  ],
+                                  "pagination": {"endCursor": null, "hasNextPage": false}
+                                }
+                                """)));
+
+        SamsaraFleetClient client =
+                new SamsaraFleetClient(samsaraRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        List<VehicleStatsResponseData> locations = client.fetchVehicleLocation("281474");
+
+        assertThat(locations).hasSize(1);
+        assertThat(locations.getFirst().getId()).isEqualTo("281474");
+        assertThat(locations.getFirst().getGps().getLatitude()).isEqualTo(32.735);
+    }
+
+    @Test
+    void fetchDriverHosLogs_singlePage_parsesEntriesAndOmitsLimitParam(WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/fleet/hos/logs"))
+                .withQueryParam("driverIds", equalTo("41000123"))
+                .withQueryParam("startTime", equalTo("2026-07-15T12:00:00Z"))
+                .withQueryParam("endTime", equalTo("2026-07-16T12:00:00Z"))
+                .withQueryParam("limit", absent())
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [
+                                    {
+                                      "driver": {"id": "41000123", "name": "Jane Trucker"},
+                                      "hosLogs": [
+                                        {
+                                          "hosStatusType": "driving",
+                                          "logStartTime": "2026-07-16T11:04:00Z",
+                                          "logEndTime": null,
+                                          "logRecordedLocation": {"latitude": 27.9, "longitude": -81.6},
+                                          "remark": null
+                                        }
+                                      ]
+                                    }
+                                  ],
+                                  "pagination": {"endCursor": null, "hasNextPage": false}
+                                }
+                                """)));
+
+        SamsaraFleetClient client =
+                new SamsaraFleetClient(samsaraRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        List<HosLogEntry> hosLogs = client.fetchDriverHosLogs(
+                "41000123", Instant.parse("2026-07-15T12:00:00Z"), Instant.parse("2026-07-16T12:00:00Z"));
+
+        assertThat(hosLogs).hasSize(1);
+        assertThat(hosLogs.getFirst().getHosStatusType()).isEqualTo("driving");
+        assertThat(hosLogs.getFirst().getLogStartTime()).isEqualTo("2026-07-16T11:04:00Z");
+        assertThat(hosLogs.getFirst().getLogRecordedLocation().getLatitude()).isEqualTo(27.9);
     }
 
     private RestClient samsaraRestClient(WireMockRuntimeInfo wireMockRuntimeInfo) {
