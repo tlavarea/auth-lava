@@ -1,13 +1,19 @@
 import { Component, input, InputSignal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideArrowRight } from '@ng-icons/lucide';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmItemImports } from '@spartan-ng/helm/item';
 
+import { shipmentLocationState } from '../shipment-location';
+import { shipmentRankVariant } from '../shipment-rank';
+import { shipmentStatusVariant } from '../shipment-status';
 import { ShipmentListingRow } from '../shipments.models';
 
 @Component({
   selector: 'app-shipment-item',
-  imports: [RouterLink, HlmBadgeImports, HlmItemImports],
+  imports: [RouterLink, NgIcon, HlmBadgeImports, HlmItemImports],
+  viewProviders: [provideIcons({ lucideArrowRight })],
   template: `
     <div hlmItemGroup class="flex flex-col gap-4">
       @for (shipment of shipments(); track shipment.offerId) {
@@ -28,11 +34,19 @@ import { ShipmentListingRow } from '../shipments.models';
             'hover:bg-muted/50': !isSelected,
           }">
           <div hlmItemContent>
-            <div hlmItemTitle class="flex items-center gap-2">
-              {{ shipment.shipmentId }}
-              <span hlmBadge [variant]="statusVariant(shipment.status)">{{ shipment.status }}</span>
+            <div hlmItemTitle class="flex flex-nowrap items-center gap-2">
+              <span class="whitespace-nowrap">
+                {{ locationState(shipment.origin) }}
+                <ng-icon name="lucideArrowRight" />
+                {{ locationState(shipment.destination) }}
+              </span>
+              <span hlmBadge [variant]="shipmentRankVariant(shipment.rank)">Rank {{ shipment.rank }}</span>
+              <span hlmBadge [variant]="shipmentStatusVariant(shipment.status)">{{ shipment.status }}</span>
             </div>
-            <div hlmItemDescription>{{ shipment.origin }} &rarr; {{ shipment.destination }}</div>
+            <div hlmItemDescription class="truncate">
+              Pickup {{ shipment.pickupDate ?? '—' }} &middot; Required
+              {{ shipment.requiredDeliveryDate ?? '—' }} &middot; {{ shipment.equipType }}
+            </div>
           </div>
         </a>
       }
@@ -43,14 +57,7 @@ export class ShipmentItem {
   readonly shipments: InputSignal<ShipmentListingRow[]> = input.required<ShipmentListingRow[]>();
   readonly selectedId: InputSignal<number | null> = input<number | null>(null);
 
-  protected statusVariant(status: string): 'default' | 'secondary' | 'destructive' {
-    switch (status.toUpperCase()) {
-      case 'ACCEPTED':
-        return 'default';
-      case 'EXPIRED':
-        return 'destructive';
-      default:
-        return 'secondary';
-    }
-  }
+  protected readonly shipmentStatusVariant = shipmentStatusVariant;
+  protected readonly shipmentRankVariant = shipmentRankVariant;
+  protected readonly locationState = shipmentLocationState;
 }
