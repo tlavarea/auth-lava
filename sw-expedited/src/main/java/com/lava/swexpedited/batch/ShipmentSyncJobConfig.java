@@ -92,19 +92,24 @@ public class ShipmentSyncJobConfig {
 
     /**
      * Picked up automatically by Spring Boot's batch autoconfiguration (it accepts a TaskExecutor via
-     * ObjectProvider&lt;TaskExecutor&gt; and wires it into the JobOperator it builds), so ShipmentSyncScheduler.sync()
-     * becomes non-blocking - jobOperator.start(...) still synchronously performs the JobRepository dedup check our
-     * multi-instance coordination depends on, but the actual step execution (the auth chain + fetch) runs on this
-     * executor instead of the calling (scheduler) thread. Bounded rather than SimpleAsyncTaskExecutor's
-     * unbounded-thread-per-task behavior, since only one job type ever runs here.
+     * ObjectProvider&lt;TaskExecutor&gt; and wires it into the JobOperator it builds), so every scheduler's sync()
+     * method becomes non-blocking - jobOperator.start(...) still synchronously performs the JobRepository dedup check
+     * multi-instance coordination depends on, but the actual step execution runs on this executor instead of the
+     * calling (scheduler) thread. This is the one TaskExecutor bean in the whole application context - Spring Boot's
+     * batch autoconfiguration resolves it via ObjectProvider.getIfAvailable(), which only works unambiguously with a
+     * single candidate bean, so every job (this one plus SamsaraDriverSyncJobConfig/SamsaraLocationSyncJobConfig)
+     * shares it rather than each defining its own. Sized for a small amount of real concurrency (rather than the
+     * original single-job pool size of 1) now that a ~1-minute-cadence job (Samsara's location sync) can plausibly
+     * overlap with a slower one; still bounded rather than SimpleAsyncTaskExecutor's unbounded-thread-per-task
+     * behavior.
      */
     @Bean
     public TaskExecutor batchTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(1);
-        executor.setMaxPoolSize(1);
-        executor.setQueueCapacity(1);
-        executor.setThreadNamePrefix("shipment-sync-");
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(4);
+        executor.setThreadNamePrefix("batch-sync-");
         executor.initialize();
         return executor;
     }

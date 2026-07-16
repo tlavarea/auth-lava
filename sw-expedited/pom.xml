@@ -28,10 +28,12 @@
     <url/>
   </scm>
   <properties>
+    <jackson-datatype-jsr310.version>2.19.0</jackson-datatype-jsr310.version>
     <jacoco.version>0.8.14</jacoco.version>
     <java.version>25</java.version>
     <jsonschema2pojo.version>1.2.2</jsonschema2pojo.version>
     <jsoup.version>1.22.1</jsoup.version>
+    <openapi-generator.version>7.14.0</openapi-generator.version>
     <owasp-encoder.version>1.4.0</owasp-encoder.version>
     <palantir.version>2.91.0</palantir.version>
     <spotless.version>3.6.0</spotless.version>
@@ -76,6 +78,10 @@
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-restclient</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security</artifactId>
     </dependency>
     <dependency>
@@ -116,6 +122,14 @@
     <dependency>
       <groupId>com.fasterxml.jackson.dataformat</groupId>
       <artifactId>jackson-dataformat-csv</artifactId>
+    </dependency>
+    <dependency>
+      <!-- Registers java.time support on SamsaraFleetClient's own Jackson 2 ObjectMapper - the openapi-generator
+           -generated Samsara model classes (see schema/samsara-api.json) type some fields (e.g. Driver.dateOfBirth)
+           as java.time.LocalDate, which Jackson 2's core databind can't deserialize without this module. -->
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+      <version>${jackson-datatype-jsr310.version}</version>
     </dependency>
     <dependency>
       <groupId>org.jooq</groupId>
@@ -350,6 +364,49 @@
         </configuration>
       </plugin>
       <plugin>
+        <groupId>org.openapitools</groupId>
+        <artifactId>openapi-generator-maven-plugin</artifactId>
+        <version>${openapi-generator.version}</version>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <!-- src/main/resources/schema/samsara-api.json is a vendored, trimmed subset of Samsara's real
+               published spec (https://developers.samsara.com/openapi/samsara-api.json) - just the 4 paths this
+               app calls plus their transitive schema closure (74 of Samsara's ~4200 schemas), so every field
+               name/type/nullability is copied verbatim from Samsara's own spec rather than hand-modeled. See
+               that file's "info.description" for how to regenerate it if Samsara's API changes. -->
+          <inputSpec>${basedir}/src/main/resources/schema/samsara-api.json</inputSpec>
+          <generatorName>java</generatorName>
+          <!-- Models only - SamsaraFleetClient uses its own RestClient wiring (matching GfmBidClient's pattern),
+               not a generated API client, so there's no need for generated Api classes or supporting files. -->
+          <generateApis>false</generateApis>
+          <generateModels>true</generateModels>
+          <generateModelTests>false</generateModelTests>
+          <generateModelDocumentation>false</generateModelDocumentation>
+          <generateSupportingFiles>false</generateSupportingFiles>
+          <modelPackage>com.lava.swexpedited.samsara.model</modelPackage>
+          <output>${project.build.directory}/generated-sources/openapi</output>
+          <configOptions>
+            <!-- Spring RestClient library - matches SamsaraHttpConfiguration's own client exactly, and (unlike
+                 native/apache-httpclient) doesn't generate a toUrlQueryString()/ApiClient dependency into every
+                 model that this models-only setup has no supporting file for. -->
+            <library>restclient</library>
+            <dateLibrary>java8</dateLibrary>
+            <hideGenerationTimestamp>true</hideGenerationTimestamp>
+            <!-- Every property in Samsara's spec is optional/nullable in practice (see 003-create-samsara-driver
+                 .yaml's discussion of nullable assignment/location fields) - disable openapi-generator's default
+                 "required implies non-null accessor" behavior so a missing field never throws at read time. -->
+            <openApiNullable>false</openApiNullable>
+          </configOptions>
+        </configuration>
+      </plugin>
+      <plugin>
         <!-- 0.8.14 is the minimum version supporting Java 25 class files (major version 69) -->
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
@@ -408,6 +465,8 @@
             <exclude>com/lava/swexpedited/model/database/tables/**</exclude>
             <!-- jsonschema2pojo-generated GFM getBid response classes (gfm-bid-response.schema.json) -->
             <exclude>com/lava/swexpedited/gfm/model/**</exclude>
+            <!-- openapi-generator-generated Samsara response classes (schema/samsara-api.json) -->
+            <exclude>com/lava/swexpedited/samsara/model/**</exclude>
             <!-- application bootstrap, no logic -->
             <exclude>com/lava/swexpedited/SwExpeditedApplication.class</exclude>
           </excludes>

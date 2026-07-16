@@ -1,0 +1,36 @@
+databaseChangeLog:
+  - changeSet:
+      id: "6"
+      author: tlavarea
+      comment: >
+        SAMSARA_DRIVER_DUTY_STATUS - each driver's current Hours-of-Service duty status
+        (Driving/On Duty/Off Duty/etc), synced frequently (roughly every minute) from
+        Samsara's /fleet/hos/clocks endpoint. Keyed on Samsara's driver id, deliberately
+        with no FK to samsara_driver - same reasoning as samsara_vehicle_location: this
+        table is replaced on a much faster cadence than the driver roster table, so the
+        two are joined only at read time in the service layer, never at write time. No
+        raw_response column - the duty status payload is already fully modeled by these
+        columns. duty_status is nullable: Samsara returns an empty string when a driver's
+        app is disconnected, which the sync tasklet stores as null rather than "".
+      changes:
+        - createTable:
+            tableName: samsara_driver_duty_status
+            columns:
+              - column:
+                  name: driver_id
+                  type: VARCHAR
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: duty_status
+                  type: VARCHAR
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS samsara_driver_duty_status CASCADE;

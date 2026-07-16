@@ -3,3 +3,11 @@ databaseChangeLog:
       file: db/changelog/changes/001-create-shipment-listing.yaml
   - include:
       file: db/changelog/changes/002-create-shipment-detail.yaml
+  - include:
+      file: db/changelog/changes/003-create-samsara-driver.yaml
+  - include:
+      file: db/changelog/changes/004-create-samsara-driver-vehicle-assignment.yaml
+  - include:
+      file: db/changelog/changes/005-create-samsara-vehicle-location.yaml
+  - include:
+      file: db/changelog/changes/006-create-samsara-driver-duty-status.yaml

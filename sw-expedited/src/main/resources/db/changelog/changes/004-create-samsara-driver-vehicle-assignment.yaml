@@ -1,0 +1,49 @@
+databaseChangeLog:
+  - changeSet:
+      id: "4"
+      author: tlavarea
+      comment: >
+        SAMSARA_DRIVER_VEHICLE_ASSIGNMENT - each driver's *current* vehicle assignment, synced
+        from Samsara's /fleet/driver-vehicle-assignments endpoint (queried with default
+        start/end times, which Samsara resolves to "now"). One row per driver - driver_id is
+        both the primary key and the FK, since we only ever care about the current assignment,
+        not a history of past ones. FK'd to samsara_driver with ON DELETE CASCADE so a driver
+        roster replace (see 003-create-samsara-driver.yaml) empties this table for free instead
+        of needing its own delete/upsert logic. No raw_response column here - the assignment
+        payload is fully represented by these columns, unlike samsara_driver's fuller payload.
+      changes:
+        - createTable:
+            tableName: samsara_driver_vehicle_assignment
+            columns:
+              - column:
+                  name: driver_id
+                  type: VARCHAR
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    references: samsara_driver(id)
+                    foreignKeyName: fk_samsara_driver_vehicle_assignment_driver_id
+                    deleteCascade: true
+              - column:
+                  name: vehicle_id
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: vehicle_name
+                  type: VARCHAR
+              - column:
+                  name: start_time
+                  type: TIMESTAMPTZ
+              - column:
+                  name: assigned_at_time
+                  type: TIMESTAMPTZ
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS samsara_driver_vehicle_assignment CASCADE;

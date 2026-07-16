@@ -41,6 +41,20 @@ management:
 server:
   port: ${SERVER_PORT:8081}
 
+samsara:
+  api-token: ${SAMSARA_API_TOKEN:}
+  base-url: ${SAMSARA_BASE_URL:https://api.samsara.com}
+  retry-backoff: ${SAMSARA_RETRY_BACKOFF:5s}
+
+samsara-driver-duty-status-sync:
+  cron: ${SAMSARA_DRIVER_DUTY_STATUS_SYNC_CRON:0 * * ? * *}
+
+samsara-driver-sync:
+  cron: ${SAMSARA_DRIVER_SYNC_CRON:0 */5 * ? * *}
+
+samsara-location-sync:
+  cron: ${SAMSARA_LOCATION_SYNC_CRON:0 * * ? * *}
+
 shipment-sync:
   cron: ${SHIPMENT_SYNC_CRON:0 */20 * ? * *}
 

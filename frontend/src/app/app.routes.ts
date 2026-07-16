@@ -24,6 +24,10 @@ export const routes: Routes = [
         path: 'shipments',
         loadChildren: () => import('./features/shipments/shipments.routes').then((m) => m.shipmentsRoutes),
       },
+      {
+        path: 'drivers',
+        loadChildren: () => import('./features/drivers/drivers.routes').then((m) => m.driversRoutes),
+      },
     ],
   },
   {
