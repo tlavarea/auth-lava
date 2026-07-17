@@ -84,4 +84,4 @@ vektor:
   synced-statuses: ${VEKTOR_SYNCED_STATUSES:manifest_in_progress}
 
 vektor-sync:
-  cron: ${VEKTOR_SYNC_CRON:0 */2 * ? * *}
+  cron: ${VEKTOR_SYNC_CRON:0 */20 * ? * *}
