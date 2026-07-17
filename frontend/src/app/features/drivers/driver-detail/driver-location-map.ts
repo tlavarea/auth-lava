@@ -112,7 +112,11 @@ export class DriverLocationMap {
       return null;
     }
     return {
-      path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+      // Numeric literal, not google.maps.SymbolPath.FORWARD_CLOSED_ARROW - same "enum not loaded yet" issue as
+      // mapOptions above (this computed can re-run as soon as `heading` changes, before the async-loaded "maps"
+      // library has populated SymbolPath), which threw "Cannot read properties of undefined (reading
+      // 'FORWARD_CLOSED_ARROW')" in practice. 1 is SymbolPath.FORWARD_CLOSED_ARROW's documented, stable value.
+      path: 1,
       rotation: heading,
       scale: ARROW_SCALE,
       strokeColor: '#ffffff',
