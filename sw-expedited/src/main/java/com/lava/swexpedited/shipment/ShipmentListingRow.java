@@ -12,6 +12,12 @@ import java.time.LocalDateTime;
  * - jOOQ's codegen simulates the schema against H2, which doesn't distinguish TIMESTAMPTZ from TIMESTAMP, so the
  * generated POJO fields are LocalDateTime. Matches the same TIMESTAMPTZ-to-LocalDateTime convention already in use in
  * backend (e.g. AuthThrottle.updatedAt).
+ *
+ * <p>viablePickup is write-only from the CSV parser's perspective - {@code ShipmentCsvParser} always passes
+ * {@code false} for it, since {@code ShipmentListingRepository#replaceAll}'s insert column list doesn't include this
+ * column at all (it relies on the DB default instead, see 009-add-viable-pickup-to-shipment-listing.yaml); the real
+ * value is written afterward by {@code PickupMatchTasklet}, so only the repository's read side (via {@code toRow}) ever
+ * returns a meaningful value here.
  */
 public record ShipmentListingRow(
         long offerId,
@@ -28,4 +34,5 @@ public record ShipmentListingRow(
         int conveyancesAccepted,
         LocalDate pickupDate,
         LocalDate requiredDeliveryDate,
-        LocalDateTime syncedAt) {}
+        LocalDateTime syncedAt,
+        boolean viablePickup) {}

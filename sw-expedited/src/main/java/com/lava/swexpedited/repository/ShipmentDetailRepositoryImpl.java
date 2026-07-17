@@ -87,18 +87,29 @@ public class ShipmentDetailRepositoryImpl implements ShipmentDetailRepository {
                 .selectFrom(SHIPMENT_DETAIL)
                 .where(SHIPMENT_DETAIL.OFFER_ID.eq(offerId))
                 .fetchOptionalInto(ShipmentDetail.class)
-                .map(row -> new ShipmentDetailRow(
-                        row.offerId(),
-                        row.totalAmount(),
-                        row.lineHaulCost(),
-                        row.rateUsed(),
-                        row.scac(),
-                        row.scacName(),
-                        row.tenderNumber(),
-                        row.equipmentDesc(),
-                        row.requestorName(),
-                        row.requestorEmail(),
-                        row.rawResponse().data(),
-                        row.syncedAt()));
+                .map(this::toRow);
+    }
+
+    @Override
+    public List<ShipmentDetailRow> findAll() {
+        return this.dsl.selectFrom(SHIPMENT_DETAIL).fetchInto(ShipmentDetail.class).stream()
+                .map(this::toRow)
+                .toList();
+    }
+
+    private ShipmentDetailRow toRow(ShipmentDetail row) {
+        return new ShipmentDetailRow(
+                row.offerId(),
+                row.totalAmount(),
+                row.lineHaulCost(),
+                row.rateUsed(),
+                row.scac(),
+                row.scacName(),
+                row.tenderNumber(),
+                row.equipmentDesc(),
+                row.requestorName(),
+                row.requestorEmail(),
+                row.rawResponse().data(),
+                row.syncedAt());
     }
 }

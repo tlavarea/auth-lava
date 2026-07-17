@@ -77,7 +77,8 @@ class ShipmentControllerTest {
                         0,
                         null,
                         null,
-                        null)));
+                        null,
+                        false)));
 
         this.mockMvc
                 .perform(get("/api/shipments").cookie(new Cookie("ACCESS_TOKEN", "token-value")))
@@ -122,7 +123,8 @@ class ShipmentControllerTest {
                 0,
                 null,
                 null,
-                null);
+                null,
+                false);
         when(this.shipmentService.findDetail(1284311010L))
                 .thenReturn(Optional.of(new ShipmentDetailResponse(
                         listing, null, null, null, "SWJJ", null, null, null, null, null, "{\"bid\":{}}", null, null)));

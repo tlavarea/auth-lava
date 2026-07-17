@@ -33,7 +33,8 @@ class ShipmentDetailItemProcessorTest {
                 0,
                 null,
                 null,
-                null);
+                null,
+                false);
         ShipmentDetailRow expected =
                 new ShipmentDetailRow(1284311010L, null, null, null, null, null, null, null, null, null, "{}", null);
         when(gfmBidClient.fetchDetail(1284311010L)).thenReturn(expected);

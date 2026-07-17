@@ -43,6 +43,7 @@ describe('ShipmentsPage', () => {
       pickupDate: '2026-08-01',
       requiredDeliveryDate: '2026-08-10',
       syncedAt: '2026-07-14T00:00:00',
+      viablePickup: false,
     },
   ];
 

@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: "9"
+      author: tlavarea
+      comment: >
+        Adds viable_pickup to shipment_listing: true when a driver (from vektor_manifest) is due
+        to arrive within a configurable time/distance of this shipment's pickup, per
+        PickupMatchTasklet. Intentionally not synced-in by FetchAndLoadShipmentsTasklet/
+        ShipmentListingRepository#replaceAll - that insert's column list is untouched, so every
+        freshly-replaced row picks up this column's false default for free. It's written afterward,
+        in the same shipmentSyncJob run, by pickupMatchStep (chained after shipmentDetailStep,
+        since the match needs shipment_detail's raw_response for the precise pickup window) - never
+        racing the replace, so no separate table/FK is needed the way samsara_driver_duty_status's
+        javadoc argues for one when two datasets are synced independently.
+      changes:
+        - addColumn:
+            tableName: shipment_listing
+            columns:
+              - column:
+                  name: viable_pickup
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: shipment_listing
+            columns:
+              - column:
+                  name: viable_pickup

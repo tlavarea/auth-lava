@@ -110,6 +110,7 @@ class ShipmentServiceImplTest {
                 0,
                 null,
                 null,
-                null);
+                null,
+                false);
     }
 }

@@ -67,7 +67,8 @@ class FetchAndLoadShipmentsTaskletTest {
                 0,
                 null,
                 null,
-                null));
+                null,
+                false));
         when(shipmentCsvParser.parse(eq(csv))).thenReturn(parsedRows);
 
         stubFor(get(urlPathEqualTo("/teams/api/oauth/login"))

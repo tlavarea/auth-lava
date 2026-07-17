@@ -17,6 +17,11 @@ gfm:
   retry-backoff: ${GFM_RETRY_BACKOFF:5s}
   detail-fetch-skip-limit: ${GFM_DETAIL_FETCH_SKIP_LIMIT:1000}
 
+google-maps:
+  api-key: ${GOOGLE_MAPS_API_KEY:}
+  base-url: ${GOOGLE_MAPS_BASE_URL:https://routes.googleapis.com}
+  retry-backoff: ${GOOGLE_MAPS_RETRY_BACKOFF:5s}
+
 logging:
   level:
     com.lava: ${LOG_LEVEL_COM_LAVA:info}
@@ -38,8 +43,10 @@ management:
     health:
       show-details: never
 
-server:
-  port: ${SERVER_PORT:8081}
+pickup-match:
+  time-window: ${PICKUP_MATCH_TIME_WINDOW:48h}
+  max-distance-miles: ${PICKUP_MATCH_MAX_DISTANCE_MILES:500}
+  arrival-buffer: ${PICKUP_MATCH_ARRIVAL_BUFFER:2h}
 
 samsara:
   api-token: ${SAMSARA_API_TOKEN:}
@@ -55,8 +62,16 @@ samsara-driver-sync:
 samsara-location-sync:
   cron: ${SAMSARA_LOCATION_SYNC_CRON:0 * * ? * *}
 
+server:
+  port: ${SERVER_PORT:8081}
+
 shipment-sync:
-  cron: ${SHIPMENT_SYNC_CRON:0 */20 * ? * *}
+  # Offset 5 minutes after vektor-sync's own */20 tick (below), not the same tick - shipmentSyncJob's last step,
+  # pickupMatchStep, reads vektor_manifest, and the two jobs are independent Spring Batch executions with no
+  # ordering guarantee between them when they fire at the same instant. vektor-sync's tasklet is a handful of bulk
+  # HTTP calls (login + two fetches + a replace), so it reliably finishes in well under 5 minutes, guaranteeing
+  # pickupMatchStep always sees this cycle's fresh driver data rather than racing it.
+  cron: ${SHIPMENT_SYNC_CRON:0 5,25,45 * ? * *}
 
 spring:
   application:

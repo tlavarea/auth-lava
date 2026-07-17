@@ -24,6 +24,7 @@ describe('ShipmentTable', () => {
       pickupDate: '2026-08-01',
       requiredDeliveryDate: '2026-08-10',
       syncedAt: '2026-07-14T00:00:00',
+      viablePickup: false,
     },
     {
       offerId: 43,
@@ -41,6 +42,7 @@ describe('ShipmentTable', () => {
       pickupDate: '2026-07-20',
       requiredDeliveryDate: null,
       syncedAt: '2026-07-14T00:00:00',
+      viablePickup: true,
     },
   ];
 
@@ -97,6 +99,13 @@ describe('ShipmentTable', () => {
     expect(secondBadges[0].getAttribute('data-variant')).toBe('destructive');
     expect(secondBadges[1].textContent?.trim()).toBe('Awaiting Award');
     expect(secondBadges[1].getAttribute('data-variant')).toBe('info');
+  });
+
+  it('shows an "On Route" badge only for shipments flagged as viable pickups', () => {
+    const [firstCard, secondCard] = cards();
+
+    expect(firstCard.textContent).not.toContain('On Route');
+    expect(secondCard.textContent).toContain('On Route');
   });
 
   it('shows exactly pickup date, required delivery, and equipment in the second row', () => {

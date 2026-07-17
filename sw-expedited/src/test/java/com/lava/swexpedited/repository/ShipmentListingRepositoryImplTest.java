@@ -6,6 +6,7 @@ import com.lava.swexpedited.shipment.ShipmentListingRow;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,6 +71,48 @@ class ShipmentListingRepositoryImplTest extends AbstractRepositoryIntegrationTes
                 .isEqualTo("KLFV160850003");
     }
 
+    @Test
+    void markViablePickups_setsFlagOnlyForGivenOfferIds() {
+        this.shipmentListingRepository.replaceAll(
+                List.of(row(1284311010L, "KLFV160850003"), row(1284314723L, "BKMT160890012")));
+
+        this.shipmentListingRepository.markViablePickups(Set.of(1284311010L));
+
+        assertThat(this.shipmentListingRepository.findByOfferId(1284311010L))
+                .get()
+                .extracting(ShipmentListingRow::viablePickup)
+                .isEqualTo(true);
+        assertThat(this.shipmentListingRepository.findByOfferId(1284314723L))
+                .get()
+                .extracting(ShipmentListingRow::viablePickup)
+                .isEqualTo(false);
+    }
+
+    @Test
+    void markViablePickups_emptySet_doesNothing() {
+        this.shipmentListingRepository.replaceAll(List.of(row(1284311010L, "KLFV160850003")));
+
+        this.shipmentListingRepository.markViablePickups(Set.of());
+
+        assertThat(this.shipmentListingRepository.findByOfferId(1284311010L))
+                .get()
+                .extracting(ShipmentListingRow::viablePickup)
+                .isEqualTo(false);
+    }
+
+    @Test
+    void replaceAll_resetsViablePickupOnFreshInsert() {
+        this.shipmentListingRepository.replaceAll(List.of(row(1284311010L, "KLFV160850003")));
+        this.shipmentListingRepository.markViablePickups(Set.of(1284311010L));
+
+        this.shipmentListingRepository.replaceAll(List.of(row(1284311010L, "KLFV160850003")));
+
+        assertThat(this.shipmentListingRepository.findByOfferId(1284311010L))
+                .get()
+                .extracting(ShipmentListingRow::viablePickup)
+                .isEqualTo(false);
+    }
+
     private ShipmentListingRow row(long offerId, String shipmentId) {
         return new ShipmentListingRow(
                 offerId,
@@ -86,6 +129,7 @@ class ShipmentListingRepositoryImplTest extends AbstractRepositoryIntegrationTes
                 0,
                 LocalDate.now().plusDays(1),
                 LocalDate.now().plusDays(10),
-                null);
+                null,
+                false);
     }
 }

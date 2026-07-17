@@ -65,7 +65,8 @@ public class ShipmentCsvParser {
                 Integer.parseInt(conveyances.group(2)),
                 LocalDate.parse(columns.get("Pickup"), DATE_FORMAT),
                 LocalDate.parse(columns.get("Required Delivery"), DATE_FORMAT),
-                null);
+                null,
+                false);
     }
 
     private LocalDateTime parseExpiration(String value) {

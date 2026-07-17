@@ -24,6 +24,7 @@ describe('ShipmentItem', () => {
       pickupDate: '2026-08-01',
       requiredDeliveryDate: '2026-08-10',
       syncedAt: '2026-07-14T00:00:00',
+      viablePickup: false,
     },
   ];
 
@@ -76,6 +77,18 @@ describe('ShipmentItem', () => {
     expect(fixture.nativeElement.querySelector('[aria-current="page"]')).toBeFalsy();
     expect(row?.classList.contains('bg-accent')).toBe(false);
     expect(row?.classList.contains('hover:bg-muted/50')).toBe(true);
+  });
+
+  it('shows an "On Route" badge only for shipments flagged as viable pickups', () => {
+    fixture.componentRef.setInput('shipments', [
+      { ...shipments[0], offerId: 1, viablePickup: false },
+      { ...shipments[0], offerId: 2, viablePickup: true },
+    ]);
+    fixture.detectChanges();
+
+    const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('a[data-slot="item"]'));
+    expect(rows[0].textContent).not.toContain('On Route');
+    expect(rows[1].textContent).toContain('On Route');
   });
 
   it('colors the rank and status badges via the shared helpers', () => {
