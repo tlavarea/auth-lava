@@ -1,0 +1,84 @@
+databaseChangeLog:
+  - changeSet:
+      id: "8"
+      author: tlavarea
+      comment: >
+        VEKTOR_MANIFEST - driver manifests (current load, origin, destination, ETA) synced
+        periodically from app.vektortms.com's gRPC-Web Manifests/Get endpoint (Vektor has no
+        public API; this app talks to its internal gRPC-Web backend directly - see
+        VektorGrpcWeb). Keyed on Vektor's own manifest_number, the stable human-facing
+        identifier also shown in Vektor's UI and dispatch-sheet PDFs. Each sync run replaces the
+        full table contents in one transaction (delete + bulk insert), matching
+        SHIPMENT_LISTING/SAMSARA_DRIVER's snapshot semantics - Manifests/Get returns "what's
+        active right now" for the synced effective_status filter, not a change log. origin/
+        destination/eta are derived from the manifest's pickup (stop type 1) and dropoff (stop
+        type 4) stops; driver_name is resolved separately via Drivers/Get and is nullable since
+        that resolution can fail independently of the manifest fetch succeeding.
+        matched_samsara_driver_id is a best-effort join to SAMSARA_DRIVER by name and
+        deliberately has no FK constraint. raw_response holds the full decoded manifest
+        (including every stop) so future fields can be surfaced without a schema change.
+      changes:
+        - createTable:
+            tableName: vektor_manifest
+            columns:
+              - column:
+                  name: manifest_number
+                  type: BIGINT
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: manifest_id
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: driver_id
+                  type: VARCHAR
+              - column:
+                  name: driver_name
+                  type: VARCHAR
+              - column:
+                  name: matched_samsara_driver_id
+                  type: VARCHAR
+              - column:
+                  name: status
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: origin
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: destination
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: destination_latitude
+                  type: NUMERIC(9,6)
+              - column:
+                  name: destination_longitude
+                  type: NUMERIC(9,6)
+              - column:
+                  name: eta
+                  type: TIMESTAMPTZ
+              - column:
+                  name: load_reference
+                  type: VARCHAR
+              - column:
+                  name: raw_response
+                  type: JSON
+                  constraints:
+                    nullable: false
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS vektor_manifest CASCADE;
