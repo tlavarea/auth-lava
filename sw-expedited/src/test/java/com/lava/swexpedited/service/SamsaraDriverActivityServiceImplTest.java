@@ -5,7 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-import com.lava.swexpedited.batch.SamsaraFleetClient;
+import com.lava.swexpedited.batch.samsara.SamsaraFleetClient;
 import com.lava.swexpedited.samsara.DriverActivityEntry;
 import com.lava.swexpedited.samsara.model.HosLogEntry;
 import com.lava.swexpedited.samsara.model.HosLogLocation;

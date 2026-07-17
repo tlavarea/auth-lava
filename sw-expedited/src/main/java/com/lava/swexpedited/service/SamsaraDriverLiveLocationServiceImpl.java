@@ -1,6 +1,6 @@
 package com.lava.swexpedited.service;
 
-import com.lava.swexpedited.batch.SamsaraFleetClient;
+import com.lava.swexpedited.batch.samsara.SamsaraFleetClient;
 import com.lava.swexpedited.repository.SamsaraDriverVehicleAssignmentRepository;
 import com.lava.swexpedited.samsara.DriverLiveLocationResponse;
 import com.lava.swexpedited.samsara.SamsaraDriverVehicleAssignmentRow;

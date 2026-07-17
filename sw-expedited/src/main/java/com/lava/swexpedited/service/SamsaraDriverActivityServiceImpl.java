@@ -1,6 +1,6 @@
 package com.lava.swexpedited.service;
 
-import com.lava.swexpedited.batch.SamsaraFleetClient;
+import com.lava.swexpedited.batch.samsara.SamsaraFleetClient;
 import com.lava.swexpedited.samsara.DriverActivityEntry;
 import com.lava.swexpedited.samsara.model.HosLogEntry;
 import com.lava.swexpedited.samsara.model.HosLogLocation;
