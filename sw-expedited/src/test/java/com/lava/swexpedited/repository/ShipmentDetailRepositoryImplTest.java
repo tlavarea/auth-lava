@@ -51,6 +51,22 @@ class ShipmentDetailRepositoryImplTest extends AbstractRepositoryIntegrationTest
     }
 
     @Test
+    void findAll_noRows_isEmpty() {
+        assertThat(this.shipmentDetailRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void findAll_returnsEveryStoredDetailRow() {
+        this.shipmentListingRepository.replaceAll(List.of(listingRow(1284311010L), listingRow(1284314723L)));
+
+        this.shipmentDetailRepository.insertAll(List.of(detailRow(1284311010L), detailRow(1284314723L)));
+
+        assertThat(this.shipmentDetailRepository.findAll())
+                .extracting(ShipmentDetailRow::offerId)
+                .containsExactlyInAnyOrder(1284311010L, 1284314723L);
+    }
+
+    @Test
     void listingReplaceAll_cascadesDeleteToShipmentDetail() {
         this.shipmentListingRepository.replaceAll(List.of(listingRow(1284311010L)));
         this.shipmentDetailRepository.insertAll(List.of(detailRow(1284311010L)));
@@ -76,7 +92,8 @@ class ShipmentDetailRepositoryImplTest extends AbstractRepositoryIntegrationTest
                 0,
                 LocalDate.now().plusDays(1),
                 LocalDate.now().plusDays(10),
-                null);
+                null,
+                false);
     }
 
     private ShipmentDetailRow detailRow(long offerId) {

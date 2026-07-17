@@ -15,4 +15,10 @@ public interface ShipmentDetailRepository {
     void insertAll(List<ShipmentDetailRow> rows);
 
     Optional<ShipmentDetailRow> findByOfferId(long offerId);
+
+    /**
+     * Every currently-stored detail row. Added for {@code PickupMatchTasklet}, which needs every listed shipment's
+     * pickup window in one pass rather than one {@code findByOfferId} lookup per shipment.
+     */
+    List<ShipmentDetailRow> findAll();
 }

@@ -1,5 +1,6 @@
 package com.lava.swexpedited.batch.gfm;
 
+import com.lava.swexpedited.batch.pickupmatch.PickupMatchTasklet;
 import com.lava.swexpedited.repository.ShipmentListingRepository;
 import com.lava.swexpedited.shipment.ShipmentDetailRow;
 import com.lava.swexpedited.shipment.ShipmentListingRow;
@@ -25,6 +26,10 @@ import org.springframework.transaction.PlatformTransactionManager;
  * shipment_detail. The CSV step stays a plain tasklet - it's small enough that chunk-oriented checkpoint/restart
  * machinery isn't earning its complexity there - but the per-shipment HTTP call in the detail step is exactly what
  * chunk processing (with retry/skip so one bad shipment doesn't fail the whole cycle) is built for.
+ * {@code pickupMatchStep} runs last, after both: it depends on shipment_detail (populated by shipmentDetailStep) to
+ * compute each shipment's precise pickup window, and writes shipment_listing.viable_pickup only after
+ * shipmentSyncStep's replace-all has already committed, so it never races that wipe (see
+ * 009-add-viable-pickup-to-shipment-listing.yaml and {@link PickupMatchTasklet}'s javadoc).
  */
 @Configuration
 public class ShipmentSyncJobConfig {
@@ -34,10 +39,12 @@ public class ShipmentSyncJobConfig {
             JobRepository jobRepository,
             Step shipmentSyncStep,
             Step shipmentDetailStep,
+            Step pickupMatchStep,
             GfmLogoutJobListener gfmLogoutJobListener) {
         return new JobBuilder("shipmentSyncJob", jobRepository)
                 .start(shipmentSyncStep)
                 .next(shipmentDetailStep)
+                .next(pickupMatchStep)
                 .listener(gfmLogoutJobListener)
                 .build();
     }
@@ -49,6 +56,16 @@ public class ShipmentSyncJobConfig {
             FetchAndLoadShipmentsTasklet fetchAndLoadShipmentsTasklet) {
         return new StepBuilder("shipmentSyncStep", jobRepository)
                 .tasklet(fetchAndLoadShipmentsTasklet, transactionManager)
+                .build();
+    }
+
+    @Bean
+    public Step pickupMatchStep(
+            JobRepository jobRepository,
+            PlatformTransactionManager transactionManager,
+            PickupMatchTasklet pickupMatchTasklet) {
+        return new StepBuilder("pickupMatchStep", jobRepository)
+                .tasklet(pickupMatchTasklet, transactionManager)
                 .build();
     }
 

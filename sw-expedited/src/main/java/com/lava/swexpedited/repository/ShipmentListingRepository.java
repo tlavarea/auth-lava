@@ -3,6 +3,7 @@ package com.lava.swexpedited.repository;
 import com.lava.swexpedited.shipment.ShipmentListingRow;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface ShipmentListingRepository {
 
@@ -16,4 +17,12 @@ public interface ShipmentListingRepository {
     List<ShipmentListingRow> findAll();
 
     Optional<ShipmentListingRow> findByOfferId(long offerId);
+
+    /**
+     * Sets {@code viable_pickup = true} for exactly {@code offerIds}, leaving every other row at whatever value it
+     * already has. Called by {@code PickupMatchTasklet} after {@code replaceAll} has already run this same job - every
+     * row starts {@code false} from that fresh insert (see 009-add-viable-pickup-to-shipment-listing.yaml's column
+     * default), so there's no need for this to reset non-matching rows itself.
+     */
+    void markViablePickups(Set<Long> offerIds);
 }

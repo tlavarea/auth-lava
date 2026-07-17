@@ -149,10 +149,13 @@ type AppliedFilter = { label: string; clear: () => void };
                   </div>
                   <div>
                     <dt class="text-xs text-muted-foreground">Status</dt>
-                    <dd>
+                    <dd class="flex items-center gap-2">
                       <span hlmBadge [variant]="shipmentStatusVariant(shipment.status)">
                         {{ shipment.status }}
                       </span>
+                      @if (shipment.viablePickup) {
+                        <span hlmBadge variant="success">On Route</span>
+                      }
                     </dd>
                   </div>
                   <div>

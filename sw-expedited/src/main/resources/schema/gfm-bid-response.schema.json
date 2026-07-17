@@ -136,6 +136,16 @@
         "offerExpirationTimeDisplay": { "type": "string" },
         "earliestPickupDateDisplay": { "type": "string" },
         "latestPickupDateDisplay": { "type": "string" },
+        "earliestPickupDate": {
+          "type": "integer",
+          "existingJavaType": "java.lang.Long",
+          "description": "Epoch milliseconds - the precise counterpart to earliestPickupDateDisplay's formatted string. existingJavaType forces Long rather than jsonschema2pojo's default Integer, which would overflow on real epoch-millisecond values."
+        },
+        "latestPickupDate": {
+          "type": "integer",
+          "existingJavaType": "java.lang.Long",
+          "description": "Epoch milliseconds - the precise counterpart to latestPickupDateDisplay's formatted string. existingJavaType forces Long rather than jsonschema2pojo's default Integer, which would overflow on real epoch-millisecond values."
+        },
         "deliveryDueDateDisplay": { "type": "string" },
         "originSplc": { "type": "string" },
         "originName": { "type": "string" },

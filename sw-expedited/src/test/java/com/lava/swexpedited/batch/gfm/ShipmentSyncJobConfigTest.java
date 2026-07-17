@@ -46,7 +46,22 @@ class ShipmentSyncJobConfigTest {
     void shipmentListingReader_readsFromRepository() {
         ShipmentListingRepository shipmentListingRepository = mock(ShipmentListingRepository.class);
         ShipmentListingRow row = new ShipmentListingRow(
-                1L, "Open", null, "SHIP1", "FAK", "1", "GBLOC", "origin", "destination", "AF2", 1, 0, null, null, null);
+                1L,
+                "Open",
+                null,
+                "SHIP1",
+                "FAK",
+                "1",
+                "GBLOC",
+                "origin",
+                "destination",
+                "AF2",
+                1,
+                0,
+                null,
+                null,
+                null,
+                false);
         org.mockito.Mockito.when(shipmentListingRepository.findAll()).thenReturn(List.of(row));
 
         ItemReader<ShipmentListingRow> reader =
@@ -58,7 +73,11 @@ class ShipmentSyncJobConfigTest {
     @Test
     void shipmentSyncJob_buildsNonNullJob() {
         Job job = this.shipmentSyncJobConfig.shipmentSyncJob(
-                mock(JobRepository.class), mock(Step.class), mock(Step.class), mock(GfmLogoutJobListener.class));
+                mock(JobRepository.class),
+                mock(Step.class),
+                mock(Step.class),
+                mock(Step.class),
+                mock(GfmLogoutJobListener.class));
 
         assertThat(job).isNotNull();
     }

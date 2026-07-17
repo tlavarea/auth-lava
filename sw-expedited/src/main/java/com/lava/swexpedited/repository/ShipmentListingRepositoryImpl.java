@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.jooq.DSLContext;
 import org.jooq.InsertValuesStep15;
 import org.springframework.stereotype.Repository;
@@ -107,6 +108,20 @@ public class ShipmentListingRepositoryImpl implements ShipmentListingRepository 
                 .map(this::toRow);
     }
 
+    @Override
+    @Transactional
+    public void markViablePickups(Set<Long> offerIds) {
+        if (offerIds.isEmpty()) {
+            return;
+        }
+
+        this.dsl
+                .update(SHIPMENT_LISTING)
+                .set(SHIPMENT_LISTING.VIABLE_PICKUP, true)
+                .where(SHIPMENT_LISTING.OFFER_ID.in(offerIds))
+                .execute();
+    }
+
     private ShipmentListingRow toRow(ShipmentListing row) {
         return new ShipmentListingRow(
                 row.offerId(),
@@ -123,6 +138,7 @@ public class ShipmentListingRepositoryImpl implements ShipmentListingRepository 
                 row.conveyancesAccepted(),
                 row.pickupDate(),
                 row.requiredDeliveryDate(),
-                row.syncedAt());
+                row.syncedAt(),
+                row.viablePickup());
     }
 }

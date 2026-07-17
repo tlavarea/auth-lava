@@ -14,6 +14,7 @@ export type ShipmentListingRow = {
   pickupDate: string | null;
   requiredDeliveryDate: string | null;
   syncedAt: string | null;
+  viablePickup: boolean;
 };
 
 export type EquipmentItemDetail = {
