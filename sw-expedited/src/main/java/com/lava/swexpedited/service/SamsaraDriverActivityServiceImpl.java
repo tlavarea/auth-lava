@@ -6,7 +6,6 @@ import com.lava.swexpedited.samsara.model.HosLogEntry;
 import com.lava.swexpedited.samsara.model.HosLogLocation;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -40,8 +39,8 @@ public class SamsaraDriverActivityServiceImpl implements SamsaraDriverActivitySe
         HosLogLocation location = hosLogEntry.getLogRecordedLocation();
         return new DriverActivityEntry(
                 hosLogEntry.getHosStatusType(),
-                parseLocalDateTime(hosLogEntry.getLogStartTime()),
-                parseLocalDateTime(hosLogEntry.getLogEndTime()),
+                parseInstant(hosLogEntry.getLogStartTime()),
+                parseInstant(hosLogEntry.getLogEndTime()),
                 location != null ? toBigDecimal(location.getLatitude()) : null,
                 location != null ? toBigDecimal(location.getLongitude()) : null,
                 hosLogEntry.getRemark());
@@ -51,7 +50,11 @@ public class SamsaraDriverActivityServiceImpl implements SamsaraDriverActivitySe
         return value == null ? null : BigDecimal.valueOf(value);
     }
 
-    private static @Nullable LocalDateTime parseLocalDateTime(@Nullable String rfc3339) {
-        return StringUtils.isNotBlank(rfc3339) ? OffsetDateTime.parse(rfc3339).toLocalDateTime() : null;
+    // Preserves the actual instant Samsara reported (rather than OffsetDateTime#toLocalDateTime, which silently
+    // drops the UTC offset and relabels the raw UTC clock digits as server-local wall-clock time) - the frontend
+    // parses a zone-less ISO string as browser-local time, so dropping the offset here previously shifted every
+    // duty-status timestamp by the viewer's UTC offset.
+    private static @Nullable Instant parseInstant(@Nullable String rfc3339) {
+        return StringUtils.isNotBlank(rfc3339) ? OffsetDateTime.parse(rfc3339).toInstant() : null;
     }
 }

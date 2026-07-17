@@ -3,13 +3,19 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DriverActivityEntry } from '../drivers.models';
 import { DriverActivityFeed } from './driver-activity-feed';
 
+// Builds a real UTC instant (as the backend now sends - see DriverActivityEntry's model comment) from a given local
+// wall-clock time on Jul 16, 2026, so the expected formatted-time assertions below hold on any CI runner's timezone.
+function localIso(hour: number, minute: number): string {
+  return new Date(2026, 6, 16, hour, minute, 0).toISOString();
+}
+
 describe('DriverActivityFeed', () => {
   let fixture: ComponentFixture<DriverActivityFeed>;
 
   const entries: DriverActivityEntry[] = [
     {
       dutyStatus: 'driving',
-      startTime: '2026-07-16T11:04:00',
+      startTime: localIso(11, 4),
       endTime: null,
       latitude: 27.9,
       longitude: -81.6,
@@ -17,8 +23,8 @@ describe('DriverActivityFeed', () => {
     },
     {
       dutyStatus: 'onDuty',
-      startTime: '2026-07-16T10:48:00',
-      endTime: '2026-07-16T11:04:00',
+      startTime: localIso(10, 48),
+      endTime: localIso(11, 4),
       latitude: null,
       longitude: null,
       remark: 'Pre-trip inspection',
@@ -32,7 +38,7 @@ describe('DriverActivityFeed', () => {
 
     fixture = TestBed.createComponent(DriverActivityFeed);
     fixture.componentRef.setInput('entries', entries);
-    fixture.componentRef.setInput('asOf', '2026-07-16T14:25:00');
+    fixture.componentRef.setInput('asOf', localIso(14, 25));
     fixture.componentRef.setInput('currentLocation', 'US 27, Lake Wales, FL, 33859');
     fixture.detectChanges();
   });
