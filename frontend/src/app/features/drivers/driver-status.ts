@@ -20,6 +20,27 @@ export function driverDutyStatusVariant(status: string | null): DutyStatusVarian
   }
 }
 
+export type DutyRow = 'OFF' | 'SB' | 'D' | 'ON';
+
+// Collapses Samsara's 6 raw duty statuses onto the FMCSA ELD grid-graph's 4 canonical rows - yardMove folds into ON
+// (on-duty, not driving) and personalConveyance folds into OFF, matching how carriers annotate those special
+// statuses on a paper/electronic log's ON and OFF rows rather than giving them their own row.
+export function dutyStatusRow(status: string | null): DutyRow {
+  switch (status) {
+    case 'driving':
+      return 'D';
+    case 'onDuty':
+    case 'yardMove':
+      return 'ON';
+    case 'sleeperBed':
+      return 'SB';
+    case 'offDuty':
+    case 'personalConveyance':
+    default:
+      return 'OFF';
+  }
+}
+
 export function driverDutyStatusLabel(status: string | null): string {
   switch (status) {
     case 'driving':

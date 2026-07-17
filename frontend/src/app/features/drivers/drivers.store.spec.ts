@@ -201,7 +201,7 @@ describe('DriversStore', () => {
   const activity: DriverActivityEntry[] = [
     {
       dutyStatus: 'driving',
-      startTime: '2026-07-16T11:04:00',
+      startTime: '2026-07-16T11:04:00Z',
       endTime: null,
       latitude: 27.9,
       longitude: -81.6,
@@ -244,7 +244,10 @@ describe('DriversStore', () => {
     httpMock.expectOne((req) => req.url.startsWith('/api/sw-expedited/drivers/driver-42/activity')).flush(activity);
     await loadPromise;
 
-    const refreshedActivity = [...activity, { ...activity[0], dutyStatus: 'onDuty', startTime: '2026-07-16T10:48:00' }];
+    const refreshedActivity = [
+      ...activity,
+      { ...activity[0], dutyStatus: 'onDuty', startTime: '2026-07-16T10:48:00Z' },
+    ];
     const refreshPromise = store.refreshDriverActivity('driver-42');
     httpMock
       .expectOne((req) => req.url.startsWith('/api/sw-expedited/drivers/driver-42/activity'))

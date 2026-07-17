@@ -10,7 +10,6 @@ import com.lava.swexpedited.samsara.DriverActivityEntry;
 import com.lava.swexpedited.samsara.model.HosLogEntry;
 import com.lava.swexpedited.samsara.model.HosLogLocation;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,14 +44,34 @@ class SamsaraDriverActivityServiceImplTest {
 
         assertThat(activity).hasSize(2);
         assertThat(activity.getFirst().dutyStatus()).isEqualTo("driving");
-        assertThat(activity.getFirst().startTime()).isEqualTo(LocalDateTime.of(2026, 7, 16, 11, 4, 0));
+        assertThat(activity.getFirst().startTime()).isEqualTo(Instant.parse("2026-07-16T11:04:00Z"));
         assertThat(activity.getFirst().endTime()).isNull();
         assertThat(activity.getFirst().latitude()).isEqualByComparingTo("27.9");
         assertThat(activity.getFirst().longitude()).isEqualByComparingTo("-81.6");
         assertThat(activity.getLast().dutyStatus()).isEqualTo("onDuty");
-        assertThat(activity.getLast().endTime()).isEqualTo(LocalDateTime.of(2026, 7, 16, 11, 4, 0));
+        assertThat(activity.getLast().endTime()).isEqualTo(Instant.parse("2026-07-16T11:04:00Z"));
         assertThat(activity.getLast().remark()).isEqualTo("Pre-trip inspection");
         assertThat(activity.getLast().latitude()).isNull();
+    }
+
+    // Regression test for a bug where the offset was silently dropped instead of applied - a log timestamp with a
+    // non-UTC offset must resolve to the same absolute instant as its UTC equivalent, not have its offset stripped
+    // and its raw clock digits misread as if they were already UTC.
+    @Test
+    void findActivity_preservesNonUtcOffsetAsTheSameInstant() {
+        Instant since = Instant.parse("2026-07-15T12:00:00Z");
+        HosLogEntry entry = new HosLogEntry()
+                .hosStatusType("driving")
+                .logStartTime("2026-07-16T06:04:00-05:00")
+                .logEndTime(null);
+        when(this.samsaraFleetClient.fetchDriverHosLogs(eq("41000123"), eq(since), any(Instant.class)))
+                .thenReturn(List.of(entry));
+
+        SamsaraDriverActivityServiceImpl service = new SamsaraDriverActivityServiceImpl(this.samsaraFleetClient);
+
+        List<DriverActivityEntry> activity = service.findActivity("41000123", since);
+
+        assertThat(activity.getFirst().startTime()).isEqualTo(Instant.parse("2026-07-16T11:04:00Z"));
     }
 
     @Test

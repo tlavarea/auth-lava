@@ -181,7 +181,7 @@ class DriverControllerTest {
         when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
         DriverActivityEntry entry = new DriverActivityEntry(
                 "driving",
-                LocalDateTime.now().minusHours(1),
+                Instant.now().minusSeconds(3600),
                 null,
                 new BigDecimal("32.735000"),
                 new BigDecimal("-97.108000"),
