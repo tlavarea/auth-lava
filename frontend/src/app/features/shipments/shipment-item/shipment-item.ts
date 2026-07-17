@@ -42,6 +42,9 @@ import { ShipmentListingRow } from '../shipments.models';
               </span>
               <span hlmBadge [variant]="shipmentRankVariant(shipment.rank)">Rank {{ shipment.rank }}</span>
               <span hlmBadge [variant]="shipmentStatusVariant(shipment.status)">{{ shipment.status }}</span>
+              @if (shipment.viablePickup) {
+                <span hlmBadge variant="success">On Route</span>
+              }
             </div>
             <div hlmItemDescription class="truncate">
               Pickup {{ shipment.pickupDate ?? '—' }} &middot; Required
