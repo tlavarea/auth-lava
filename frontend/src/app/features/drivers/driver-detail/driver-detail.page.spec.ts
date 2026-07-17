@@ -9,6 +9,8 @@ import { DriverDetailPage } from './driver-detail.page';
 
 // @angular/google-maps throws in its constructor if `window.google` isn't present at all, so it's stubbed with
 // fakes here - DriverDetailPage renders a live DriverLocationMap, which jsdom can't provide a real Maps JS API for.
+// No ControlPosition here deliberately - Google's real Maps JS API only populates enums like ControlPosition once
+// its "maps" library finishes its own async load, so DriverLocationMap's mapOptions must not depend on it either.
 beforeEach(() => {
   // Must be `function`, not an arrow function - Google Maps constructs these with `new`, which arrow functions
   // can't be used with.
@@ -80,14 +82,25 @@ describe('DriverDetailPage', () => {
   });
 
   // Every test triggers both the detail and activity-feed loads on init (see DriverDetailPage's constructor
-  // effect) - flushed together here so httpMock.verify() doesn't flag the activity request as unmatched.
-  function flushDetail(detailResponse: DriverDetailResponse): void {
+  // effect) - flushed here so httpMock.verify() doesn't flag either request as unmatched. loadDriverActivity is
+  // sequenced after loadDriverDetail resolves (not fired in parallel - see the constructor's comment), so the
+  // activity request doesn't exist yet until a few stability ticks after the detail response is flushed (one CD
+  // cycle per hop of the await chain: loadDriverDetail's own promise, then the constructor's continuation, then
+  // loadDriverActivity issuing its HTTP call) - a single fixture.whenStable() isn't reliably enough ticks.
+  async function flushDetailOnly(detailResponse: DriverDetailResponse): Promise<void> {
     httpMock.expectOne('/api/sw-expedited/drivers/driver-42').flush(detailResponse);
+    await fixture.whenStable();
+    await fixture.whenStable();
+    await fixture.whenStable();
+  }
+
+  async function flushDetail(detailResponse: DriverDetailResponse): Promise<void> {
+    await flushDetailOnly(detailResponse);
     httpMock.expectOne((req) => req.url.startsWith('/api/sw-expedited/drivers/driver-42/activity')).flush([]);
   }
 
   it('loads and renders the driver detail for the routed :id', async () => {
-    flushDetail(detail);
+    await flushDetail(detail);
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -97,7 +110,7 @@ describe('DriverDetailPage', () => {
   });
 
   it('renders the location map when latitude/longitude are present', async () => {
-    flushDetail(detail);
+    await flushDetail(detail);
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -106,7 +119,7 @@ describe('DriverDetailPage', () => {
   });
 
   it('shows a fallback message instead of the map when no current location is available', async () => {
-    flushDetail({ ...detail, latitude: null, longitude: null, formattedLocation: null });
+    await flushDetail({ ...detail, latitude: null, longitude: null, formattedLocation: null });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -115,7 +128,7 @@ describe('DriverDetailPage', () => {
   });
 
   it('renders the HOS clock rings and current duty status elapsed time', async () => {
-    flushDetail(detail);
+    await flushDetail(detail);
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -127,7 +140,7 @@ describe('DriverDetailPage', () => {
   });
 
   it('shows a fallback message instead of HOS clocks when no duty status is available', async () => {
-    flushDetail({
+    await flushDetail({
       ...detail,
       dutyStatus: null,
       driveRemainingDurationMs: null,
@@ -144,7 +157,7 @@ describe('DriverDetailPage', () => {
   });
 
   it('renders null detail fields as an em dash', async () => {
-    flushDetail({ ...detail, phone: null, tags: null });
+    await flushDetail({ ...detail, phone: null, tags: null });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -152,8 +165,8 @@ describe('DriverDetailPage', () => {
     expect(dl).toContain('—');
   });
 
-  it('renders a labeled mobile back link and an icon-only desktop close link', () => {
-    flushDetail(detail);
+  it('renders a labeled mobile back link and an icon-only desktop close link', async () => {
+    await flushDetail(detail);
 
     const backLink: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a.lg\\:hidden');
     const closeLink: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a.hidden.lg\\:inline-flex');
@@ -165,13 +178,15 @@ describe('DriverDetailPage', () => {
   });
 
   it('renders the activity feed from the activity endpoint', async () => {
-    httpMock.expectOne('/api/sw-expedited/drivers/driver-42').flush(detail);
+    await flushDetailOnly(detail);
     httpMock
       .expectOne((req) => req.url.startsWith('/api/sw-expedited/drivers/driver-42/activity'))
       .flush([
         {
           dutyStatus: 'driving',
-          startTime: '2026-07-16T11:04:00',
+          // A real UTC instant (as the backend now sends), constructed from this local wall-clock time so the
+          // "11:04 AM" assertion below holds on any CI runner's timezone.
+          startTime: new Date(2026, 6, 16, 11, 4, 0).toISOString(),
           endTime: null,
           latitude: 27.9,
           longitude: -81.6,
@@ -186,8 +201,42 @@ describe('DriverDetailPage', () => {
     expect(fixture.nativeElement.textContent).toContain('11:04 AM');
   });
 
+  // Regression test for the constructor's sequencing (detail, then activity, not fired in parallel) - see its
+  // comment for why: two near-simultaneous requests on a first/cold load could race a session-refresh retry.
+  it('does not request activity until the detail request has resolved', async () => {
+    expect(httpMock.match((req) => req.url.startsWith('/api/sw-expedited/drivers/driver-42/activity')).length).toBe(0);
+
+    await flushDetailOnly(detail);
+
+    httpMock.expectOne((req) => req.url.startsWith('/api/sw-expedited/drivers/driver-42/activity')).flush([]);
+  });
+
+  it('shows a loading indicator for the activity panel until the activity request resolves', async () => {
+    await flushDetailOnly(detail);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('hlm-spinner')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-driver-activity-feed')).toBeFalsy();
+
+    httpMock.expectOne((req) => req.url.startsWith('/api/sw-expedited/drivers/driver-42/activity')).flush([]);
+    await fixture.whenStable();
+  });
+
+  it('shows an error message for the activity panel instead of a false "no activity" empty state', async () => {
+    await flushDetailOnly(detail);
+
+    httpMock
+      .expectOne((req) => req.url.startsWith('/api/sw-expedited/drivers/driver-42/activity'))
+      .flush(null, { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain("Couldn't load activity.");
+    expect(fixture.nativeElement.querySelector('app-driver-activity-feed')).toBeFalsy();
+  });
+
   it('opens the Hours of Service accordion expanded by default', async () => {
-    flushDetail(detail);
+    await flushDetail(detail);
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -197,7 +246,7 @@ describe('DriverDetailPage', () => {
   });
 
   it('renders the mobile Activity accordion closed by default and the desktop panel separately', async () => {
-    flushDetail(detail);
+    await flushDetail(detail);
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -210,7 +259,7 @@ describe('DriverDetailPage', () => {
   });
 
   it('renders the desktop Activity panel hidden below lg and floating over the map above it', async () => {
-    flushDetail(detail);
+    await flushDetail(detail);
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -220,7 +269,7 @@ describe('DriverDetailPage', () => {
   });
 
   it('clears the selected detail on destroy', async () => {
-    flushDetail(detail);
+    await flushDetail(detail);
     await fixture.whenStable();
 
     const store = TestBed.inject(DriversStore);

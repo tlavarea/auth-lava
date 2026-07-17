@@ -164,6 +164,11 @@ describe('DriversPage', () => {
 
     httpMock.expectOne('/api/sw-expedited/drivers').flush(drivers);
     httpMock.expectOne('/api/sw-expedited/drivers/driver-42').flush(detail);
+    // loadDriverActivity is sequenced after loadDriverDetail resolves (see DriverDetailPage's constructor), so the
+    // activity request doesn't exist yet until a few stability ticks after the detail response is flushed.
+    await harness.fixture.whenStable();
+    await harness.fixture.whenStable();
+    await harness.fixture.whenStable();
     httpMock.expectOne((req) => req.url.startsWith('/api/sw-expedited/drivers/driver-42/activity')).flush([]);
     harness.detectChanges();
     await harness.fixture.whenStable();

@@ -54,7 +54,11 @@ export type DriverLiveLocationResponse = {
 
 // One duty-status change from Samsara's /fleet/hos/logs, fetched live on every request by the backend (see
 // SamsaraDriverActivityService) - not persisted, so there's no syncedAt. endTime is null for the driver's current
-// (still-open) status; latitude/longitude are null when Samsara recorded no location for that log entry.
+// (still-open) status; latitude/longitude are null when Samsara recorded no location for that log entry. startTime/
+// endTime are UTC instant strings (backend serializes java.time.Instant, e.g. "2026-07-16T11:04:00Z") - `new
+// Date(...)` on them correctly resolves to the true moment in time regardless of the viewer's timezone. Don't swap
+// the backend's DriverActivityEntry back to a zone-naive LocalDateTime; that previously shifted every timestamp by
+// the viewer's UTC offset (see SamsaraDriverActivityServiceImpl's parseInstant).
 export type DriverActivityEntry = {
   dutyStatus: string | null;
   startTime: string;

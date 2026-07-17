@@ -14,19 +14,24 @@ import { DriverActivityEntry } from '../drivers.models';
   selector: 'app-driver-activity-feed',
   imports: [HlmBadgeImports, NgIcon, DatePipe],
   providers: [provideIcons({ lucideMapPin })],
+  // flex-col + the <ul>'s own flex-1/overflow-y-auto below keeps "Today"/location pinned while only the entries
+  // scroll - but only once an ancestor actually bounds this host's height (the desktop floating panel in
+  // driver-detail.page.ts). Inside the mobile accordion (no bounded ancestor), this is inert and the list simply
+  // renders at full natural height, unchanged from before.
+  host: { class: 'flex min-h-0 flex-1 flex-col' },
   template: `
     <!-- "Today" is a constant label, not a relative-date calculation - entries() is always scoped to today
          (see DriversStore.loadDriverActivity), so it's never inaccurate. -->
-    <p class="mb-2 text-sm text-muted-foreground">Today • {{ asOf() | date: 'MMM d, y h:mm a' }}</p>
+    <p class="mb-2 shrink-0 px-4 text-sm text-muted-foreground">Today • {{ asOf() | date: 'MMM d, y h:mm a' }}</p>
     @if (currentLocation(); as location) {
-      <p class="mb-2 flex items-center gap-1 text-sm">
+      <p class="mb-2 flex shrink-0 items-center gap-1 px-4 text-sm">
         <ng-icon name="lucideMapPin" class="shrink-0 text-muted-foreground" />
         {{ location }}
       </p>
     }
-    <ul class="flex flex-col gap-2">
+    <ul class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4">
       @for (entry of entries(); track entry.startTime + (entry.dutyStatus ?? '')) {
-        <li class="flex h-12 items-center justify-between gap-4 border-b text-sm">
+        <li class="flex h-12 shrink-0 items-center justify-between gap-4 border-b text-sm">
           <div class="flex flex-row gap-1">
             <span hlmBadge class="w-fit" [variant]="driverDutyStatusVariant(entry.dutyStatus)">
               {{ driverDutyStatusLabel(entry.dutyStatus) }}

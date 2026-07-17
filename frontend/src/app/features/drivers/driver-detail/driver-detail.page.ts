@@ -17,6 +17,7 @@ import { formatDurationMs } from '../format-duration';
 import { DriverActivityFeed } from './driver-activity-feed';
 import { DriverLocationMap } from './driver-location-map';
 import { HosClockRing } from './hos-clock-ring';
+import { HosDutyStatusTimeline } from './hos-duty-status-timeline';
 
 const REFRESH_INTERVAL_MS = 60_000;
 const LIVE_LOCATION_POLL_INTERVAL_MS = 15_000;
@@ -41,6 +42,7 @@ const CYCLE_CLOCK_TOTAL_MS = 70 * 3_600_000;
     RouterLink,
     DriverLocationMap,
     HosClockRing,
+    HosDutyStatusTimeline,
     DriverActivityFeed,
   ],
   viewProviders: [provideIcons({ lucideMoveLeft, lucideX })],
@@ -108,38 +110,43 @@ const CYCLE_CLOCK_TOTAL_MS = 70 * 3_600_000;
                   <div hlmAccordionItem [isOpened]="true">
                     <hlm-accordion-trigger>Hours of Service</hlm-accordion-trigger>
                     <hlm-accordion-content>
-                      <div class="flex flex-wrap items-center gap-8">
-                        <div class="flex flex-col items-center gap-1">
-                          <span
-                            hlmBadge
-                            class="flex h-10 w-10 items-center justify-center rounded-full p-0 text-base"
-                            aria-hidden="true"
-                            [variant]="driverDutyStatusVariant(detail.dutyStatus)">
-                            {{ driverDutyStatusLabel(detail.dutyStatus).charAt(0) }}
-                          </span>
-                          <span class="text-sm font-medium">{{
-                            formatDurationMs(elapsedSinceDutyStatus(detail))
-                          }}</span>
-                          <span class="text-xs text-muted-foreground">{{
-                            driverDutyStatusLabel(detail.dutyStatus)
-                          }}</span>
+                      <div class="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-center lg:gap-8">
+                        <div class="flex flex-wrap items-center gap-8">
+                          <div class="flex flex-col items-center gap-1">
+                            <span
+                              hlmBadge
+                              class="flex h-10 w-10 items-center justify-center rounded-full p-0 text-base"
+                              aria-hidden="true"
+                              [variant]="driverDutyStatusVariant(detail.dutyStatus)">
+                              {{ driverDutyStatusLabel(detail.dutyStatus).charAt(0) }}
+                            </span>
+                            <span class="text-sm font-medium">{{
+                              formatDurationMs(elapsedSinceDutyStatus(detail))
+                            }}</span>
+                            <span class="text-xs text-muted-foreground">{{
+                              driverDutyStatusLabel(detail.dutyStatus)
+                            }}</span>
+                          </div>
+                          <app-hos-clock-ring
+                            label="Break"
+                            [remainingMs]="detail.timeUntilBreakDurationMs"
+                            [totalMs]="BREAK_CLOCK_TOTAL_MS" />
+                          <app-hos-clock-ring
+                            label="Drive"
+                            [remainingMs]="detail.driveRemainingDurationMs"
+                            [totalMs]="DRIVE_CLOCK_TOTAL_MS" />
+                          <app-hos-clock-ring
+                            label="Shift"
+                            [remainingMs]="detail.shiftRemainingDurationMs"
+                            [totalMs]="SHIFT_CLOCK_TOTAL_MS" />
+                          <app-hos-clock-ring
+                            label="Cycle"
+                            [remainingMs]="detail.cycleRemainingDurationMs"
+                            [totalMs]="CYCLE_CLOCK_TOTAL_MS" />
                         </div>
-                        <app-hos-clock-ring
-                          label="Break"
-                          [remainingMs]="detail.timeUntilBreakDurationMs"
-                          [totalMs]="BREAK_CLOCK_TOTAL_MS" />
-                        <app-hos-clock-ring
-                          label="Drive"
-                          [remainingMs]="detail.driveRemainingDurationMs"
-                          [totalMs]="DRIVE_CLOCK_TOTAL_MS" />
-                        <app-hos-clock-ring
-                          label="Shift"
-                          [remainingMs]="detail.shiftRemainingDurationMs"
-                          [totalMs]="SHIFT_CLOCK_TOTAL_MS" />
-                        <app-hos-clock-ring
-                          label="Cycle"
-                          [remainingMs]="detail.cycleRemainingDurationMs"
-                          [totalMs]="CYCLE_CLOCK_TOTAL_MS" />
+                        <app-hos-duty-status-timeline
+                          class="min-w-0 lg:min-w-[420px] lg:flex-1"
+                          [entries]="activity()" />
                       </div>
                     </hlm-accordion-content>
                   </div>
@@ -161,14 +168,28 @@ const CYCLE_CLOCK_TOTAL_MS = 70 * 3_600_000;
                   <p class="text-sm text-muted-foreground">No current location available for this driver.</p>
                 }
 
-                <!-- Desktop: floats over the map's start (left) side, always expanded (no collapse trigger). -->
+                <!-- Desktop: floats over the map's start (left) side, always expanded (no collapse trigger). Not
+                     itself scrolling - app-driver-activity-feed's own host owns the scroll region (only its entry
+                     list scrolls, "Activity"/"Today"/location stay pinned). -->
                 <section
-                  class="absolute inset-y-20 inset-s-4 z-10 hidden w-96 flex-col overflow-y-auto rounded-md border bg-card/95 p-4 shadow-lg backdrop-blur lg:flex">
-                  <h2 class="mb-2 font-medium">Activity</h2>
-                  <app-driver-activity-feed
-                    [entries]="activity()"
-                    [asOf]="detail.locationTime ?? detail.syncedAt"
-                    [currentLocation]="detail.formattedLocation" />
+                  class="absolute inset-y-20 inset-s-4 z-10 hidden min-h-0 w-96 flex-col rounded-md border bg-card/95 shadow-lg backdrop-blur lg:flex">
+                  <h2 class="shrink-0 p-4 font-medium">Activity</h2>
+                  @switch (activityStatus()) {
+                    @case ('loading') {
+                      <div class="flex flex-1 items-center justify-center p-4">
+                        <hlm-spinner />
+                      </div>
+                    }
+                    @case ('error') {
+                      <p class="p-4 text-sm text-muted-foreground">Couldn't load activity.</p>
+                    }
+                    @default {
+                      <app-driver-activity-feed
+                        [entries]="activity()"
+                        [asOf]="detail.locationTime ?? detail.syncedAt"
+                        [currentLocation]="detail.formattedLocation" />
+                    }
+                  }
                 </section>
               </div>
 
@@ -177,10 +198,22 @@ const CYCLE_CLOCK_TOTAL_MS = 70 * 3_600_000;
                 <div hlmAccordionItem [isOpened]="false">
                   <hlm-accordion-trigger>Activity</hlm-accordion-trigger>
                   <hlm-accordion-content>
-                    <app-driver-activity-feed
-                      [entries]="activity()"
-                      [asOf]="detail.locationTime ?? detail.syncedAt"
-                      [currentLocation]="detail.formattedLocation" />
+                    @switch (activityStatus()) {
+                      @case ('loading') {
+                        <div class="flex items-center justify-center py-4">
+                          <hlm-spinner />
+                        </div>
+                      }
+                      @case ('error') {
+                        <p class="text-sm text-muted-foreground">Couldn't load activity.</p>
+                      }
+                      @default {
+                        <app-driver-activity-feed
+                          [entries]="activity()"
+                          [asOf]="detail.locationTime ?? detail.syncedAt"
+                          [currentLocation]="detail.formattedLocation" />
+                      }
+                    }
                   </hlm-accordion-content>
                 </div>
               </hlm-accordion>
@@ -201,6 +234,7 @@ export class DriverDetailPage {
   protected readonly detail: Signal<DriverDetailResponse | null> = this.store.selectedDetail;
   protected readonly status: Signal<DriversRequestStatus> = this.store.detailStatus;
   protected readonly activity: Signal<DriverActivityEntry[]> = this.store.activity;
+  protected readonly activityStatus: Signal<DriversRequestStatus> = this.store.activityStatus;
 
   protected readonly driverDutyStatusVariant = driverDutyStatusVariant;
   protected readonly driverDutyStatusLabel = driverDutyStatusLabel;
@@ -218,11 +252,18 @@ export class DriverDetailPage {
     return detail.dutyStatusSince === null ? null : Date.now() - new Date(detail.dutyStatusSince).getTime();
   }
 
+  // Sequenced (detail, then activity), not fired in parallel - two near-simultaneous requests on the very first
+  // load of this view (e.g. a cold page load/hard refresh straight into a driver's detail URL) can both hit an
+  // about-to-expire session at once, each independently triggering authErrorInterceptor's refresh-and-retry with no
+  // de-dupe between them. Awaiting the detail call first means any needed refresh happens on one request, not two
+  // racing ones, before the activity call goes out.
+  private async loadDetailThenActivity(id: string): Promise<void> {
+    await this.store.loadDriverDetail(id);
+    await this.store.loadDriverActivity(id);
+  }
+
   constructor() {
-    effect(() => {
-      void this.store.loadDriverDetail(this.id());
-      void this.store.loadDriverActivity(this.id());
-    });
+    effect(() => void this.loadDetailThenActivity(this.id()));
 
     // Full detail (HOS clocks, vehicle assignment, etc) re-syncs roughly every minute server-side
     // (SamsaraLocationSyncScheduler/SamsaraDriverDutyStatusSyncScheduler) - poll on the same cadence while this detail

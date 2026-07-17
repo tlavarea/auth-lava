@@ -36,6 +36,7 @@ type Fix = { lat: number; lng: number; headingDegrees: number | null; speedMph: 
       role="img"
       [center]="center()"
       [zoom]="DEFAULT_ZOOM"
+      [options]="mapOptions"
       [attr.aria-label]="ariaLabel()">
       @if (markerPosition(); as position) {
         @if (markerIcon(); as icon) {
@@ -61,6 +62,13 @@ export class DriverLocationMap {
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
 
   protected readonly DEFAULT_ZOOM = DEFAULT_ZOOM;
+
+  // No zoomControlOptions.position override - Google's modern Maps JS API loads enums like ControlPosition
+  // asynchronously as part of the "maps" library, which isn't guaranteed ready this early (a component field
+  // initializer runs at construction, well before <google-map>'s own library-loading completes) - referencing
+  // google.maps.ControlPosition here threw "ControlPosition is undefined" in production. zoomControl: true alone
+  // needs no enum lookup and gets Google's own sensible default position (bottom-right on desktop).
+  protected readonly mapOptions: google.maps.MapOptions = { zoomControl: true };
 
   protected readonly ariaLabel: Signal<string> = computed(() => this.formattedLocation() ?? 'Driver location map');
 

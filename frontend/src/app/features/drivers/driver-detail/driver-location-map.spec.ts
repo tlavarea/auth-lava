@@ -29,8 +29,15 @@ beforeEach(() => {
     return fakeMarkerInstance;
   });
 
+  // No ControlPosition here deliberately - Google's real Maps JS API only populates enums like ControlPosition once
+  // its "maps" library finishes its own async load, which isn't guaranteed by the time this component constructs
+  // (see mapOptions's comment in driver-location-map.ts). This mirrors that real-world gap.
   (window as unknown as { google: unknown }).google = {
-    maps: { Map: mapConstructor, Marker: markerConstructor, SymbolPath: { FORWARD_CLOSED_ARROW: 1 } },
+    maps: {
+      Map: mapConstructor,
+      Marker: markerConstructor,
+      SymbolPath: { FORWARD_CLOSED_ARROW: 1 },
+    },
   };
 });
 
@@ -73,6 +80,16 @@ describe('DriverLocationMap', () => {
       expect.objectContaining({ position: { lat: 35.0527, lng: -78.8784 } })
     );
     expect(fakeMarkerInstance.setMap).toHaveBeenCalledWith(fakeMapInstance);
+  });
+
+  // Regression test: mapOptions must not reference google.maps.ControlPosition (or any other enum from the async-
+  // loaded "maps" library) - doing so previously threw "ControlPosition is undefined" in production, since that
+  // library isn't guaranteed loaded by the time this component constructs. No zoomControlOptions.position override
+  // is passed, so Google picks its own sensible default position - this only asserts the flag itself.
+  it('enables the native zoom control without referencing an async-loaded enum', () => {
+    expect(() => fixture.detectChanges()).not.toThrow();
+
+    expect(mapConstructor).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ zoomControl: true }));
   });
 
   it('renders a heading-rotated arrow icon when a heading fix is available', () => {
