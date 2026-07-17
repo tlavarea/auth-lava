@@ -74,3 +74,14 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
     enabled: true
+
+vektor:
+  username: ${VEKTOR_USERNAME:}
+  password: ${VEKTOR_PASSWORD:}
+  company-id: ${VEKTOR_COMPANY_ID:}
+  base-url: ${VEKTOR_BASE_URL:https://app.vektortms.com}
+  retry-backoff: ${VEKTOR_RETRY_BACKOFF:5s}
+  synced-statuses: ${VEKTOR_SYNCED_STATUSES:manifest_in_progress}
+
+vektor-sync:
+  cron: ${VEKTOR_SYNC_CRON:0 */2 * ? * *}
