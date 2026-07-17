@@ -3,7 +3,7 @@ package com.lava.swexpedited.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import com.lava.swexpedited.batch.SamsaraFleetClient;
+import com.lava.swexpedited.batch.samsara.SamsaraFleetClient;
 import com.lava.swexpedited.repository.SamsaraDriverVehicleAssignmentRepository;
 import com.lava.swexpedited.samsara.DriverLiveLocationResponse;
 import com.lava.swexpedited.samsara.SamsaraDriverVehicleAssignmentRow;

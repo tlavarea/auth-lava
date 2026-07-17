@@ -1,5 +1,6 @@
 package com.lava.swexpedited.scheduling;
 
+import com.lava.swexpedited.logging.LogSanitizer;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import lombok.extern.slf4j.Slf4j;
@@ -51,7 +52,7 @@ public class SamsaraDriverSyncScheduler implements SchedulingConfigurer {
         try {
             jobOperator.start(samsaraDriverSyncJob, params);
         } catch (JobExecutionAlreadyRunningException | JobInstanceAlreadyCompleteException e) {
-            log.debug("sync::another instance already handled this cycle: {}", e.getMessage());
+            log.debug("sync::another instance already handled this cycle: {}", LogSanitizer.sanitize(e.getMessage()));
         } catch (JobExecutionException e) {
             log.error("sync::failed to launch samsara driver sync job", e);
         }

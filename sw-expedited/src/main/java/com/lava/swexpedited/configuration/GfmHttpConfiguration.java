@@ -1,6 +1,7 @@
 package com.lava.swexpedited.configuration;
 
 import com.lava.swexpedited.boot.autoconfigure.app.GfmProperties;
+import com.lava.swexpedited.logging.LogSanitizer;
 import java.security.KeyStore;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
@@ -133,7 +134,11 @@ public class GfmHttpConfiguration {
                 : Arrays.stream(cookieHeader.getValue().split("; "))
                         .map(pair -> pair.split("=", 2)[0])
                         .collect(Collectors.joining(", "));
-        log.debug("outgoing::{} {} cookies attached: {}", request.getMethod(), request.getRequestUri(), names);
+        log.debug(
+                "outgoing::{} {} cookies attached: {}",
+                request.getMethod(),
+                LogSanitizer.sanitize(request.getRequestUri()),
+                LogSanitizer.sanitize(names));
         if (request.getPath().startsWith("/gfmgateway/GfmGateway")) {
             gfmGatewayReferer.set(gfmBaseUrl + request.getRequestUri());
         }
