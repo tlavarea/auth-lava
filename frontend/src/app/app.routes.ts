@@ -28,6 +28,10 @@ export const routes: Routes = [
         path: 'drivers',
         loadChildren: () => import('./features/drivers/drivers.routes').then((m) => m.driversRoutes),
       },
+      {
+        path: 'timeline',
+        loadChildren: () => import('./features/timeline/timeline.routes').then((m) => m.timelineRoutes),
+      },
     ],
   },
   {

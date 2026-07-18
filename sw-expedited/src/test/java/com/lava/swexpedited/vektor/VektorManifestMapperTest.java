@@ -28,6 +28,7 @@ class VektorManifestMapperTest {
         assertThat(row.destination()).isEqualTo("6390 N Alsup Rd, Litchfield Park, AZ 85340");
         assertThat(row.destinationLatitude()).isEqualByComparingTo(BigDecimal.valueOf(33.5283256d));
         assertThat(row.destinationLongitude()).isEqualByComparingTo(BigDecimal.valueOf(-112.4031521d));
+        assertThat(row.pickupAppointmentStart()).isEqualTo(LocalDateTime.of(2026, 7, 17, 8, 0, 0));
         assertThat(row.eta()).isEqualTo(LocalDateTime.of(2026, 7, 20, 10, 0, 0));
         assertThat(row.loadReference()).isEqualTo("SwX-1000589");
         assertThat(row.rawResponse()).isNotBlank().contains("manifest_in_progress");
@@ -73,6 +74,7 @@ class VektorManifestMapperTest {
         VektorManifestRow row = vektorManifestMapper.toRow(manifest, Map.of());
 
         assertThat(row.origin()).isNull();
+        assertThat(row.pickupAppointmentStart()).isNull();
         assertThat(row.destination()).isNotNull();
     }
 

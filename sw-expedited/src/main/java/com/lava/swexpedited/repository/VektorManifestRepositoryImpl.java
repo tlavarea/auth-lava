@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
-import org.jooq.InsertValuesStep14;
+import org.jooq.InsertValuesStep15;
 import org.jooq.JSON;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,7 +35,7 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
         }
 
         LocalDateTime syncedAt = LocalDateTime.now();
-        InsertValuesStep14<
+        InsertValuesStep15<
                         VektorManifestRecord,
                         Long,
                         String,
@@ -47,6 +47,7 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
                         String,
                         BigDecimal,
                         BigDecimal,
+                        LocalDateTime,
                         LocalDateTime,
                         String,
                         JSON,
@@ -63,6 +64,7 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
                         VEKTOR_MANIFEST.DESTINATION,
                         VEKTOR_MANIFEST.DESTINATION_LATITUDE,
                         VEKTOR_MANIFEST.DESTINATION_LONGITUDE,
+                        VEKTOR_MANIFEST.PICKUP_APPOINTMENT_START,
                         VEKTOR_MANIFEST.ETA,
                         VEKTOR_MANIFEST.LOAD_REFERENCE,
                         VEKTOR_MANIFEST.RAW_RESPONSE,
@@ -80,6 +82,7 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
                     row.destination(),
                     row.destinationLatitude(),
                     row.destinationLongitude(),
+                    row.pickupAppointmentStart(),
                     row.eta(),
                     row.loadReference(),
                     JSON.valueOf(row.rawResponse()),
@@ -117,6 +120,7 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
                 row.destination(),
                 row.destinationLatitude(),
                 row.destinationLongitude(),
+                row.pickupAppointmentStart(),
                 row.eta(),
                 row.loadReference(),
                 row.rawResponse().data(),

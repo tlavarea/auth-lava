@@ -43,6 +43,12 @@ import { ThemeToggle } from '@shared/theme-toggle/theme-toggle';
               class="px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-neutral-200 dark:hover:bg-neutral-800">
               Drivers
             </a>
+            <a
+              routerLink="/timeline"
+              routerLinkActive="border-b-3 border-b-neutral-800 dark:border-b-neutral-400 dark:bg-neutral-900 bg-neutral-100 text-neutral-900 dark:text-neutral-50 font-medium"
+              class="px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-neutral-200 dark:hover:bg-neutral-800">
+              Timeline
+            </a>
           </div>
         </nav>
 
