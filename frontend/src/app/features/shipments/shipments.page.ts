@@ -9,6 +9,7 @@ import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 import { ShipmentDetailPage } from './shipment-detail/shipment-detail.page';
 import { ShipmentItem } from './shipment-item/shipment-item';
 import { ShipmentTable } from './shipment-table/shipment-table';
+import { SortOption, sortShipments } from './shipment-table/shipment-table.filters';
 import { ShipmentListingRow } from './shipments.models';
 import { ShipmentsRequestStatus, ShipmentsStore, ShipmentsStoreType } from './shipments.store';
 
@@ -33,9 +34,9 @@ const DESKTOP_QUERY = '(min-width: 1024px)';
           }
           @default {
             @if (isDesktop() && !detailOpen()) {
-              <app-shipment-table [shipments]="shipments()" />
+              <app-shipment-table [shipments]="shipments()" [(sortOption)]="sortOption" />
             } @else {
-              <app-shipment-item [shipments]="shipments()" [selectedId]="selectedId()" />
+              <app-shipment-item [shipments]="sortedShipments()" [selectedId]="selectedId()" />
             }
           }
         }
@@ -62,6 +63,13 @@ export class ShipmentsPage implements OnInit {
 
   protected readonly shipments: Signal<ShipmentListingRow[]> = this.store.shipments;
   protected readonly listStatus: Signal<ShipmentsRequestStatus> = this.store.listStatus;
+
+  // Owned here (rather than locally in ShipmentTable) so ShipmentItem can render shipments in the same
+  // order when it swaps in for the table on mobile or while a detail is open.
+  protected readonly sortOption: WritableSignal<SortOption> = signal<SortOption>('rank-asc');
+  protected readonly sortedShipments: Signal<ShipmentListingRow[]> = computed(() =>
+    sortShipments(this.shipments(), this.sortOption())
+  );
 
   protected readonly activeDetail: WritableSignal<ShipmentDetailPage | null> = signal(null);
   protected readonly detailOpen: Signal<boolean> = computed(() => this.activeDetail() !== null);
