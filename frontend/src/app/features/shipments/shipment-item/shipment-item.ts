@@ -32,6 +32,9 @@ import { ShipmentListingRow } from '../shipments.models';
             'shadow-sm': isSelected,
             relative: isSelected,
             'hover:bg-muted/50': !isSelected,
+            'border-s-4': shipment.viablePickup,
+            'border-s-success': shipment.viablePickup,
+            'bg-success/5': shipment.viablePickup && !isSelected,
           }">
           <div hlmItemContent>
             <div hlmItemTitle class="flex flex-nowrap items-center gap-2">

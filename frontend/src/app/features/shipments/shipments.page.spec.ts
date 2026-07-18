@@ -148,4 +148,57 @@ describe('ShipmentsPage', () => {
     expect(root.querySelector('[class*="bg-black/50"]')).toBeFalsy();
     expect(root.querySelector('[aria-current="page"]')).toBeTruthy();
   });
+
+  it("keeps the table's sort order in the item view once a detail route is active", async () => {
+    stubMatchMedia(true);
+
+    // API order is reversed from rank order to prove the item view doesn't just render fetch order.
+    const outOfOrderShipments: ShipmentListingRow[] = [
+      { ...shipments[0], offerId: 43, shipmentId: 'SHP-43', rank: '85' },
+      { ...shipments[0], offerId: 42, shipmentId: 'SHP-42', rank: '15' },
+    ];
+
+    const detail: ShipmentDetailResponse = {
+      listing: outOfOrderShipments[1],
+      totalAmount: 1000,
+      lineHaulCost: 900,
+      rateUsed: 1.5,
+      scac: 'ABCD',
+      scacName: 'Acme Carrier',
+      tenderNumber: 'T-1',
+      equipmentDesc: '53ft Van',
+      requestorName: 'Jane Doe',
+      requestorEmail: 'jane@example.com',
+      rawResponse: '{}',
+      syncedAt: '2026-07-14T00:00:00',
+      bidDetail: null,
+    };
+
+    await TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter(
+          [{ path: '', component: ShipmentsPage, children: [{ path: ':id', component: ShipmentDetailPage }] }],
+          withComponentInputBinding()
+        ),
+      ],
+    }).compileComponents();
+
+    httpMock = TestBed.inject(HttpTestingController);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/42', ShipmentsPage);
+
+    httpMock.expectOne('/api/sw-expedited/shipments').flush(outOfOrderShipments);
+    httpMock.expectOne('/api/sw-expedited/shipments/42').flush(detail);
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    const root: HTMLElement = harness.routeNativeElement!;
+    const rows: HTMLAnchorElement[] = Array.from(root.querySelectorAll('a[data-slot="item"]'));
+
+    // Default sort is rank ascending: SHP-42 (rank 15) before SHP-43 (rank 85), same as ShipmentTable.
+    expect(rows.map((row) => row.getAttribute('href'))).toEqual(['/42', '/43']);
+  });
 });

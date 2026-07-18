@@ -1,4 +1,15 @@
-import { Component, computed, effect, input, InputSignal, Signal, signal, WritableSignal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  input,
+  InputSignal,
+  model,
+  ModelSignal,
+  Signal,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideArrowRight, lucideSearch, lucideX } from '@ng-icons/lucide';
@@ -131,7 +142,18 @@ type AppliedFilter = { label: string; clear: () => void };
         } @else {
           <div hlmItemGroup class="flex flex-col gap-3">
             @for (shipment of pagedShipments(); track shipment.offerId) {
-              <a hlmItem variant="outline" class="rounded-xl p-4 hover:bg-muted/50" [routerLink]="[shipment.offerId]">
+              <a
+                hlmItem
+                variant="outline"
+                [routerLink]="[shipment.offerId]"
+                [class]="{
+                  'rounded-xl': true,
+                  'p-4': true,
+                  'border-s-4': shipment.viablePickup,
+                  'border-s-success': shipment.viablePickup,
+                  'bg-success/5': shipment.viablePickup,
+                  'hover:bg-muted/50': !shipment.viablePickup,
+                }">
                 <dl class="grid w-full grid-cols-3 gap-x-6 gap-y-4 text-sm">
                   <div>
                     <dt class="text-xs text-muted-foreground">Route</dt>
@@ -190,6 +212,8 @@ type AppliedFilter = { label: string; clear: () => void };
 })
 export class ShipmentTable {
   readonly shipments: InputSignal<ShipmentListingRow[]> = input.required<ShipmentListingRow[]>();
+  // Two-way bound so the parent can carry the chosen order over to ShipmentItem when it swaps in for this component.
+  readonly sortOption: ModelSignal<SortOption> = model<SortOption>('rank-asc');
 
   protected readonly shipmentStatusVariant = shipmentStatusVariant;
   protected readonly shipmentRankVariant = shipmentRankVariant;
@@ -208,7 +232,6 @@ export class ShipmentTable {
   protected readonly searchText: WritableSignal<string> = signal('');
   protected readonly statusFilter: WritableSignal<string> = signal(ALL);
   protected readonly equipTypeFilter: WritableSignal<string> = signal(ALL);
-  protected readonly sortOption: WritableSignal<SortOption> = signal('rank-asc');
   protected readonly currentPage: WritableSignal<number> = signal(1);
   protected readonly itemsPerPage: WritableSignal<number> = signal(10);
 

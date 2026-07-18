@@ -79,24 +79,24 @@ import { ShipmentBidSections } from './shipment-bid-sections';
                 <dt class="text-muted-foreground">Shipment ID</dt>
                 <dd>{{ detail.listing.shipmentId }}</dd>
 
+                <dt class="text-muted-foreground">Requestor Name</dt>
+                <dd>{{ detail.requestorName ?? '—' }}</dd>
                 <dt class="text-muted-foreground">GBLOC</dt>
                 <dd>{{ detail.listing.gbloc }}</dd>
 
-                <dt class="text-muted-foreground">Requestor Name</dt>
-                <dd>{{ detail.requestorName ?? '—' }}</dd>
                 <dt class="text-muted-foreground">Requestor Email</dt>
                 <dd>{{ detail.requestorEmail ?? '—' }}</dd>
+
+                <dt class="text-muted-foreground">Rank</dt>
+                <dd>{{ detail.bidDetail?.bidRank ?? '—' }}</dd>
                 <dt class="text-muted-foreground">Requestor Phone</dt>
                 <dd>{{ detail.bidDetail?.requestorPhone ?? '—' }}</dd>
-
                 <dt class="text-muted-foreground">Origin</dt>
                 <dd class="whitespace-pre-line">{{ detail.bidDetail?.originAddress ?? detail.listing.origin }}</dd>
                 <dt class="text-muted-foreground">Destination</dt>
                 <dd class="whitespace-pre-line">
                   {{ detail.bidDetail?.destinationAddress ?? detail.listing.destination }}
                 </dd>
-                <dt class="text-muted-foreground">Rank</dt>
-                <dd>{{ detail.bidDetail?.bidRank ?? '—' }}</dd>
 
                 <dt class="text-muted-foreground">Earliest Pickup</dt>
                 <dd>{{ detail.bidDetail?.earliestPickupDisplay ?? detail.listing.pickupDate ?? '—' }}</dd>
