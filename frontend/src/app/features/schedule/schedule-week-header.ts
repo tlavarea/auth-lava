@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, computed, input, InputSignal, Signal } from '@angular/core';
 
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideMoon, lucideSun, lucideSunrise } from '@ng-icons/lucide';
@@ -27,7 +27,7 @@ const DAY_SEGMENTS: DaySegment[] = [
     <div class="grid grid-cols-[250px_1fr] gap-2 pb-1">
       <span></span>
       <div class="grid grid-cols-7">
-        @for (tick of dayTicks; track tick.dayIndex; let odd = $odd) {
+        @for (tick of dayTicks(); track tick.dayIndex; let odd = $odd) {
           <div
             class="border-t-2 border-neutral-400 pb-1 text-center"
             [class]="{
@@ -57,6 +57,8 @@ const DAY_SEGMENTS: DaySegment[] = [
   `,
 })
 export class ScheduleWeekHeader {
-  protected readonly dayTicks: DayTick[] = buildWeekDayTicks(Date.now());
+  readonly weekStart: InputSignal<number> = input.required<number>();
+
+  protected readonly dayTicks: Signal<DayTick[]> = computed(() => buildWeekDayTicks(this.weekStart()));
   protected readonly daySegments: DaySegment[] = DAY_SEGMENTS;
 }

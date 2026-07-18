@@ -1,25 +1,35 @@
 package com.lava.swexpedited.samsara;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * The {@code GET /api/drivers/timeline} response shape: one row per driver, joining their current HOS duty status with
- * whichever vektor_manifest currently matches them (see {@code DriverTimelineService}). {@code dutyStatus} is null
- * under the same conditions as {@code DriverListingRow.dutyStatus}. The manifest fields (everything from
- * {@code manifestStatus} on) are null when no currently-synced manifest matches this driver - i.e. the driver has no
- * known active load - not when a match failed to load; {@code pickupAppointmentStart}/{@code eta} are the load's
- * scheduled pickup/dropoff appointment times (not actual arrival/departure times - see {@code VektorManifestMapper}'s
- * javadoc), used by the timeline view to position and size a driver's "busy" block; {@code origin}/{@code destination}
- * are that block's endpoint labels.
+ * every vektor_manifest whose scheduled pickup->dropoff window overlaps the requested week (see
+ * {@code DriverTimelineService#findForWeek}). {@code dutyStatus} is null under the same conditions as
+ * {@code DriverListingRow.dutyStatus}, and - unlike {@code manifests} - is always the driver's <em>current</em> status
+ * regardless of which week is being viewed, since duty status has no history of its own. {@code manifests} is empty
+ * when no manifest matching this driver overlaps the requested week - i.e. the driver has no load that week - not when
+ * a match failed to load.
  */
 public record DriverTimelineRow(
         String driverId,
         String driverName,
         String activationStatus,
         String dutyStatus,
-        String manifestStatus,
-        LocalDateTime pickupAppointmentStart,
-        LocalDateTime eta,
-        String origin,
-        String destination,
-        String loadReference) {}
+        List<ManifestSegment> manifests) {
+
+    /**
+     * One manifest's schedule-relevant fields. {@code pickupAppointmentStart}/{@code eta} are the load's scheduled
+     * pickup/dropoff appointment times (not actual arrival/departure times - see {@code VektorManifestMapper}'s
+     * javadoc), used by the timeline view to position and size a segment on a driver's row; {@code origin}/
+     * {@code destination} are that segment's endpoint labels.
+     */
+    public record ManifestSegment(
+            String manifestStatus,
+            LocalDateTime pickupAppointmentStart,
+            LocalDateTime eta,
+            String origin,
+            String destination,
+            String loadReference) {}
+}

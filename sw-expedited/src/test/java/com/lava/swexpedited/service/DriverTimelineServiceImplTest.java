@@ -7,6 +7,7 @@ import com.lava.swexpedited.repository.SamsaraDriverDutyStatusRepository;
 import com.lava.swexpedited.repository.SamsaraDriverRepository;
 import com.lava.swexpedited.repository.VektorManifestRepository;
 import com.lava.swexpedited.samsara.DriverTimelineRow;
+import com.lava.swexpedited.samsara.DriverTimelineRow.ManifestSegment;
 import com.lava.swexpedited.samsara.SamsaraDriverDutyStatusRow;
 import com.lava.swexpedited.samsara.SamsaraDriverRow;
 import com.lava.swexpedited.vektor.VektorManifestRow;
@@ -29,79 +30,84 @@ class DriverTimelineServiceImplTest {
     @Mock
     private VektorManifestRepository vektorManifestRepository;
 
+    private static final LocalDateTime WEEK_START = LocalDateTime.of(2026, 7, 13, 0, 0);
+    private static final LocalDateTime WEEK_END = LocalDateTime.of(2026, 7, 20, 0, 0);
+
     @Test
-    void findAll_driverWithMatchedManifest_includesManifestFields() {
+    void findForWeek_driverWithMatchedManifest_includesManifestFields() {
         when(this.samsaraDriverRepository.findAll()).thenReturn(List.of(driverRow("41000123")));
         when(this.samsaraDriverDutyStatusRepository.findAll())
                 .thenReturn(List.of(dutyStatusRow("41000123", "driving")));
-        when(this.vektorManifestRepository.findAll())
+        when(this.vektorManifestRepository.findByAppointmentWindow(WEEK_START, WEEK_END))
                 .thenReturn(List.of(manifestRow(1000589L, "41000123", LocalDateTime.of(2026, 7, 17, 8, 0))));
         DriverTimelineServiceImpl service = new DriverTimelineServiceImpl(
                 this.samsaraDriverRepository, this.samsaraDriverDutyStatusRepository, this.vektorManifestRepository);
 
-        List<DriverTimelineRow> result = service.findAll();
+        List<DriverTimelineRow> result = service.findForWeek(WEEK_START, WEEK_END);
 
         assertThat(result).hasSize(1);
         DriverTimelineRow row = result.getFirst();
         assertThat(row.driverId()).isEqualTo("41000123");
         assertThat(row.dutyStatus()).isEqualTo("driving");
-        assertThat(row.manifestStatus()).isEqualTo("manifest_in_progress");
-        assertThat(row.pickupAppointmentStart()).isEqualTo(LocalDateTime.of(2026, 7, 17, 8, 0));
-        assertThat(row.eta()).isEqualTo(LocalDateTime.of(2026, 7, 20, 10, 0));
-        assertThat(row.origin()).isEqualTo("4251 Turin Dr, Bessemer, AL 35020");
-        assertThat(row.destination()).isEqualTo("6390 N Alsup Rd, Litchfield Park, AZ 85340");
-        assertThat(row.loadReference()).isEqualTo("SwX-1000589");
+        assertThat(row.manifests()).hasSize(1);
+        ManifestSegment segment = row.manifests().getFirst();
+        assertThat(segment.manifestStatus()).isEqualTo("manifest_in_progress");
+        assertThat(segment.pickupAppointmentStart()).isEqualTo(LocalDateTime.of(2026, 7, 17, 8, 0));
+        assertThat(segment.eta()).isEqualTo(LocalDateTime.of(2026, 7, 20, 10, 0));
+        assertThat(segment.origin()).isEqualTo("4251 Turin Dr, Bessemer, AL 35020");
+        assertThat(segment.destination()).isEqualTo("6390 N Alsup Rd, Litchfield Park, AZ 85340");
+        assertThat(segment.loadReference()).isEqualTo("SwX-1000589");
     }
 
     @Test
-    void findAll_driverWithNoMatchedManifest_manifestFieldsAreNull() {
+    void findForWeek_driverWithNoMatchedManifest_manifestsIsEmpty() {
         when(this.samsaraDriverRepository.findAll()).thenReturn(List.of(driverRow("41000123")));
         when(this.samsaraDriverDutyStatusRepository.findAll()).thenReturn(List.of());
-        when(this.vektorManifestRepository.findAll()).thenReturn(List.of());
+        when(this.vektorManifestRepository.findByAppointmentWindow(WEEK_START, WEEK_END))
+                .thenReturn(List.of());
         DriverTimelineServiceImpl service = new DriverTimelineServiceImpl(
                 this.samsaraDriverRepository, this.samsaraDriverDutyStatusRepository, this.vektorManifestRepository);
 
-        List<DriverTimelineRow> result = service.findAll();
+        List<DriverTimelineRow> result = service.findForWeek(WEEK_START, WEEK_END);
 
         assertThat(result).hasSize(1);
         DriverTimelineRow row = result.getFirst();
         assertThat(row.dutyStatus()).isNull();
-        assertThat(row.manifestStatus()).isNull();
-        assertThat(row.pickupAppointmentStart()).isNull();
-        assertThat(row.eta()).isNull();
-        assertThat(row.origin()).isNull();
+        assertThat(row.manifests()).isEmpty();
     }
 
     @Test
-    void findAll_unmatchedManifest_isIgnored() {
+    void findForWeek_unmatchedManifest_isIgnored() {
         when(this.samsaraDriverRepository.findAll()).thenReturn(List.of(driverRow("41000123")));
         when(this.samsaraDriverDutyStatusRepository.findAll()).thenReturn(List.of());
-        when(this.vektorManifestRepository.findAll())
+        when(this.vektorManifestRepository.findByAppointmentWindow(WEEK_START, WEEK_END))
                 .thenReturn(List.of(manifestRow(1000589L, null, LocalDateTime.of(2026, 7, 17, 8, 0))));
         DriverTimelineServiceImpl service = new DriverTimelineServiceImpl(
                 this.samsaraDriverRepository, this.samsaraDriverDutyStatusRepository, this.vektorManifestRepository);
 
-        List<DriverTimelineRow> result = service.findAll();
+        List<DriverTimelineRow> result = service.findForWeek(WEEK_START, WEEK_END);
 
         assertThat(result).hasSize(1);
-        assertThat(result.getFirst().manifestStatus()).isNull();
+        assertThat(result.getFirst().manifests()).isEmpty();
     }
 
     @Test
-    void findAll_multipleMatchedManifestsForSameDriver_soonestPickupWins() {
+    void findForWeek_multipleMatchedManifestsForSameDriver_sortedByPickupAscending() {
         when(this.samsaraDriverRepository.findAll()).thenReturn(List.of(driverRow("41000123")));
         when(this.samsaraDriverDutyStatusRepository.findAll()).thenReturn(List.of());
-        when(this.vektorManifestRepository.findAll())
+        when(this.vektorManifestRepository.findByAppointmentWindow(WEEK_START, WEEK_END))
                 .thenReturn(List.of(
                         manifestRow(1000589L, "41000123", LocalDateTime.of(2026, 7, 18, 8, 0)),
                         manifestRow(1000590L, "41000123", LocalDateTime.of(2026, 7, 17, 8, 0))));
         DriverTimelineServiceImpl service = new DriverTimelineServiceImpl(
                 this.samsaraDriverRepository, this.samsaraDriverDutyStatusRepository, this.vektorManifestRepository);
 
-        List<DriverTimelineRow> result = service.findAll();
+        List<DriverTimelineRow> result = service.findForWeek(WEEK_START, WEEK_END);
 
         assertThat(result).hasSize(1);
-        assertThat(result.getFirst().pickupAppointmentStart()).isEqualTo(LocalDateTime.of(2026, 7, 17, 8, 0));
+        assertThat(result.getFirst().manifests())
+                .extracting(ManifestSegment::pickupAppointmentStart)
+                .containsExactly(LocalDateTime.of(2026, 7, 17, 8, 0), LocalDateTime.of(2026, 7, 18, 8, 0));
     }
 
     private SamsaraDriverRow driverRow(String id) {

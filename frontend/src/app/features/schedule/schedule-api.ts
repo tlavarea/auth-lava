@@ -11,7 +11,9 @@ const BASE_URL = `${environment.apiUrl}/api/sw-expedited/drivers/timeline`;
 export class ScheduleApi {
   private readonly http: HttpClient = inject(HttpClient);
 
-  list(): Observable<DriverScheduleRow[]> {
-    return this.http.get<DriverScheduleRow[]>(BASE_URL);
+  list(weekStartMs: number): Observable<DriverScheduleRow[]> {
+    return this.http.get<DriverScheduleRow[]>(BASE_URL, {
+      params: { weekStart: new Date(weekStartMs).toISOString() },
+    });
   }
 }

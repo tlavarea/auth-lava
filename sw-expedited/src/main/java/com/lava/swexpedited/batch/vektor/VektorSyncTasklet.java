@@ -21,10 +21,13 @@ import org.springframework.stereotype.Component;
 /**
  * Logs into Vektor, fetches the currently-synced-status manifests and the full driver roster (one call each, not
  * per-manifest - unlike GFM's per-shipment {@code getBid} calls, Vektor's endpoints already return everything this app
- * needs in bulk), maps and best-effort-matches each manifest against the Samsara driver roster, then replaces
- * vektor_manifest in one transaction. A single tasklet, not chunked - same reasoning as
- * {@code SamsaraDriverSyncJobConfig}: a handful of bulk HTTP calls total per sync, not one per item, so there's no
- * per-item retry/skip checkpointing to earn chunk-oriented complexity.
+ * needs in bulk), maps and best-effort-matches each manifest against the Samsara driver roster, then upserts
+ * vektor_manifest in one transaction. Unlike the other sync tasklets in this package (which fully replace their tables
+ * every run), this deliberately never deletes rows - see {@link VektorManifestRepository#upsertAll}'s javadoc - so
+ * completed manifests stick around as history for the Schedule view instead of disappearing once Vektor stops returning
+ * them. A single tasklet, not chunked - same reasoning as {@code SamsaraDriverSyncJobConfig}: a handful of bulk HTTP
+ * calls total per sync, not one per item, so there's no per-item retry/skip checkpointing to earn chunk-oriented
+ * complexity.
  */
 @Component
 @Slf4j
@@ -72,7 +75,7 @@ public class VektorSyncTasklet implements Tasklet {
                 .map(row -> matchSamsaraDriver(row, samsaraDrivers))
                 .toList();
 
-        this.vektorManifestRepository.replaceAll(rows);
+        this.vektorManifestRepository.upsertAll(rows);
         log.info("execute::stored {} vektor manifests", rows.size());
         return RepeatStatus.FINISHED;
     }

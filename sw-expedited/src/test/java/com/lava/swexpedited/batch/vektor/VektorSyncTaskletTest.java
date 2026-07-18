@@ -90,7 +90,7 @@ class VektorSyncTaskletTest {
 
         assertThat(status).isEqualTo(RepeatStatus.FINISHED);
         ArgumentCaptor<List<VektorManifestRow>> rowsCaptor = ArgumentCaptor.captor();
-        Mockito.verify(this.vektorManifestRepository).replaceAll(rowsCaptor.capture());
+        Mockito.verify(this.vektorManifestRepository).upsertAll(rowsCaptor.capture());
         assertThat(rowsCaptor.getValue()).hasSize(1);
         assertThat(rowsCaptor.getValue().getFirst().matchedSamsaraDriverId()).isEqualTo("samsara-1");
         assertThat(rowsCaptor.getValue().getFirst().manifestNumber()).isEqualTo(1000589L);
@@ -124,7 +124,7 @@ class VektorSyncTaskletTest {
         tasklet.execute(null, null);
 
         ArgumentCaptor<List<VektorManifestRow>> rowsCaptor = ArgumentCaptor.captor();
-        Mockito.verify(this.vektorManifestRepository).replaceAll(rowsCaptor.capture());
+        Mockito.verify(this.vektorManifestRepository).upsertAll(rowsCaptor.capture());
         assertThat(rowsCaptor.getValue().getFirst().matchedSamsaraDriverId()).isNull();
     }
 

@@ -4,9 +4,11 @@ import com.lava.swexpedited.repository.SamsaraDriverDutyStatusRepository;
 import com.lava.swexpedited.repository.SamsaraDriverRepository;
 import com.lava.swexpedited.repository.VektorManifestRepository;
 import com.lava.swexpedited.samsara.DriverTimelineRow;
+import com.lava.swexpedited.samsara.DriverTimelineRow.ManifestSegment;
 import com.lava.swexpedited.samsara.SamsaraDriverDutyStatusRow;
 import com.lava.swexpedited.samsara.SamsaraDriverRow;
 import com.lava.swexpedited.vektor.VektorManifestRow;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -19,11 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Joins samsara_driver, samsara_driver_duty_status, and vektor_manifest in Java - same convention as
  * {@link SamsaraDriverServiceImpl}: three independently-synced tables, no cross-table transactional consistency to lean
- * on. A manifest is matched to a driver via {@code matchedSamsaraDriverId} (best-effort name match, see
- * {@code VektorDriverMatchStrategy}). If more than one currently-synced manifest matches the same driver (e.g. one load
- * just finished and another started between syncs), the one with the soonest {@code pickupAppointmentStart} wins - a
- * known MVP simplification, not a real dispatch rule; a manifest with no parseable pickup appointment loses that
- * tie-break to one that has it.
+ * on. Manifests are matched to a driver via {@code matchedSamsaraDriverId} (best-effort name match, see
+ * {@code VektorDriverMatchStrategy}) and grouped, sorted by soonest {@code pickupAppointmentStart} first (nulls last)
+ * so a driver's row lists their loads for the week in chronological order - a driver can have several manifests in one
+ * week now that vektor_manifest retains history instead of only "what's active right now" (see
+ * {@code VektorManifestRepository#upsertAll}'s javadoc).
  */
 @Service
 @Transactional(readOnly = true)
@@ -43,49 +45,45 @@ public class DriverTimelineServiceImpl implements DriverTimelineService {
     }
 
     @Override
-    public List<DriverTimelineRow> findAll() {
+    public List<DriverTimelineRow> findForWeek(LocalDateTime weekStart, LocalDateTime weekEnd) {
         Map<String, SamsaraDriverDutyStatusRow> dutyStatusesByDriverId =
                 samsaraDriverDutyStatusRepository.findAll().stream()
                         .collect(Collectors.toMap(SamsaraDriverDutyStatusRow::driverId, Function.identity()));
-        Map<String, VektorManifestRow> manifestsByDriverId = vektorManifestRepository.findAll().stream()
-                .filter(manifest -> manifest.matchedSamsaraDriverId() != null)
-                .collect(Collectors.toMap(
-                        VektorManifestRow::matchedSamsaraDriverId,
-                        Function.identity(),
-                        DriverTimelineServiceImpl::soonestPickup));
+        Map<String, List<VektorManifestRow>> manifestsByDriverId =
+                vektorManifestRepository.findByAppointmentWindow(weekStart, weekEnd).stream()
+                        .filter(manifest -> manifest.matchedSamsaraDriverId() != null)
+                        .sorted(Comparator.comparing(
+                                VektorManifestRow::pickupAppointmentStart,
+                                Comparator.nullsLast(Comparator.naturalOrder())))
+                        .collect(Collectors.groupingBy(VektorManifestRow::matchedSamsaraDriverId));
 
         return samsaraDriverRepository.findAll().stream()
                 .map(driver -> toRow(
                         driver,
                         Optional.ofNullable(dutyStatusesByDriverId.get(driver.id())),
-                        Optional.ofNullable(manifestsByDriverId.get(driver.id()))))
+                        manifestsByDriverId.getOrDefault(driver.id(), List.of())))
                 .toList();
-    }
-
-    private static VektorManifestRow soonestPickup(VektorManifestRow first, VektorManifestRow second) {
-        return Comparator.comparing(
-                                        VektorManifestRow::pickupAppointmentStart,
-                                        Comparator.nullsLast(Comparator.naturalOrder()))
-                                .compare(first, second)
-                        <= 0
-                ? first
-                : second;
     }
 
     private DriverTimelineRow toRow(
             SamsaraDriverRow driver,
             Optional<SamsaraDriverDutyStatusRow> dutyStatus,
-            Optional<VektorManifestRow> manifest) {
+            List<VektorManifestRow> manifests) {
         return new DriverTimelineRow(
                 driver.id(),
                 driver.name(),
                 driver.activationStatus(),
                 dutyStatus.map(SamsaraDriverDutyStatusRow::dutyStatus).orElse(null),
-                manifest.map(VektorManifestRow::status).orElse(null),
-                manifest.map(VektorManifestRow::pickupAppointmentStart).orElse(null),
-                manifest.map(VektorManifestRow::eta).orElse(null),
-                manifest.map(VektorManifestRow::origin).orElse(null),
-                manifest.map(VektorManifestRow::destination).orElse(null),
-                manifest.map(VektorManifestRow::loadReference).orElse(null));
+                manifests.stream().map(DriverTimelineServiceImpl::toSegment).toList());
+    }
+
+    private static ManifestSegment toSegment(VektorManifestRow manifest) {
+        return new ManifestSegment(
+                manifest.status(),
+                manifest.pickupAppointmentStart(),
+                manifest.eta(),
+                manifest.origin(),
+                manifest.destination(),
+                manifest.loadReference());
     }
 }

@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: "11"
+      author: tlavarea
+      comment: >
+        vektor_manifest switched from delete+bulk-insert-per-sync (see 008's comment) to an
+        upsert keyed on manifest_number, so a manifest's row survives once Vektor stops
+        returning it (completed/fell out of the synced-status filter) instead of being wiped -
+        this is what lets the Schedule view show weeks other than "right now". The table now
+        grows without bound instead of staying pinned to "currently active manifests", and the
+        Schedule view's week-range lookup (VektorManifestRepository#findByAppointmentWindow)
+        filters on pickup_appointment_start/eta on every request, so it needs an index to stay
+        fast as history accumulates.
+      changes:
+        - createIndex:
+            indexName: idx_vektor_manifest_appointment_window
+            tableName: vektor_manifest
+            columns:
+              - column:
+                  name: pickup_appointment_start
+              - column:
+                  name: eta
+      rollback:
+        - dropIndex:
+            indexName: idx_vektor_manifest_appointment_window
+            tableName: vektor_manifest

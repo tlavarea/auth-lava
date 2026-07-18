@@ -13,15 +13,19 @@ export function startOfDayMs(nowMs: number): number {
   return new Date(nowMs).setHours(0, 0, 0, 0);
 }
 
-// One tick per day boundary across the rolling week (today through 6 days out) - day 0 is labeled "Today", the rest
-// get a short weekday + date so a dispatcher can tell which calendar day a column represents at a glance.
-export function buildWeekDayTicks(nowMs: number): DayTick[] {
-  const weekStart = startOfDayMs(nowMs);
+// One tick per day boundary across the visible week (weekStartMs through 6 days out) - whichever day is actually
+// today (per nowMs) is labeled "Today", the rest get a short weekday + date so a dispatcher can tell which calendar
+// day a column represents at a glance. weekStartMs is an arbitrary anchor (not always "today") so the same week can
+// be scrolled backward/forward - no day is labeled "Today" when the visible week doesn't contain it.
+export function buildWeekDayTicks(weekStartMs: number, nowMs: number = Date.now()): DayTick[] {
+  const todayStart = startOfDayMs(nowMs);
   const ticks: DayTick[] = [];
   for (let day = 0; day < WEEK_DAYS; day++) {
-    const date = new Date(weekStart + day * DAY_MS);
-    const label = day === 0 ? 'Today' : `${WEEKDAY_LABELS[date.getDay()]} ${date.getMonth() + 1}/${date.getDate()}`;
-    ticks.push({ dayIndex: day, percent: (day / WEEK_DAYS) * 100, label, isToday: day === 0 });
+    const dayStart = weekStartMs + day * DAY_MS;
+    const date = new Date(dayStart);
+    const isToday = dayStart === todayStart;
+    const label = isToday ? 'Today' : `${WEEKDAY_LABELS[date.getDay()]} ${date.getMonth() + 1}/${date.getDate()}`;
+    ticks.push({ dayIndex: day, percent: (day / WEEK_DAYS) * 100, label, isToday });
   }
   return ticks;
 }
