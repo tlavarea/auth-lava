@@ -10,8 +10,8 @@
   color-scheme: light;
 
   --font-sans:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans',
-    sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -124,6 +124,7 @@
  * Only the "default" button size (h-9) is targeted, to match the input's new h-10
  * height — compact (xs/sm), lg, and icon sizes are left alone.
  */
-[data-slot='button'][class*='h-9'], [data-slot='dialog-close'][class*='h-9'] {
+[data-slot='button'][class*='h-9'],
+[data-slot='dialog-close'][class*='h-9'] {
   @apply h-10 px-3;
 }
