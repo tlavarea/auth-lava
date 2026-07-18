@@ -17,6 +17,7 @@ describe('ScheduleDriverRow', () => {
   const weekStart = new Date(2026, 6, 17, 0, 0, 0).getTime();
 
   const activeManifest: ManifestSegment = {
+    manifestNumber: 1000589,
     manifestStatus: 'manifest_in_progress',
     pickupAppointmentStart: localWallClock(8, 0),
     eta: localWallClock(18, 0),
@@ -87,6 +88,7 @@ describe('ScheduleDriverRow', () => {
   it('renders one busy segment per manifest for a driver with multiple loads in the week', async () => {
     const secondManifest: ManifestSegment = {
       ...activeManifest,
+      manifestNumber: 1000600,
       pickupAppointmentStart: '2026-07-19T08:00:00',
       eta: '2026-07-19T18:00:00',
       loadReference: 'SwX-1000600',
@@ -164,5 +166,48 @@ describe('ScheduleDriverRow', () => {
     await render(activeDriver, weekStart - WEEK_MS);
 
     expect(fixture.nativeElement.querySelector('.bg-foreground\\/60')).toBeNull();
+  });
+
+  it('exposes button semantics on a busy segment for keyboard/AXE accessibility', async () => {
+    await render(activeDriver);
+
+    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-success\\/20');
+    expect(segment.getAttribute('role')).toBe('button');
+    expect(segment.getAttribute('tabindex')).toBe('0');
+  });
+
+  it('emits manifestSelected with the driver id and manifest when a busy segment is clicked', async () => {
+    await render(activeDriver);
+    const emitted: { driverId: string; manifest: ManifestSegment }[] = [];
+    fixture.componentInstance.manifestSelected.subscribe((event) => emitted.push(event));
+
+    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-success\\/20');
+    segment.click();
+
+    expect(emitted).toEqual([{ driverId: 'driver-42', manifest: activeManifest }]);
+  });
+
+  it('emits manifestSelected when Enter is pressed on a focused busy segment', async () => {
+    await render(activeDriver);
+    const emitted: { driverId: string; manifest: ManifestSegment }[] = [];
+    fixture.componentInstance.manifestSelected.subscribe((event) => emitted.push(event));
+
+    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-success\\/20');
+    segment.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    expect(emitted).toEqual([{ driverId: 'driver-42', manifest: activeManifest }]);
+  });
+
+  it('emits manifestSelected and prevents page scroll when Space is pressed on a focused busy segment', async () => {
+    await render(activeDriver);
+    const emitted: { driverId: string; manifest: ManifestSegment }[] = [];
+    fixture.componentInstance.manifestSelected.subscribe((event) => emitted.push(event));
+
+    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-success\\/20');
+    const spaceEvent = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    segment.dispatchEvent(spaceEvent);
+
+    expect(emitted).toEqual([{ driverId: 'driver-42', manifest: activeManifest }]);
+    expect(spaceEvent.defaultPrevented).toBe(true);
   });
 });

@@ -21,4 +21,15 @@ class GoogleMapsHttpConfigurationTest {
 
         assertThat(restClient).isNotNull();
     }
+
+    @Test
+    void googleRoutesComputeRestClient_buildsNonNullClient() {
+        GoogleMapsProperties googleMapsProperties =
+                new GoogleMapsProperties("test-api-key", "https://routes.googleapis.com", Duration.ofSeconds(5));
+
+        RestClient restClient = this.googleMapsHttpConfiguration.googleRoutesComputeRestClient(
+                RestClient.builder(), googleMapsProperties);
+
+        assertThat(restClient).isNotNull();
+    }
 }

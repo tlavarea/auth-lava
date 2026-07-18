@@ -17,6 +17,7 @@ describe('ScheduleStore', () => {
     dutyStatus: 'driving',
     manifests: [
       {
+        manifestNumber: 1000589,
         manifestStatus: 'manifest_in_progress',
         pickupAppointmentStart: '2026-07-17T08:00:00',
         eta: '2026-07-20T10:00:00',
@@ -45,6 +46,24 @@ describe('ScheduleStore', () => {
     expect(store.rows()).toEqual([]);
     expect(store.status()).toBe('idle');
     expect(store.weekStartMs()).toBe(startOfDayMs(Date.now()));
+    expect(store.selectedDriverId()).toBeNull();
+    expect(store.selectedManifest()).toBeNull();
+  });
+
+  it('selectManifest() sets the selected driver id and manifest', () => {
+    store.selectManifest('driver-42', row.manifests[0]);
+
+    expect(store.selectedDriverId()).toBe('driver-42');
+    expect(store.selectedManifest()).toEqual(row.manifests[0]);
+  });
+
+  it('clearSelection() resets the selected driver id and manifest', () => {
+    store.selectManifest('driver-42', row.manifests[0]);
+
+    store.clearSelection();
+
+    expect(store.selectedDriverId()).toBeNull();
+    expect(store.selectedManifest()).toBeNull();
   });
 
   it('loadSchedule() populates rows on success', async () => {
@@ -126,5 +145,38 @@ describe('ScheduleStore', () => {
     await currentPromise;
 
     expect(store.weekStartMs()).toBe(startOfDayMs(Date.now()));
+  });
+
+  it('goToPreviousWeek() clears an existing manifest selection', async () => {
+    store.selectManifest('driver-42', row.manifests[0]);
+
+    const goPromise = store.goToPreviousWeek();
+    httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
+    await goPromise;
+
+    expect(store.selectedDriverId()).toBeNull();
+    expect(store.selectedManifest()).toBeNull();
+  });
+
+  it('goToNextWeek() clears an existing manifest selection', async () => {
+    store.selectManifest('driver-42', row.manifests[0]);
+
+    const goPromise = store.goToNextWeek();
+    httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
+    await goPromise;
+
+    expect(store.selectedDriverId()).toBeNull();
+    expect(store.selectedManifest()).toBeNull();
+  });
+
+  it('goToCurrentWeek() clears an existing manifest selection', async () => {
+    store.selectManifest('driver-42', row.manifests[0]);
+
+    const goPromise = store.goToCurrentWeek();
+    httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
+    await goPromise;
+
+    expect(store.selectedDriverId()).toBeNull();
+    expect(store.selectedManifest()).toBeNull();
   });
 });

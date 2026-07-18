@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { ScheduleApi } from './schedule-api';
 import { startOfDayMs, WEEK_MS } from './schedule-chart';
-import { DriverScheduleRow } from './schedule.models';
+import { DriverScheduleRow, ManifestSegment } from './schedule.models';
 
 export type ScheduleRequestStatus = 'idle' | 'loading' | 'error';
 
@@ -12,6 +12,8 @@ type ScheduleState = {
   rows: DriverScheduleRow[];
   status: ScheduleRequestStatus;
   weekStartMs: number;
+  selectedDriverId: string | null;
+  selectedManifest: ManifestSegment | null;
 };
 
 // A factory, not a static object - weekStartMs needs to reflect "today" at store creation time (each visit to
@@ -21,8 +23,14 @@ function initialState(): ScheduleState {
     rows: [],
     status: 'idle',
     weekStartMs: startOfDayMs(Date.now()),
+    selectedDriverId: null,
+    selectedManifest: null,
   };
 }
+
+// Cleared alongside a week change - a selected manifest may not exist in the newly-loaded week's rows, so keeping it
+// selected would leave the map panel pointing at stale/orphaned data.
+const NO_SELECTION = { selectedDriverId: null, selectedManifest: null } as const;
 
 // Route-scoped (provided by SchedulePage, not `root`) so state resets per visit to /schedule, matching
 // DriversStore/ShipmentsStore.
@@ -56,18 +64,26 @@ export const ScheduleStore = signalStore(
       },
 
       async goToPreviousWeek(): Promise<void> {
-        patchState(store, { weekStartMs: store.weekStartMs() - WEEK_MS });
+        patchState(store, { weekStartMs: store.weekStartMs() - WEEK_MS, ...NO_SELECTION });
         await loadSchedule();
       },
 
       async goToNextWeek(): Promise<void> {
-        patchState(store, { weekStartMs: store.weekStartMs() + WEEK_MS });
+        patchState(store, { weekStartMs: store.weekStartMs() + WEEK_MS, ...NO_SELECTION });
         await loadSchedule();
       },
 
       async goToCurrentWeek(): Promise<void> {
-        patchState(store, { weekStartMs: startOfDayMs(Date.now()) });
+        patchState(store, { weekStartMs: startOfDayMs(Date.now()), ...NO_SELECTION });
         await loadSchedule();
+      },
+
+      selectManifest(driverId: string, manifest: ManifestSegment): void {
+        patchState(store, { selectedDriverId: driverId, selectedManifest: manifest });
+      },
+
+      clearSelection(): void {
+        patchState(store, NO_SELECTION);
       },
     };
   })

@@ -79,6 +79,7 @@ public class DriverTimelineServiceImpl implements DriverTimelineService {
 
     private static ManifestSegment toSegment(VektorManifestRow manifest) {
         return new ManifestSegment(
+                manifest.manifestNumber(),
                 manifest.status(),
                 manifest.pickupAppointmentStart(),
                 manifest.eta(),

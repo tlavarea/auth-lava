@@ -23,9 +23,11 @@ public record DriverTimelineRow(
      * One manifest's schedule-relevant fields. {@code pickupAppointmentStart}/{@code eta} are the load's scheduled
      * pickup/dropoff appointment times (not actual arrival/departure times - see {@code VektorManifestMapper}'s
      * javadoc), used by the timeline view to position and size a segment on a driver's row; {@code origin}/
-     * {@code destination} are that segment's endpoint labels.
+     * {@code destination} are that segment's endpoint labels. {@code manifestNumber} is the stable ID a client uses to
+     * look up this specific manifest's route via {@code GET /api/manifests/{manifestNumber}/route}.
      */
     public record ManifestSegment(
+            Long manifestNumber,
             String manifestStatus,
             LocalDateTime pickupAppointmentStart,
             LocalDateTime eta,
