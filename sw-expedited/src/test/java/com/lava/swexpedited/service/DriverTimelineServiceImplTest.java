@@ -48,6 +48,7 @@ class DriverTimelineServiceImplTest {
         assertThat(row.manifestStatus()).isEqualTo("manifest_in_progress");
         assertThat(row.pickupAppointmentStart()).isEqualTo(LocalDateTime.of(2026, 7, 17, 8, 0));
         assertThat(row.eta()).isEqualTo(LocalDateTime.of(2026, 7, 20, 10, 0));
+        assertThat(row.origin()).isEqualTo("4251 Turin Dr, Bessemer, AL 35020");
         assertThat(row.destination()).isEqualTo("6390 N Alsup Rd, Litchfield Park, AZ 85340");
         assertThat(row.loadReference()).isEqualTo("SwX-1000589");
     }
@@ -68,6 +69,7 @@ class DriverTimelineServiceImplTest {
         assertThat(row.manifestStatus()).isNull();
         assertThat(row.pickupAppointmentStart()).isNull();
         assertThat(row.eta()).isNull();
+        assertThat(row.origin()).isNull();
     }
 
     @Test

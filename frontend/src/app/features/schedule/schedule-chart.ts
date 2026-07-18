@@ -33,3 +33,24 @@ export function percentForTime(epochMs: number, rangeStartMs: number, rangeMs: n
   const clamped = Math.min(Math.max(epochMs, rangeStartMs), rangeStartMs + rangeMs);
   return ((clamped - rangeStartMs) / rangeMs) * 100;
 }
+
+// Shortens a full street address (e.g. from vektor_manifest's origin/destination, "4251 Turin Dr, Bessemer, AL
+// 35020") down to "City, ST" for compact display on a schedule bar. Takes the last two comma-separated segments
+// (city, then "ST zip") rather than assuming a fixed segment count, so it degrades gracefully for a two-segment
+// "City, ST zip" address too. Falls back to the trimmed input unchanged if it doesn't look like a comma-separated
+// address at all, rather than throwing on unexpected formats.
+export function formatCityState(address: string | null): string | null {
+  if (address === null) {
+    return null;
+  }
+  const parts = address
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  if (parts.length < 2) {
+    return address.trim();
+  }
+  const city = parts[parts.length - 2];
+  const state = parts[parts.length - 1].split(/\s+/)[0];
+  return `${city}, ${state}`;
+}

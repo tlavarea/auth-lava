@@ -84,6 +84,7 @@ public class DriverTimelineServiceImpl implements DriverTimelineService {
                 manifest.map(VektorManifestRow::status).orElse(null),
                 manifest.map(VektorManifestRow::pickupAppointmentStart).orElse(null),
                 manifest.map(VektorManifestRow::eta).orElse(null),
+                manifest.map(VektorManifestRow::origin).orElse(null),
                 manifest.map(VektorManifestRow::destination).orElse(null),
                 manifest.map(VektorManifestRow::loadReference).orElse(null));
     }

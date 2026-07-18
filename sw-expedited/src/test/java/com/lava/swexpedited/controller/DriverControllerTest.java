@@ -157,6 +157,7 @@ class DriverControllerTest {
                         "manifest_in_progress",
                         LocalDateTime.of(2026, 7, 17, 8, 0, 0),
                         LocalDateTime.of(2026, 7, 20, 10, 0, 0),
+                        "4251 Turin Dr, Bessemer, AL 35020",
                         "6390 N Alsup Rd, Litchfield Park, AZ 85340",
                         "SwX-1000589")));
 
@@ -166,6 +167,7 @@ class DriverControllerTest {
                 .andExpect(jsonPath("$[0].driverId").value("41000123"))
                 .andExpect(jsonPath("$[0].dutyStatus").value("driving"))
                 .andExpect(jsonPath("$[0].manifestStatus").value("manifest_in_progress"))
+                .andExpect(jsonPath("$[0].origin").value("4251 Turin Dr, Bessemer, AL 35020"))
                 .andExpect(jsonPath("$[0].loadReference").value("SwX-1000589"));
     }
 
