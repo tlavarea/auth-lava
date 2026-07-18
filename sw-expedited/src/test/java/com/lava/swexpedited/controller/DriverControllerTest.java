@@ -156,6 +156,7 @@ class DriverControllerTest {
                         "active",
                         "driving",
                         List.of(new ManifestSegment(
+                                1000589L,
                                 "manifest_in_progress",
                                 LocalDateTime.of(2026, 7, 17, 8, 0, 0),
                                 LocalDateTime.of(2026, 7, 20, 10, 0, 0),
@@ -168,6 +169,7 @@ class DriverControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].driverId").value("41000123"))
                 .andExpect(jsonPath("$[0].dutyStatus").value("driving"))
+                .andExpect(jsonPath("$[0].manifests[0].manifestNumber").value(1000589))
                 .andExpect(jsonPath("$[0].manifests[0].manifestStatus").value("manifest_in_progress"))
                 .andExpect(jsonPath("$[0].manifests[0].origin").value("4251 Turin Dr, Bessemer, AL 35020"))
                 .andExpect(jsonPath("$[0].manifests[0].loadReference").value("SwX-1000589"));

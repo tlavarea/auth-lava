@@ -51,6 +51,7 @@ class DriverTimelineServiceImplTest {
         assertThat(row.dutyStatus()).isEqualTo("driving");
         assertThat(row.manifests()).hasSize(1);
         ManifestSegment segment = row.manifests().getFirst();
+        assertThat(segment.manifestNumber()).isEqualTo(1000589L);
         assertThat(segment.manifestStatus()).isEqualTo("manifest_in_progress");
         assertThat(segment.pickupAppointmentStart()).isEqualTo(LocalDateTime.of(2026, 7, 17, 8, 0));
         assertThat(segment.eta()).isEqualTo(LocalDateTime.of(2026, 7, 20, 10, 0));
