@@ -1,13 +1,29 @@
 // One manifest's schedule-relevant fields (mirrors the backend's DriverTimelineRow.ManifestSegment).
 // pickupAppointmentStart/eta are the load's scheduled pickup/dropoff appointment times (not actual arrival/departure
-// times), used to position and size a segment on the driver's row.
+// times), used to position and size a segment on the driver's row. manifestNumber is the stable ID used to look up
+// this manifest's route (see ScheduleApi.route).
 export type ManifestSegment = {
+  manifestNumber: number;
   manifestStatus: string;
   pickupAppointmentStart: string;
   eta: string;
   origin: string | null;
   destination: string | null;
   loadReference: string | null;
+};
+
+// Mirrors the backend's GET /api/manifests/{manifestNumber}/route response shape (ManifestRouteResponse).
+// originLatitude/originLongitude come from Google's route response (vektor_manifest only stores the destination's
+// coordinates); encodedPolyline is Google's polyline-encoded route geometry, decoded client-side via
+// google.maps.geometry.encoding.decodePath.
+export type ManifestRoute = {
+  originLatitude: number;
+  originLongitude: number;
+  destinationLatitude: number;
+  destinationLongitude: number;
+  encodedPolyline: string;
+  distanceMeters: number | null;
+  duration: string | null;
 };
 
 // Mirrors the backend's GET /api/drivers/timeline response shape (DriverScheduleRow). manifests is empty when no

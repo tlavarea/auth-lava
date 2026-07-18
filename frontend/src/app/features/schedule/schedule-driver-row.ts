@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, input, InputSignal, Signal } from '@angular/core';
+import { Component, computed, input, InputSignal, output, OutputEmitterRef, Signal } from '@angular/core';
 
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 
@@ -16,6 +16,7 @@ import {
 import { DriverScheduleRow, ManifestSegment } from './schedule.models';
 
 type BusySegment = {
+  manifestNumber: number;
   leftPercent: number;
   widthPercent: number;
   origin: string | null;
@@ -61,12 +62,17 @@ const NARROW_SEGMENT_THRESHOLD_PERCENT = 12;
         @for (tick of daySegmentTicks(); track tick) {
           <span class="absolute inset-y-0 w-px bg-border" [style.left.%]="tick"></span>
         }
-        @for (segment of busySegments(); track segment.pickupAppointmentStart) {
+        @for (segment of busySegments(); track segment.manifestNumber) {
           <div
-            class="absolute inset-y-0 flex items-center justify-between gap-1 overflow-hidden rounded bg-success/20 px-1.5 dark:bg-success/25"
+            class="absolute inset-y-0 flex cursor-pointer items-center justify-between gap-1 overflow-hidden rounded bg-success/20 px-1.5 outline-offset-1 hover:bg-success/30 dark:bg-success/25 dark:hover:bg-success/35"
+            role="button"
+            tabindex="0"
             [style.left.%]="segment.leftPercent"
             [style.width.%]="segment.widthPercent"
-            [attr.aria-label]="segmentAriaLabel(segment)">
+            [attr.aria-label]="segmentAriaLabel(segment)"
+            (click)="onSegmentClick(segment)"
+            (keydown.enter)="onSegmentClick(segment)"
+            (keydown.space)="onSegmentKeydownSpace($event, segment)">
             @if (segment.origin !== null && segment.widthPercent >= narrowSegmentThresholdPercent) {
               <div class="flex min-w-0 flex-col items-start truncate">
                 <span class="truncate text-[11px] font-medium text-foreground">
@@ -95,6 +101,8 @@ const NARROW_SEGMENT_THRESHOLD_PERCENT = 12;
 export class ScheduleDriverRow {
   readonly driver: InputSignal<DriverScheduleRow> = input.required<DriverScheduleRow>();
   readonly weekStart: InputSignal<number> = input.required<number>();
+
+  readonly manifestSelected: OutputEmitterRef<{ driverId: string; manifest: ManifestSegment }> = output();
 
   protected readonly dayTicks: Signal<DayTick[]> = computed(() => buildWeekDayTicks(this.weekStart()));
   protected readonly daySegmentTicks: Signal<number[]> = computed(() =>
@@ -137,6 +145,20 @@ export class ScheduleDriverRow {
     return `On load from ${from} to ${to}${pickup}${eta}${loadReference}`;
   }
 
+  protected onSegmentClick(segment: BusySegment): void {
+    const manifest = this.driver().manifests.find((m) => m.manifestNumber === segment.manifestNumber);
+    if (manifest) {
+      this.manifestSelected.emit({ driverId: this.driver().driverId, manifest });
+    }
+  }
+
+  // Space normally scrolls the page for a non-native interactive element - prevent that before activating, same as
+  // a real <button> would (which never triggers a scroll on Space).
+  protected onSegmentKeydownSpace(event: Event, segment: BusySegment): void {
+    event.preventDefault();
+    this.onSegmentClick(segment);
+  }
+
   // One extra faint tick at each day's 1/3 and 2/3 marks, echoing the week header's Morning/Noon/Evening sub-columns
   // so a bar's start/end can be read against the same day-part boundaries the header shows.
   private static buildDaySegmentTicks(dayTicks: DayTick[]): number[] {
@@ -154,6 +176,7 @@ function toBusySegment(manifest: ManifestSegment, weekStart: number): BusySegmen
   const leftPercent = percentForTime(startMs, weekStart, WEEK_MS);
   const widthPercent = Math.max(percentForTime(endMs, weekStart, WEEK_MS) - leftPercent, 1);
   return {
+    manifestNumber: manifest.manifestNumber,
     leftPercent,
     widthPercent,
     origin: manifest.origin,
