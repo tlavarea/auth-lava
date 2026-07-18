@@ -11,6 +11,7 @@ export type DriverScheduleRow = {
   manifestStatus: string | null;
   pickupAppointmentStart: string | null;
   eta: string | null;
+  origin: string | null;
   destination: string | null;
   loadReference: string | null;
 };

@@ -1,4 +1,12 @@
-import { buildWeekDayTicks, DAY_MS, percentForTime, startOfDayMs, WEEK_DAYS, WEEK_MS } from './schedule-chart';
+import {
+  buildWeekDayTicks,
+  DAY_MS,
+  formatCityState,
+  percentForTime,
+  startOfDayMs,
+  WEEK_DAYS,
+  WEEK_MS,
+} from './schedule-chart';
 
 describe('schedule-chart', () => {
   it('buildWeekDayTicks() produces one tick per day of the rolling week, starting with "Today"', () => {
@@ -44,5 +52,21 @@ describe('schedule-chart', () => {
     const now = new Date(2026, 6, 17, 15, 30, 0).getTime();
 
     expect(startOfDayMs(now)).toBe(new Date(2026, 6, 17, 0, 0, 0).getTime());
+  });
+
+  it('formatCityState() shortens a full street address to "City, ST"', () => {
+    expect(formatCityState('6390 N Alsup Rd, Litchfield Park, AZ 85340')).toBe('Litchfield Park, AZ');
+  });
+
+  it('formatCityState() handles a two-segment "City, ST zip" address', () => {
+    expect(formatCityState('Bessemer, AL 35020')).toBe('Bessemer, AL');
+  });
+
+  it('formatCityState() falls back to the trimmed input when it has no comma-separated segments', () => {
+    expect(formatCityState('  Phoenix  ')).toBe('Phoenix');
+  });
+
+  it('formatCityState() returns null for a null address', () => {
+    expect(formatCityState(null)).toBeNull();
   });
 });
