@@ -29,8 +29,8 @@ export const routes: Routes = [
         loadChildren: () => import('./features/drivers/drivers.routes').then((m) => m.driversRoutes),
       },
       {
-        path: 'timeline',
-        loadChildren: () => import('./features/timeline/timeline.routes').then((m) => m.timelineRoutes),
+        path: 'schedule',
+        loadChildren: () => import('./features/schedule/schedule.routes').then((m) => m.scheduleRoutes),
       },
     ],
   },

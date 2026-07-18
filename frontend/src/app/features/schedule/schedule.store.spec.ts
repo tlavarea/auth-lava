@@ -2,14 +2,14 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
-import { DriverTimelineRow } from './timeline.models';
-import { TimelineStore } from './timeline.store';
+import { DriverScheduleRow } from './schedule.models';
+import { ScheduleStore } from './schedule.store';
 
-describe('TimelineStore', () => {
-  let store: InstanceType<typeof TimelineStore>;
+describe('ScheduleStore', () => {
+  let store: InstanceType<typeof ScheduleStore>;
   let httpMock: HttpTestingController;
 
-  const row: DriverTimelineRow = {
+  const row: DriverScheduleRow = {
     driverId: 'driver-42',
     driverName: 'Jane Doe',
     activationStatus: 'active',
@@ -23,9 +23,9 @@ describe('TimelineStore', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), TimelineStore],
+      providers: [provideHttpClient(), provideHttpClientTesting(), ScheduleStore],
     });
-    store = TestBed.inject(TimelineStore);
+    store = TestBed.inject(ScheduleStore);
     httpMock = TestBed.inject(HttpTestingController);
   });
 
@@ -38,8 +38,8 @@ describe('TimelineStore', () => {
     expect(store.status()).toBe('idle');
   });
 
-  it('loadTimeline() populates rows on success', async () => {
-    const loadPromise = store.loadTimeline();
+  it('loadSchedule() populates rows on success', async () => {
+    const loadPromise = store.loadSchedule();
     httpMock.expectOne('/api/sw-expedited/drivers/timeline').flush([row]);
     await loadPromise;
 
@@ -47,21 +47,21 @@ describe('TimelineStore', () => {
     expect(store.status()).toBe('idle');
   });
 
-  it('loadTimeline() marks status as error on failure', async () => {
-    const loadPromise = store.loadTimeline();
+  it('loadSchedule() marks status as error on failure', async () => {
+    const loadPromise = store.loadSchedule();
     httpMock.expectOne('/api/sw-expedited/drivers/timeline').flush(null, { status: 500, statusText: 'Server Error' });
     await loadPromise;
 
     expect(store.status()).toBe('error');
   });
 
-  it('refreshTimeline() replaces rows without touching status', async () => {
-    const loadPromise = store.loadTimeline();
+  it('refreshSchedule() replaces rows without touching status', async () => {
+    const loadPromise = store.loadSchedule();
     httpMock.expectOne('/api/sw-expedited/drivers/timeline').flush([row]);
     await loadPromise;
 
     const updatedRow = { ...row, dutyStatus: 'onDuty' };
-    const refreshPromise = store.refreshTimeline();
+    const refreshPromise = store.refreshSchedule();
     httpMock.expectOne('/api/sw-expedited/drivers/timeline').flush([updatedRow]);
     await refreshPromise;
 
@@ -69,12 +69,12 @@ describe('TimelineStore', () => {
     expect(store.status()).toBe('idle');
   });
 
-  it('refreshTimeline() silently keeps the existing rows on failure', async () => {
-    const loadPromise = store.loadTimeline();
+  it('refreshSchedule() silently keeps the existing rows on failure', async () => {
+    const loadPromise = store.loadSchedule();
     httpMock.expectOne('/api/sw-expedited/drivers/timeline').flush([row]);
     await loadPromise;
 
-    const refreshPromise = store.refreshTimeline();
+    const refreshPromise = store.refreshSchedule();
     httpMock.expectOne('/api/sw-expedited/drivers/timeline').flush(null, { status: 500, statusText: 'Server Error' });
     await refreshPromise;
 

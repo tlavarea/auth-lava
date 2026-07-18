@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { TimelineDriverRow } from './timeline-driver-row';
-import { DriverTimelineRow } from './timeline.models';
+import { ScheduleDriverRow } from './schedule-driver-row';
+import { DriverScheduleRow } from './schedule.models';
 
 // A zone-naive "local wall clock" string, matching the shape of the backend's LocalDateTime fields (e.g.
 // pickupAppointmentStart/eta) - `new Date(...)` on this parses back to the same local hour/minute, unlike
@@ -10,10 +10,10 @@ function localWallClock(hour: number, minute: number): string {
   return `2026-07-17T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
 }
 
-describe('TimelineDriverRow', () => {
-  let fixture: ComponentFixture<TimelineDriverRow>;
+describe('ScheduleDriverRow', () => {
+  let fixture: ComponentFixture<ScheduleDriverRow>;
 
-  const activeDriver: DriverTimelineRow = {
+  const activeDriver: DriverScheduleRow = {
     driverId: 'driver-42',
     driverName: 'Jane Doe',
     activationStatus: 'active',
@@ -25,7 +25,7 @@ describe('TimelineDriverRow', () => {
     loadReference: 'SwX-1000589',
   };
 
-  const idleDriver: DriverTimelineRow = {
+  const idleDriver: DriverScheduleRow = {
     driverId: 'driver-7',
     driverName: 'Sam Rivera',
     activationStatus: 'active',
@@ -43,9 +43,9 @@ describe('TimelineDriverRow', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  async function render(driver: DriverTimelineRow): Promise<void> {
-    await TestBed.configureTestingModule({ imports: [TimelineDriverRow] }).compileComponents();
-    fixture = TestBed.createComponent(TimelineDriverRow);
+  async function render(driver: DriverScheduleRow): Promise<void> {
+    await TestBed.configureTestingModule({ imports: [ScheduleDriverRow] }).compileComponents();
+    fixture = TestBed.createComponent(ScheduleDriverRow);
     fixture.componentRef.setInput('driver', driver);
     fixture.detectChanges();
   }
@@ -57,20 +57,35 @@ describe('TimelineDriverRow', () => {
     expect(fixture.nativeElement.textContent).toContain('Driving');
   });
 
-  it('positions a busy segment spanning pickupAppointmentStart to eta', async () => {
+  it('positions a busy segment spanning pickupAppointmentStart to eta within the rolling week', async () => {
     await render(activeDriver);
 
-    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-success\\/70');
+    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-success\\/50');
     expect(segment).toBeTruthy();
-    expect(segment.style.left).toBe('33.33333333333333%'); // 8:00 of 24h
-    expect(segment.title).toContain('SwX-1000589');
-    expect(segment.title).toContain('6390 N Alsup Rd, Litchfield Park, AZ 85340');
+    expect(segment.style.left).toBe('4.761904761904762%'); // 8:00 today of a 7-day (168h) week
+  });
+
+  it('shows a hover card with load details on the busy segment instead of a native tooltip', async () => {
+    await render(activeDriver);
+
+    const trigger: HTMLElement = fixture.nativeElement.querySelector('[data-slot="hover-card-trigger"]');
+    expect(trigger).toBeTruthy();
+    expect(trigger.title).toBeFalsy();
+
+    trigger.dispatchEvent(new MouseEvent('mouseenter'));
+    await new Promise((resolve) => setTimeout(resolve, 350)); // past the hover card's default 300ms show delay
+    fixture.detectChanges();
+
+    const content = document.querySelector('[data-slot="hover-card-content"]');
+    expect(content?.textContent).toContain('SwX-1000589');
+    expect(content?.textContent).toContain('6390 N Alsup Rd, Litchfield Park, AZ 85340');
+    expect(content?.textContent).toContain('Driving');
   });
 
   it('renders no busy segment for an idle driver with no matched manifest', async () => {
     await render(idleDriver);
 
-    expect(fixture.nativeElement.querySelector('.bg-success\\/70')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.bg-success\\/50')).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('Driving');
   });
 
