@@ -1,6 +1,7 @@
 package com.lava.swexpedited.repository;
 
 import static com.lava.swexpedited.model.database.Tables.VEKTOR_MANIFEST;
+import static org.jooq.impl.DSL.excluded;
 
 import com.lava.swexpedited.model.database.tables.pojos.VektorManifest;
 import com.lava.swexpedited.model.database.tables.records.VektorManifestRecord;
@@ -27,9 +28,7 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
 
     @Override
     @Transactional
-    public void replaceAll(List<VektorManifestRow> rows) {
-        this.dsl.deleteFrom(VEKTOR_MANIFEST).execute();
-
+    public void upsertAll(List<VektorManifestRow> rows) {
         if (rows.isEmpty()) {
             return;
         }
@@ -89,7 +88,23 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
                     syncedAt);
         }
 
-        insert.execute();
+        insert.onConflict(VEKTOR_MANIFEST.MANIFEST_NUMBER)
+                .doUpdate()
+                .set(VEKTOR_MANIFEST.MANIFEST_ID, excluded(VEKTOR_MANIFEST.MANIFEST_ID))
+                .set(VEKTOR_MANIFEST.DRIVER_ID, excluded(VEKTOR_MANIFEST.DRIVER_ID))
+                .set(VEKTOR_MANIFEST.DRIVER_NAME, excluded(VEKTOR_MANIFEST.DRIVER_NAME))
+                .set(VEKTOR_MANIFEST.MATCHED_SAMSARA_DRIVER_ID, excluded(VEKTOR_MANIFEST.MATCHED_SAMSARA_DRIVER_ID))
+                .set(VEKTOR_MANIFEST.STATUS, excluded(VEKTOR_MANIFEST.STATUS))
+                .set(VEKTOR_MANIFEST.ORIGIN, excluded(VEKTOR_MANIFEST.ORIGIN))
+                .set(VEKTOR_MANIFEST.DESTINATION, excluded(VEKTOR_MANIFEST.DESTINATION))
+                .set(VEKTOR_MANIFEST.DESTINATION_LATITUDE, excluded(VEKTOR_MANIFEST.DESTINATION_LATITUDE))
+                .set(VEKTOR_MANIFEST.DESTINATION_LONGITUDE, excluded(VEKTOR_MANIFEST.DESTINATION_LONGITUDE))
+                .set(VEKTOR_MANIFEST.PICKUP_APPOINTMENT_START, excluded(VEKTOR_MANIFEST.PICKUP_APPOINTMENT_START))
+                .set(VEKTOR_MANIFEST.ETA, excluded(VEKTOR_MANIFEST.ETA))
+                .set(VEKTOR_MANIFEST.LOAD_REFERENCE, excluded(VEKTOR_MANIFEST.LOAD_REFERENCE))
+                .set(VEKTOR_MANIFEST.RAW_RESPONSE, excluded(VEKTOR_MANIFEST.RAW_RESPONSE))
+                .set(VEKTOR_MANIFEST.SYNCED_AT, excluded(VEKTOR_MANIFEST.SYNCED_AT))
+                .execute();
     }
 
     @Override
@@ -106,6 +121,20 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
                 .where(VEKTOR_MANIFEST.MANIFEST_NUMBER.eq(manifestNumber))
                 .fetchOptionalInto(VektorManifest.class)
                 .map(this::toRow);
+    }
+
+    @Override
+    public List<VektorManifestRow> findByAppointmentWindow(LocalDateTime windowStart, LocalDateTime windowEnd) {
+        return this.dsl
+                .selectFrom(VEKTOR_MANIFEST)
+                .where(VEKTOR_MANIFEST.PICKUP_APPOINTMENT_START.isNotNull())
+                .and(VEKTOR_MANIFEST.ETA.isNotNull())
+                .and(VEKTOR_MANIFEST.PICKUP_APPOINTMENT_START.lt(windowEnd))
+                .and(VEKTOR_MANIFEST.ETA.gt(windowStart))
+                .fetchInto(VektorManifest.class)
+                .stream()
+                .map(this::toRow)
+                .toList();
     }
 
     private VektorManifestRow toRow(VektorManifest row) {

@@ -9,15 +9,36 @@ import {
 } from './schedule-chart';
 
 describe('schedule-chart', () => {
-  it('buildWeekDayTicks() produces one tick per day of the rolling week, starting with "Today"', () => {
+  it('buildWeekDayTicks() produces one tick per day of the week, labeling the day matching nowMs "Today"', () => {
     const now = new Date(2026, 6, 17, 12, 0, 0).getTime(); // Friday, July 17 2026
+    const weekStart = new Date(2026, 6, 17, 0, 0, 0).getTime();
 
-    const ticks = buildWeekDayTicks(now);
+    const ticks = buildWeekDayTicks(weekStart, now);
 
     expect(ticks).toHaveLength(WEEK_DAYS);
     expect(ticks[0]).toEqual({ dayIndex: 0, percent: 0, label: 'Today', isToday: true });
     expect(ticks[1]).toEqual({ dayIndex: 1, percent: (1 / WEEK_DAYS) * 100, label: 'Sat 7/18', isToday: false });
     expect(ticks[6]).toEqual({ dayIndex: 6, percent: (6 / WEEK_DAYS) * 100, label: 'Thu 7/23', isToday: false });
+  });
+
+  it('buildWeekDayTicks() labels no day "Today" when the visible week does not contain nowMs', () => {
+    const now = new Date(2026, 6, 17, 12, 0, 0).getTime(); // Friday, July 17 2026
+    const nextWeekStart = new Date(2026, 6, 24, 0, 0, 0).getTime();
+
+    const ticks = buildWeekDayTicks(nextWeekStart, now);
+
+    expect(ticks.every((tick) => !tick.isToday)).toBe(true);
+    expect(ticks[0].label).toBe('Fri 7/24');
+  });
+
+  it('buildWeekDayTicks() defaults nowMs to the current time when omitted', () => {
+    vi.setSystemTime(new Date(2026, 6, 17, 12, 0, 0));
+    const weekStart = new Date(2026, 6, 17, 0, 0, 0).getTime();
+
+    const ticks = buildWeekDayTicks(weekStart);
+
+    expect(ticks[0].isToday).toBe(true);
+    vi.useRealTimers();
   });
 
   it('percentForTime() positions a time within the week proportionally', () => {

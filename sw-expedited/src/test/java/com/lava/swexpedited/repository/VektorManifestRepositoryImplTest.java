@@ -22,9 +22,8 @@ class VektorManifestRepositoryImplTest extends AbstractRepositoryIntegrationTest
     }
 
     @Test
-    void replaceAll_populatesTable() {
-        this.vektorManifestRepository.replaceAll(
-                List.of(row(1000587L, "Kelly Dunn"), row(1000589L, "Warren Ruawhare")));
+    void upsertAll_populatesTable() {
+        this.vektorManifestRepository.upsertAll(List.of(row(1000587L, "Kelly Dunn"), row(1000589L, "Warren Ruawhare")));
 
         List<VektorManifestRow> found = this.vektorManifestRepository.findAll();
 
@@ -34,23 +33,33 @@ class VektorManifestRepositoryImplTest extends AbstractRepositoryIntegrationTest
     }
 
     @Test
-    void replaceAll_calledAgain_replacesPreviousRows() {
-        this.vektorManifestRepository.replaceAll(List.of(row(1000587L, "Kelly Dunn")));
+    void upsertAll_calledAgainWithDifferentManifestNumber_keepsPreviousRows() {
+        this.vektorManifestRepository.upsertAll(List.of(row(1000587L, "Kelly Dunn")));
 
-        this.vektorManifestRepository.replaceAll(List.of(row(1000589L, "Warren Ruawhare")));
+        this.vektorManifestRepository.upsertAll(List.of(row(1000589L, "Warren Ruawhare")));
 
         List<VektorManifestRow> found = this.vektorManifestRepository.findAll();
-        assertThat(found).hasSize(1);
-        assertThat(found.getFirst().manifestNumber()).isEqualTo(1000589L);
+        assertThat(found).extracting(VektorManifestRow::manifestNumber).containsExactlyInAnyOrder(1000587L, 1000589L);
     }
 
     @Test
-    void replaceAll_emptyList_clearsTable() {
-        this.vektorManifestRepository.replaceAll(List.of(row(1000587L, "Kelly Dunn")));
+    void upsertAll_calledAgainWithSameManifestNumber_updatesRowInPlace() {
+        this.vektorManifestRepository.upsertAll(List.of(row(1000589L, "Warren Ruawhare")));
 
-        this.vektorManifestRepository.replaceAll(List.of());
+        this.vektorManifestRepository.upsertAll(List.of(row(1000589L, "Warren Ruawhare", "manifest_completed")));
 
-        assertThat(this.vektorManifestRepository.findAll()).isEmpty();
+        List<VektorManifestRow> found = this.vektorManifestRepository.findAll();
+        assertThat(found).hasSize(1);
+        assertThat(found.getFirst().status()).isEqualTo("manifest_completed");
+    }
+
+    @Test
+    void upsertAll_emptyList_leavesTableUnchanged() {
+        this.vektorManifestRepository.upsertAll(List.of(row(1000587L, "Kelly Dunn")));
+
+        this.vektorManifestRepository.upsertAll(List.of());
+
+        assertThat(this.vektorManifestRepository.findAll()).hasSize(1);
     }
 
     @Test
@@ -60,7 +69,7 @@ class VektorManifestRepositoryImplTest extends AbstractRepositoryIntegrationTest
 
     @Test
     void findByManifestNumber_matchingRow_returnsItWithAllFields() {
-        this.vektorManifestRepository.replaceAll(List.of(row(1000589L, "Warren Ruawhare")));
+        this.vektorManifestRepository.upsertAll(List.of(row(1000589L, "Warren Ruawhare")));
 
         assertThat(this.vektorManifestRepository.findByManifestNumber(1000589L))
                 .isPresent()
@@ -80,14 +89,63 @@ class VektorManifestRepositoryImplTest extends AbstractRepositoryIntegrationTest
                 });
     }
 
+    @Test
+    void findByAppointmentWindow_manifestOutsideWindow_isExcluded() {
+        this.vektorManifestRepository.upsertAll(List.of(row(1000589L, "Warren Ruawhare")));
+
+        List<VektorManifestRow> found = this.vektorManifestRepository.findByAppointmentWindow(
+                LocalDateTime.of(2026, 8, 1, 0, 0), LocalDateTime.of(2026, 8, 8, 0, 0));
+
+        assertThat(found).isEmpty();
+    }
+
+    @Test
+    void findByAppointmentWindow_manifestOverlappingWindow_isIncluded() {
+        this.vektorManifestRepository.upsertAll(List.of(row(1000589L, "Warren Ruawhare")));
+
+        List<VektorManifestRow> found = this.vektorManifestRepository.findByAppointmentWindow(
+                LocalDateTime.of(2026, 7, 19, 0, 0), LocalDateTime.of(2026, 7, 26, 0, 0));
+
+        assertThat(found).extracting(VektorManifestRow::manifestNumber).containsExactly(1000589L);
+    }
+
+    @Test
+    void findByAppointmentWindow_manifestMissingEta_isExcluded() {
+        this.vektorManifestRepository.upsertAll(List.of(new VektorManifestRow(
+                1000589L,
+                "manifest-uuid-1000589",
+                "driver-uuid-1000589",
+                "Warren Ruawhare",
+                null,
+                "manifest_in_progress",
+                "Bessemer, AL",
+                "Litchfield Park, AZ",
+                new BigDecimal("33.528326"),
+                new BigDecimal("-112.403152"),
+                LocalDateTime.of(2026, 7, 17, 8, 0, 0),
+                null,
+                "SwX-1000589",
+                "{}",
+                null)));
+
+        List<VektorManifestRow> found = this.vektorManifestRepository.findByAppointmentWindow(
+                LocalDateTime.of(2026, 7, 17, 0, 0), LocalDateTime.of(2026, 7, 24, 0, 0));
+
+        assertThat(found).isEmpty();
+    }
+
     private VektorManifestRow row(long manifestNumber, String driverName) {
+        return row(manifestNumber, driverName, "manifest_in_progress");
+    }
+
+    private VektorManifestRow row(long manifestNumber, String driverName, String status) {
         return new VektorManifestRow(
                 manifestNumber,
                 "manifest-uuid-" + manifestNumber,
                 "driver-uuid-" + manifestNumber,
                 driverName,
                 null,
-                "manifest_in_progress",
+                status,
                 "Bessemer, AL",
                 "Litchfield Park, AZ",
                 new BigDecimal("33.528326"),

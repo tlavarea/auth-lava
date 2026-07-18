@@ -14,6 +14,7 @@ import com.lava.swexpedited.samsara.DriverDetailResponse;
 import com.lava.swexpedited.samsara.DriverListingRow;
 import com.lava.swexpedited.samsara.DriverLiveLocationResponse;
 import com.lava.swexpedited.samsara.DriverTimelineRow;
+import com.lava.swexpedited.samsara.DriverTimelineRow.ManifestSegment;
 import com.lava.swexpedited.service.DriverTimelineService;
 import com.lava.swexpedited.service.SamsaraDriverActivityService;
 import com.lava.swexpedited.service.SamsaraDriverLiveLocationService;
@@ -148,27 +149,28 @@ class DriverControllerTest {
     void timeline_withValidAccessTokenCookie_returnsTimeline() throws Exception {
         Jwt jwt = authenticatedJwt();
         when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
-        when(this.driverTimelineService.findAll())
+        when(this.driverTimelineService.findForWeek(any(LocalDateTime.class), any(LocalDateTime.class)))
                 .thenReturn(List.of(new DriverTimelineRow(
                         "41000123",
                         "Jane Trucker",
                         "active",
                         "driving",
-                        "manifest_in_progress",
-                        LocalDateTime.of(2026, 7, 17, 8, 0, 0),
-                        LocalDateTime.of(2026, 7, 20, 10, 0, 0),
-                        "4251 Turin Dr, Bessemer, AL 35020",
-                        "6390 N Alsup Rd, Litchfield Park, AZ 85340",
-                        "SwX-1000589")));
+                        List.of(new ManifestSegment(
+                                "manifest_in_progress",
+                                LocalDateTime.of(2026, 7, 17, 8, 0, 0),
+                                LocalDateTime.of(2026, 7, 20, 10, 0, 0),
+                                "4251 Turin Dr, Bessemer, AL 35020",
+                                "6390 N Alsup Rd, Litchfield Park, AZ 85340",
+                                "SwX-1000589")))));
 
         this.mockMvc
                 .perform(get("/api/drivers/timeline").cookie(new Cookie("ACCESS_TOKEN", "token-value")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].driverId").value("41000123"))
                 .andExpect(jsonPath("$[0].dutyStatus").value("driving"))
-                .andExpect(jsonPath("$[0].manifestStatus").value("manifest_in_progress"))
-                .andExpect(jsonPath("$[0].origin").value("4251 Turin Dr, Bessemer, AL 35020"))
-                .andExpect(jsonPath("$[0].loadReference").value("SwX-1000589"));
+                .andExpect(jsonPath("$[0].manifests[0].manifestStatus").value("manifest_in_progress"))
+                .andExpect(jsonPath("$[0].manifests[0].origin").value("4251 Turin Dr, Bessemer, AL 35020"))
+                .andExpect(jsonPath("$[0].manifests[0].loadReference").value("SwX-1000589"));
     }
 
     @Test

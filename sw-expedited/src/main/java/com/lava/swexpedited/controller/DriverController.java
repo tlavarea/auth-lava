@@ -11,6 +11,9 @@ import com.lava.swexpedited.service.SamsaraDriverLiveLocationService;
 import com.lava.swexpedited.service.SamsaraDriverService;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class DriverController {
 
     private static final Duration DEFAULT_ACTIVITY_WINDOW = Duration.ofHours(24);
+    private static final Duration WEEK_WINDOW = Duration.ofDays(7);
 
     private final SamsaraDriverService samsaraDriverService;
     private final SamsaraDriverLiveLocationService samsaraDriverLiveLocationService;
@@ -45,12 +49,23 @@ public class DriverController {
     }
 
     /**
-     * One row per driver joining current HOS duty status with whichever vektor_manifest currently matches them - see
-     * {@link DriverTimelineService}'s javadoc. Backs the driver timeline/resource-calendar view.
+     * One row per driver joining current HOS duty status with every vektor_manifest matching them whose scheduled
+     * pickup->dropoff window overlaps the requested week - see {@link DriverTimelineService}'s javadoc. Backs the
+     * Schedule view's week navigation. {@code weekStart} defaults to the start of today when absent, same pattern as
+     * {@link #activity}'s {@code since} default; the window is always {@code [weekStart, weekStart + 7 days)}.
+     * Converted with the system default zone, not UTC - vektor_manifest's pickup_appointment_start/eta are parsed
+     * straight from Vektor's raw appointment strings with no timezone conversion of their own (see
+     * {@code VektorManifestMapper#parseAppointmentStart}), so there's no established zone convention to match here
+     * beyond "wall-clock time as the server sees it".
      */
     @GetMapping("/api/drivers/timeline")
-    public List<DriverTimelineRow> timeline() {
-        return driverTimelineService.findAll();
+    public List<DriverTimelineRow> timeline(@RequestParam(required = false) Instant weekStart) {
+        Instant resolvedWeekStart =
+                weekStart != null ? weekStart : Instant.now().truncatedTo(ChronoUnit.DAYS);
+        ZoneId zone = ZoneId.systemDefault();
+        LocalDateTime start = LocalDateTime.ofInstant(resolvedWeekStart, zone);
+        LocalDateTime end = LocalDateTime.ofInstant(resolvedWeekStart.plus(WEEK_WINDOW), zone);
+        return driverTimelineService.findForWeek(start, end);
     }
 
     @GetMapping("/api/drivers/{driverId}")
