@@ -28,6 +28,10 @@ export const routes: Routes = [
         path: 'drivers',
         loadChildren: () => import('./features/drivers/drivers.routes').then((m) => m.driversRoutes),
       },
+      {
+        path: 'schedule',
+        loadChildren: () => import('./features/schedule/schedule.routes').then((m) => m.scheduleRoutes),
+      },
     ],
   },
   {

@@ -211,6 +211,7 @@ class PickupMatchTaskletTest {
                 "destination",
                 destinationLatitude == null ? null : new BigDecimal(destinationLatitude),
                 destinationLongitude == null ? null : new BigDecimal(destinationLongitude),
+                null,
                 eta,
                 "SwX-" + manifestNumber,
                 "{}",

@@ -141,6 +141,7 @@ class VektorSyncTaskletTest {
                 null,
                 null,
                 null,
+                null,
                 "SwX-1000589",
                 "{}",
                 null);

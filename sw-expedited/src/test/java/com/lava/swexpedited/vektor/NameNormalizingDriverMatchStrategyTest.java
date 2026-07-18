@@ -80,6 +80,7 @@ class NameNormalizingDriverMatchStrategyTest {
                 null,
                 null,
                 null,
+                null,
                 "{}",
                 null);
     }

@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: "10"
+      author: tlavarea
+      comment: >
+        Adds pickup_appointment_start to vektor_manifest: the same appointment_start_datetime
+        (field 24) already read off the dropoff stop for eta, now also read off the pickup stop
+        (VektorManifestMapper previously discarded it). Together with eta this gives a manifest's
+        scheduled pickup->dropoff window, used by the driver timeline view to show when a driver's
+        current load starts and ends. A scheduled/appointment time, not an actual arrival/departure
+        time - see VektorManifestMapper's javadoc. Nullable for the same reason eta is: not every
+        manifest is guaranteed a parseable pickup stop.
+      changes:
+        - addColumn:
+            tableName: vektor_manifest
+            columns:
+              - column:
+                  name: pickup_appointment_start
+                  type: TIMESTAMPTZ
+      rollback:
+        - dropColumn:
+            tableName: vektor_manifest
+            columns:
+              - column:
+                  name: pickup_appointment_start

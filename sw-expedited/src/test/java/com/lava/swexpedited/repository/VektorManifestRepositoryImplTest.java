@@ -73,6 +73,7 @@ class VektorManifestRepositoryImplTest extends AbstractRepositoryIntegrationTest
                     assertThat(manifest.destination()).isEqualTo("Litchfield Park, AZ");
                     assertThat(manifest.destinationLatitude()).isEqualByComparingTo(new BigDecimal("33.528326"));
                     assertThat(manifest.destinationLongitude()).isEqualByComparingTo(new BigDecimal("-112.403152"));
+                    assertThat(manifest.pickupAppointmentStart()).isEqualTo(LocalDateTime.of(2026, 7, 17, 8, 0, 0));
                     assertThat(manifest.eta()).isEqualTo(LocalDateTime.of(2026, 7, 20, 10, 0, 0));
                     assertThat(manifest.loadReference()).isEqualTo("SwX-1000589");
                     assertThat(manifest.rawResponse()).isEqualTo("{}");
@@ -91,6 +92,7 @@ class VektorManifestRepositoryImplTest extends AbstractRepositoryIntegrationTest
                 "Litchfield Park, AZ",
                 new BigDecimal("33.528326"),
                 new BigDecimal("-112.403152"),
+                LocalDateTime.of(2026, 7, 17, 8, 0, 0),
                 LocalDateTime.of(2026, 7, 20, 10, 0, 0),
                 "SwX-1000589",
                 "{}",

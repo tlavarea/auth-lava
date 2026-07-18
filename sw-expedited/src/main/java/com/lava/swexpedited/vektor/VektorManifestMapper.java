@@ -20,7 +20,9 @@ import org.springframework.stereotype.Component;
  * {@code 4} for a dropoff, confirmed against the PDF's "Pickup"/"Dropoff" labels. This app only models a single
  * origin/destination per manifest (Phase 1 scope) - the <em>first</em> pickup stop becomes {@code origin}, the
  * <em>last</em> dropoff stop becomes {@code destination}, so a multi-stop manifest still resolves to "where it started"
- * and "where it's ultimately headed" rather than an arbitrary middle stop.
+ * and "where it's ultimately headed" rather than an arbitrary middle stop. Each of those two stops also carries an
+ * {@code appointment_start_datetime} (field 24), stored as {@code pickupAppointmentStart}/{@code eta} respectively -
+ * this is a scheduled/appointment time, not an actual arrival/departure time (no such field has been observed).
  */
 @Component
 public class VektorManifestMapper {
@@ -57,6 +59,7 @@ public class VektorManifestMapper {
                 dropoff == null ? null : formattedAddress(dropoff),
                 dropoff == null ? null : latitude(dropoff),
                 dropoff == null ? null : longitude(dropoff),
+                pickup == null ? null : parseAppointmentStart(pickup),
                 dropoff == null ? null : parseAppointmentStart(dropoff),
                 loadReference(pickup, dropoff),
                 writeManifestAsJson(manifest),
