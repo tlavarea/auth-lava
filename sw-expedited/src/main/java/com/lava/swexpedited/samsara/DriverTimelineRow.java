@@ -9,7 +9,8 @@ import java.time.LocalDateTime;
  * {@code manifestStatus} on) are null when no currently-synced manifest matches this driver - i.e. the driver has no
  * known active load - not when a match failed to load; {@code pickupAppointmentStart}/{@code eta} are the load's
  * scheduled pickup/dropoff appointment times (not actual arrival/departure times - see {@code VektorManifestMapper}'s
- * javadoc), used by the timeline view to position and size a driver's "busy" block.
+ * javadoc), used by the timeline view to position and size a driver's "busy" block; {@code origin}/{@code destination}
+ * are that block's endpoint labels.
  */
 public record DriverTimelineRow(
         String driverId,
@@ -19,5 +20,6 @@ public record DriverTimelineRow(
         String manifestStatus,
         LocalDateTime pickupAppointmentStart,
         LocalDateTime eta,
+        String origin,
         String destination,
         String loadReference) {}

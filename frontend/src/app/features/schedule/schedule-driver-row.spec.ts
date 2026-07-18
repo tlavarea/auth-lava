@@ -21,6 +21,7 @@ describe('ScheduleDriverRow', () => {
     manifestStatus: 'manifest_in_progress',
     pickupAppointmentStart: localWallClock(8, 0),
     eta: localWallClock(18, 0),
+    origin: '4251 Turin Dr, Bessemer, AL 35020',
     destination: '6390 N Alsup Rd, Litchfield Park, AZ 85340',
     loadReference: 'SwX-1000589',
   };
@@ -33,6 +34,7 @@ describe('ScheduleDriverRow', () => {
     manifestStatus: null,
     pickupAppointmentStart: null,
     eta: null,
+    origin: null,
     destination: null,
     loadReference: null,
   };
@@ -60,32 +62,52 @@ describe('ScheduleDriverRow', () => {
   it('positions a busy segment spanning pickupAppointmentStart to eta within the rolling week', async () => {
     await render(activeDriver);
 
-    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-success\\/50');
+    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-success\\/20');
     expect(segment).toBeTruthy();
     expect(segment.style.left).toBe('4.761904761904762%'); // 8:00 today of a 7-day (168h) week
   });
 
-  it('shows a hover card with load details on the busy segment instead of a native tooltip', async () => {
+  it('shows origin, pickup time, destination, and load reference directly on the busy segment', async () => {
+    // A multi-day trip (typical of expedited long-haul loads, unlike the other fixtures' same-day window chosen for
+    // predictable leftPercent math) so the segment is comfortably wide enough for both label blocks to render.
+    await render({ ...activeDriver, eta: '2026-07-20T10:00:00' });
+
+    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-success\\/20');
+    expect(segment.textContent).toContain('Bessemer, AL');
+    expect(segment.textContent).toContain('Litchfield Park, AZ');
+    expect(segment.textContent).toContain('SwX-1000589');
+  });
+
+  it('renders no hover card - the bar itself carries the load details now', async () => {
     await render(activeDriver);
 
-    const trigger: HTMLElement = fixture.nativeElement.querySelector('[data-slot="hover-card-trigger"]');
-    expect(trigger).toBeTruthy();
-    expect(trigger.title).toBeFalsy();
+    expect(fixture.nativeElement.querySelector('[data-slot="hover-card-trigger"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-slot="hover-card-content"]')).toBeNull();
+  });
 
-    trigger.dispatchEvent(new MouseEvent('mouseenter'));
-    await new Promise((resolve) => setTimeout(resolve, 350)); // past the hover card's default 300ms show delay
-    fixture.detectChanges();
+  it('hides the origin block on a narrow segment, keeping the destination block visible', async () => {
+    await render({ ...activeDriver, pickupAppointmentStart: localWallClock(8, 0), eta: localWallClock(10, 0) });
 
-    const content = document.querySelector('[data-slot="hover-card-content"]');
-    expect(content?.textContent).toContain('SwX-1000589');
-    expect(content?.textContent).toContain('6390 N Alsup Rd, Litchfield Park, AZ 85340');
-    expect(content?.textContent).toContain('Driving');
+    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-success\\/20');
+    expect(segment.textContent).not.toContain('Bessemer');
+    expect(segment.textContent).toContain('Litchfield Park, AZ');
+  });
+
+  it('includes origin, destination, and load reference in the track aria-label', async () => {
+    await render(activeDriver);
+
+    const track: HTMLElement = fixture.nativeElement.querySelector('[aria-label]');
+    const ariaLabel = track.getAttribute('aria-label');
+    expect(ariaLabel).toContain('Jane Doe');
+    expect(ariaLabel).toContain('Bessemer, AL 35020');
+    expect(ariaLabel).toContain('Litchfield Park, AZ 85340');
+    expect(ariaLabel).toContain('SwX-1000589');
   });
 
   it('renders no busy segment for an idle driver with no matched manifest', async () => {
     await render(idleDriver);
 
-    expect(fixture.nativeElement.querySelector('.bg-success\\/50')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.bg-success\\/20')).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('Driving');
   });
 

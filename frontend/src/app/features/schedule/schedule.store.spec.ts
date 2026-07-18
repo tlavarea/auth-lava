@@ -17,6 +17,7 @@ describe('ScheduleStore', () => {
     manifestStatus: 'manifest_in_progress',
     pickupAppointmentStart: '2026-07-17T08:00:00',
     eta: '2026-07-20T10:00:00',
+    origin: '4251 Turin Dr, Bessemer, AL 35020',
     destination: '6390 N Alsup Rd, Litchfield Park, AZ 85340',
     loadReference: 'SwX-1000589',
   };
