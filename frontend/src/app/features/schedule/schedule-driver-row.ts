@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, input, InputSignal, output, OutputEmitterRef, Signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 
@@ -40,11 +41,13 @@ const NARROW_SEGMENT_THRESHOLD_PERCENT = 12;
 @Component({
   selector: 'app-schedule-driver-row',
   host: { class: 'block' },
-  imports: [HlmBadgeImports, DatePipe],
+  imports: [HlmBadgeImports, DatePipe, RouterLink],
   template: `
     <div class="grid grid-cols-[250px_1fr] items-center gap-2 pb-4">
       <div class="flex min-w-0 items-center justify-between">
-        <span class="truncate text-sm font-medium">{{ driver().driverName }}</span>
+        <a class="truncate text-sm font-medium hover:underline" [routerLink]="['/drivers', driver().driverId]">
+          {{ driver().driverName }}
+        </a>
         @if (driver().dutyStatus !== null) {
           <span hlmBadge class="shrink-0" [variant]="driverDutyStatusVariant(driver().dutyStatus)">
             {{ driverDutyStatusLabel(driver().dutyStatus) }}

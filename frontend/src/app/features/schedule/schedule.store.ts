@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { ScheduleApi } from './schedule-api';
 import { startOfDayMs, WEEK_MS } from './schedule-chart';
-import { DriverScheduleRow, ManifestSegment } from './schedule.models';
+import { DriverScheduleRow, ManifestRoute, ManifestSegment } from './schedule.models';
 
 export type ScheduleRequestStatus = 'idle' | 'loading' | 'error';
 
@@ -14,6 +14,9 @@ type ScheduleState = {
   weekStartMs: number;
   selectedDriverId: string | null;
   selectedManifest: ManifestSegment | null;
+  // Fetched once here (rather than by the map/detail panes independently) so both panes render the same data from a
+  // single request instead of racing two separate fetches of the same manifest's route.
+  selectedManifestRoute: ManifestRoute | null;
 };
 
 // A factory, not a static object - weekStartMs needs to reflect "today" at store creation time (each visit to
@@ -25,12 +28,13 @@ function initialState(): ScheduleState {
     weekStartMs: startOfDayMs(Date.now()),
     selectedDriverId: null,
     selectedManifest: null,
+    selectedManifestRoute: null,
   };
 }
 
 // Cleared alongside a week change - a selected manifest may not exist in the newly-loaded week's rows, so keeping it
-// selected would leave the map panel pointing at stale/orphaned data.
-const NO_SELECTION = { selectedDriverId: null, selectedManifest: null } as const;
+// selected would leave the map/detail panes pointing at stale/orphaned data.
+const NO_SELECTION = { selectedDriverId: null, selectedManifest: null, selectedManifestRoute: null } as const;
 
 // Route-scoped (provided by SchedulePage, not `root`) so state resets per visit to /schedule, matching
 // DriversStore/ShipmentsStore.
@@ -78,8 +82,17 @@ export const ScheduleStore = signalStore(
         await loadSchedule();
       },
 
-      selectManifest(driverId: string, manifest: ManifestSegment): void {
-        patchState(store, { selectedDriverId: driverId, selectedManifest: manifest });
+      async selectManifest(driverId: string, manifest: ManifestSegment): Promise<void> {
+        patchState(store, { selectedDriverId: driverId, selectedManifest: manifest, selectedManifestRoute: null });
+        try {
+          const selectedManifestRoute = await firstValueFrom(scheduleApi.route(manifest.manifestNumber));
+          // Guards against a stale response landing after the dispatcher has already selected a different manifest.
+          if (store.selectedManifest()?.manifestNumber === manifest.manifestNumber) {
+            patchState(store, { selectedManifestRoute });
+          }
+        } catch {
+          // Silent - the map/detail panes handle a null route by simply not rendering stops yet.
+        }
       },
 
       clearSelection(): void {

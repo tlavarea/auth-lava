@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { DriverScheduleRow } from './schedule.models';
 import { SchedulePage } from './schedule.page';
@@ -61,7 +62,7 @@ describe('SchedulePage', () => {
     vi.setSystemTime(new Date(2026, 6, 17, 12, 0, 0));
     await TestBed.configureTestingModule({
       imports: [SchedulePage],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
 
     httpMock = TestBed.inject(HttpTestingController);
