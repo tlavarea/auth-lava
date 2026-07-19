@@ -1,14 +1,17 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, input, InputSignal, Signal } from '@angular/core';
 
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideMapPin } from '@ng-icons/lucide';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 
-import { ManifestRoute, ManifestStartingPosition, ManifestStop } from './schedule.models';
+import { ManifestEta, ManifestRoute, ManifestStartingPosition, ManifestStop } from './schedule.models';
 
 type StopStatus = 'Completed' | 'Arrived' | 'En Route';
 type StopStatusVariant = 'success' | 'warning' | 'info';
+
+type EtaComparisonVariant = 'success' | 'destructive';
+type EtaComparison = { label: string; variant: EtaComparisonVariant };
 
 // Vektor has no separate status field per stop (see ManifestStop's javadoc-mirroring comment in schedule.models.ts) -
 // this infers the same three states its own UI shows from the actual arrival/check-in/check-out timestamps a stop
@@ -56,6 +59,48 @@ function legSummary(
   return parts.length === 0 ? null : parts.join(' // ');
 }
 
+// "1d 5h" / "45m" style duration, matching the compactness of Vektor's own "Early +1d 5h" - drops minutes once the
+// duration spans a full hour or more so a multi-day ETA drift doesn't read as spuriously precise.
+function formatRemainingDuration(ms: number): string {
+  const totalMinutes = Math.round(Math.abs(ms) / 60_000);
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+  const parts: string[] = [];
+  if (days > 0) {
+    parts.push(`${days}d`);
+  }
+  if (days > 0 || hours > 0) {
+    parts.push(`${hours}h`);
+  }
+  if (days === 0 && hours === 0) {
+    parts.push(`${minutes}m`);
+  }
+  return parts.join(' ');
+}
+
+// Compares a stop's precomputed ETA against its appointment window, client-side - mirrors Vektor's own "Early +1d 5h"
+// / "Late +45m" labeling. Null when the stop has no appointment window to compare against.
+function etaComparison(
+  estimatedArrival: string,
+  windowStart: string | null,
+  windowEnd: string | null
+): EtaComparison | null {
+  if (windowStart === null) {
+    return null;
+  }
+  const eta = new Date(estimatedArrival).getTime();
+  const start = new Date(windowStart).getTime();
+  const end = windowEnd === null ? start : new Date(windowEnd).getTime();
+  if (eta < start) {
+    return { label: `Early +${formatRemainingDuration(start - eta)}`, variant: 'success' };
+  }
+  if (eta > end) {
+    return { label: `Late +${formatRemainingDuration(eta - end)}`, variant: 'destructive' };
+  }
+  return { label: 'On time', variant: 'success' };
+}
+
 /**
  * The left-hand pane of the Schedule page's manifest panel (30% width, map at 70% alongside it in
  * ScheduleManifestMap) - an ordered, stop-by-stop breakdown of a manifest's route modeled on Vektor's own manifest
@@ -67,7 +112,7 @@ function legSummary(
  */
 @Component({
   selector: 'app-schedule-manifest-detail',
-  imports: [DatePipe, NgIcon, HlmBadgeImports],
+  imports: [DatePipe, DecimalPipe, NgIcon, HlmBadgeImports],
   viewProviders: [provideIcons({ lucideMapPin })],
   host: { class: 'block overflow-y-auto' },
   template: `
@@ -133,6 +178,20 @@ function legSummary(
             </div>
           }
 
+          @if (etaFor(stop); as stopEta) {
+            <div class="ml-7 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+              @if (stopEta.estimatedArrival) {
+                <span class="font-medium">ETA {{ stopEta.estimatedArrival | date: 'MMM d, h:mm a' }}</span>
+              }
+              @if (stopEta.remainingMiles !== null) {
+                <span class="text-muted-foreground">{{ stopEta.remainingMiles | number: '1.1-1' }} mi remaining</span>
+              }
+              @if (etaComparisonFor(stop, stopEta); as comparison) {
+                <span hlmBadge [variant]="comparison.variant">{{ comparison.label }}</span>
+              }
+            </div>
+          }
+
           <div class="ml-7 min-w-0">
             @if (stop.siteName) {
               <p class="truncate text-sm font-medium">{{ stop.siteName }}</p>
@@ -163,6 +222,7 @@ function legSummary(
 })
 export class ScheduleManifestDetail {
   readonly route: InputSignal<ManifestRoute | null> = input.required<ManifestRoute | null>();
+  readonly eta: InputSignal<ManifestEta | null> = input.required<ManifestEta | null>();
 
   protected readonly stopStatus = stopStatus;
   protected readonly stopStatusVariant = stopStatusVariant;
@@ -181,5 +241,18 @@ export class ScheduleManifestDetail {
 
   protected legSummaryFor(stop: ManifestStop): string | null {
     return legSummary(stop.estimatedMilesToNext, stop.actualMilesToNext, stop.odometerMiles);
+  }
+
+  // The backend already identifies which stop its eta targets (stopSequenceNumber) - matched directly rather than
+  // re-deriving "first incomplete stop" client-side, so this can never disagree with ManifestEtaService's own choice.
+  protected etaFor(stop: ManifestStop): ManifestEta | null {
+    const eta = this.eta();
+    return eta !== null && eta.stopSequenceNumber === stop.sequenceNumber ? eta : null;
+  }
+
+  protected etaComparisonFor(stop: ManifestStop, eta: ManifestEta): EtaComparison | null {
+    return eta.estimatedArrival === null
+      ? null
+      : etaComparison(eta.estimatedArrival, stop.appointmentWindowStart, stop.appointmentWindowEnd);
   }
 }

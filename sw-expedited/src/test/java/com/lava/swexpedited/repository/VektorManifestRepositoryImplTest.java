@@ -93,6 +93,7 @@ class VektorManifestRepositoryImplTest extends AbstractRepositoryIntegrationTest
                     assertThat(manifest.startingPosition().latitude()).isEqualByComparingTo(new BigDecimal("31.19"));
                     assertThat(manifest.stops()).hasSize(1);
                     VektorManifestStop stop = manifest.stops().getFirst();
+                    assertThat(stop.stopId()).isEqualTo("8b18f0b3-14e5-4f7b-9f69-f418a3cb039c");
                     assertThat(stop.sequenceNumber()).isEqualTo(1);
                     assertThat(stop.stopType()).isEqualTo(StopType.PICKUP);
                     assertThat(stop.siteName()).isEqualTo("Dealer Warehouse");
@@ -198,6 +199,7 @@ class VektorManifestRepositoryImplTest extends AbstractRepositoryIntegrationTest
                 LocalDateTime.of(2026, 7, 20, 10, 0, 0),
                 "SwX-1000589",
                 List.of(new VektorManifestStop(
+                        "8b18f0b3-14e5-4f7b-9f69-f418a3cb039c",
                         1,
                         StopType.PICKUP,
                         "Dealer Warehouse",

@@ -7,9 +7,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.lava.swexpedited.boot.autoconfigure.app.CorsProperties;
 import com.lava.swexpedited.configuration.SecurityConfiguration;
+import com.lava.swexpedited.manifest.ManifestDriverLocationResponse;
+import com.lava.swexpedited.manifest.ManifestEtaResponse;
 import com.lava.swexpedited.manifest.ManifestRouteResponse;
 import com.lava.swexpedited.manifest.ManifestStartingPositionResponse;
 import com.lava.swexpedited.manifest.ManifestStopResponse;
+import com.lava.swexpedited.service.ManifestDriverLocationService;
+import com.lava.swexpedited.service.ManifestEtaService;
 import com.lava.swexpedited.service.ManifestRouteService;
 import com.lava.swexpedited.vektor.StopType;
 import jakarta.servlet.http.Cookie;
@@ -42,6 +46,12 @@ class ManifestControllerTest {
     @MockitoBean
     private ManifestRouteService manifestRouteService;
 
+    @MockitoBean
+    private ManifestDriverLocationService manifestDriverLocationService;
+
+    @MockitoBean
+    private ManifestEtaService manifestEtaService;
+
     @Test
     void route_withoutCookie_returns401() throws Exception {
         this.mockMvc.perform(get("/api/manifests/1000589/route")).andExpect(status().isUnauthorized());
@@ -63,6 +73,7 @@ class ManifestControllerTest {
         Jwt jwt = authenticatedJwt();
         when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
         ManifestStopResponse stop = new ManifestStopResponse(
+                "stop-uuid-1",
                 1,
                 StopType.PICKUP,
                 "Dealer Warehouse",
@@ -104,6 +115,66 @@ class ManifestControllerTest {
                 .andExpect(jsonPath("$.startingPosition.address").value("Prior stop, GA"))
                 .andExpect(jsonPath("$.encodedPolyline").value("abc123"))
                 .andExpect(jsonPath("$.distanceMeters").value(160934));
+    }
+
+    @Test
+    void driverLocation_notFound_returns404() throws Exception {
+        Jwt jwt = authenticatedJwt();
+        when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
+        when(this.manifestDriverLocationService.findLiveLocation(1000589L)).thenReturn(Optional.empty());
+
+        this.mockMvc
+                .perform(
+                        get("/api/manifests/1000589/driver-location").cookie(new Cookie("ACCESS_TOKEN", "token-value")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void driverLocation_found_returnsLocation() throws Exception {
+        Jwt jwt = authenticatedJwt();
+        when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
+        ManifestDriverLocationResponse response = new ManifestDriverLocationResponse(
+                new BigDecimal("30.4183333"),
+                new BigDecimal("-89.1889962"),
+                new BigDecimal("294.91"),
+                LocalDateTime.of(2026, 7, 19, 2, 18, 7),
+                "Long Beach, MS");
+        when(this.manifestDriverLocationService.findLiveLocation(1000589L)).thenReturn(Optional.of(response));
+
+        this.mockMvc
+                .perform(
+                        get("/api/manifests/1000589/driver-location").cookie(new Cookie("ACCESS_TOKEN", "token-value")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.latitude").value(30.4183333))
+                .andExpect(jsonPath("$.longitude").value(-89.1889962))
+                .andExpect(jsonPath("$.formattedLocation").value("Long Beach, MS"));
+    }
+
+    @Test
+    void eta_notFound_returns404() throws Exception {
+        Jwt jwt = authenticatedJwt();
+        when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
+        when(this.manifestEtaService.findEta(1000589L)).thenReturn(Optional.empty());
+
+        this.mockMvc
+                .perform(get("/api/manifests/1000589/eta").cookie(new Cookie("ACCESS_TOKEN", "token-value")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void eta_found_returnsEta() throws Exception {
+        Jwt jwt = authenticatedJwt();
+        when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
+        ManifestEtaResponse response =
+                new ManifestEtaResponse(5, new BigDecimal("552.86"), 567, LocalDateTime.of(2026, 7, 19, 2, 16, 0));
+        when(this.manifestEtaService.findEta(1000589L)).thenReturn(Optional.of(response));
+
+        this.mockMvc
+                .perform(get("/api/manifests/1000589/eta").cookie(new Cookie("ACCESS_TOKEN", "token-value")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stopSequenceNumber").value(5))
+                .andExpect(jsonPath("$.remainingMiles").value(552.86))
+                .andExpect(jsonPath("$.remainingMinutes").value(567));
     }
 
     private Jwt authenticatedJwt() {
