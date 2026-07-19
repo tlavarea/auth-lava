@@ -123,8 +123,15 @@
  * over hlm-button's generated (libs/ui/**) classes without editing that file.
  * Only the "default" button size (h-9) is targeted, to match the input's new h-10
  * height — compact (xs/sm), lg, and icon sizes are left alone.
+ *
+ * [data-slot='button'] covers a plain hlmBtn. [data-slot='dialog-close'] and
+ * [data-slot='popover-trigger'] cover composed components (HlmDialogClose,
+ * HlmPopoverTrigger - e.g. hlm-date-picker-trigger's internal button) whose own
+ * host binding overwrites hlm-button's 'button' data-slot value on that same
+ * element, so the plain [data-slot='button'] selector alone wouldn't match them.
  */
 [data-slot='button'][class*='h-9'],
-[data-slot='dialog-close'][class*='h-9'] {
+[data-slot='dialog-close'][class*='h-9'],
+[data-slot='popover-trigger'][class*='h-9'] {
   @apply h-10 px-3;
 }

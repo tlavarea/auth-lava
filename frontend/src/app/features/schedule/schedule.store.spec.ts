@@ -2,9 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
-import { startOfDayMs, WEEK_MS } from './schedule-chart';
+import { DAY_MS, DEFAULT_RANGE_DAYS, startOfDayMs } from './schedule-chart';
 import { DriverScheduleRow, ManifestEta, ManifestRoute } from './schedule.models';
 import { ScheduleStore } from './schedule.store';
+
+const WEEK_MS = DEFAULT_RANGE_DAYS * DAY_MS;
 
 describe('ScheduleStore', () => {
   let store: InstanceType<typeof ScheduleStore>;
@@ -65,10 +67,11 @@ describe('ScheduleStore', () => {
     vi.useRealTimers();
   });
 
-  it('starts empty and idle, with weekStartMs at the start of today', () => {
+  it('starts empty and idle, with rangeStartMs at the start of today and the default range length', () => {
     expect(store.rows()).toEqual([]);
     expect(store.status()).toBe('idle');
-    expect(store.weekStartMs()).toBe(startOfDayMs(Date.now()));
+    expect(store.rangeStartMs()).toBe(startOfDayMs(Date.now()));
+    expect(store.rangeDays()).toBe(DEFAULT_RANGE_DAYS);
     expect(store.selectedDriverId()).toBeNull();
     expect(store.selectedManifest()).toBeNull();
     expect(store.selectedManifestRoute()).toBeNull();
@@ -153,62 +156,72 @@ describe('ScheduleStore', () => {
     expect(store.status()).toBe('idle');
   });
 
-  it('goToPreviousWeek() moves weekStartMs back a week and reloads', async () => {
-    const initialWeekStart = store.weekStartMs();
+  it('goToPreviousRange() moves rangeStartMs back by the current range length and reloads', async () => {
+    const initialRangeStart = store.rangeStartMs();
 
-    const goPromise = store.goToPreviousWeek();
+    const goPromise = store.goToPreviousRange();
     httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
     await goPromise;
 
-    expect(store.weekStartMs()).toBe(initialWeekStart - WEEK_MS);
+    expect(store.rangeStartMs()).toBe(initialRangeStart - WEEK_MS);
     expect(store.rows()).toEqual([row]);
   });
 
-  it('goToNextWeek() moves weekStartMs forward a week and reloads', async () => {
-    const initialWeekStart = store.weekStartMs();
+  it('goToNextRange() moves rangeStartMs forward by the current range length and reloads', async () => {
+    const initialRangeStart = store.rangeStartMs();
 
-    const goPromise = store.goToNextWeek();
+    const goPromise = store.goToNextRange();
     httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
     await goPromise;
 
-    expect(store.weekStartMs()).toBe(initialWeekStart + WEEK_MS);
+    expect(store.rangeStartMs()).toBe(initialRangeStart + WEEK_MS);
   });
 
-  it('goToCurrentWeek() resets weekStartMs to the start of today and reloads', async () => {
-    const previousPromise = store.goToPreviousWeek();
+  it('goToPreviousRange()/goToNextRange() page by a custom range length once one is set', async () => {
+    const setPromise = store.setRange(store.rangeStartMs(), 14);
+    httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
+    await setPromise;
+    const rangeStart = store.rangeStartMs();
+
+    const goPromise = store.goToNextRange();
+    httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
+    await goPromise;
+
+    expect(store.rangeStartMs()).toBe(rangeStart + 14 * DAY_MS);
+    expect(store.rangeDays()).toBe(14);
+  });
+
+  it('goToToday() resets rangeStartMs/rangeDays to the default week and reloads', async () => {
+    const previousPromise = store.goToPreviousRange();
     httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
     await previousPromise;
 
-    const currentPromise = store.goToCurrentWeek();
+    const todayPromise = store.goToToday();
     httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
-    await currentPromise;
+    await todayPromise;
 
-    expect(store.weekStartMs()).toBe(startOfDayMs(Date.now()));
+    expect(store.rangeStartMs()).toBe(startOfDayMs(Date.now()));
+    expect(store.rangeDays()).toBe(DEFAULT_RANGE_DAYS);
   });
 
-  it('goToPreviousWeek() clears an existing manifest selection', async () => {
+  it('setRange() commits a custom start/length, clamped to the 31-day max, and reloads', async () => {
+    const customStart = startOfDayMs(Date.now()) - DAY_MS;
+
+    const setPromise = store.setRange(customStart, 45);
+    httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
+    await setPromise;
+
+    expect(store.rangeStartMs()).toBe(customStart);
+    expect(store.rangeDays()).toBe(31);
+  });
+
+  it('goToPreviousRange() clears an existing manifest selection', async () => {
     const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
     flushManifestRoute();
     flushManifestEta();
     await selectPromise;
 
-    const goPromise = store.goToPreviousWeek();
-    httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
-    await goPromise;
-
-    expect(store.selectedDriverId()).toBeNull();
-    expect(store.selectedManifest()).toBeNull();
-    expect(store.selectedManifestRoute()).toBeNull();
-    expect(store.selectedManifestEta()).toBeNull();
-  });
-
-  it('goToNextWeek() clears an existing manifest selection', async () => {
-    const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
-    flushManifestRoute();
-    flushManifestEta();
-    await selectPromise;
-
-    const goPromise = store.goToNextWeek();
+    const goPromise = store.goToPreviousRange();
     httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
     await goPromise;
 
@@ -218,13 +231,29 @@ describe('ScheduleStore', () => {
     expect(store.selectedManifestEta()).toBeNull();
   });
 
-  it('goToCurrentWeek() clears an existing manifest selection', async () => {
+  it('goToNextRange() clears an existing manifest selection', async () => {
     const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
     flushManifestRoute();
     flushManifestEta();
     await selectPromise;
 
-    const goPromise = store.goToCurrentWeek();
+    const goPromise = store.goToNextRange();
+    httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
+    await goPromise;
+
+    expect(store.selectedDriverId()).toBeNull();
+    expect(store.selectedManifest()).toBeNull();
+    expect(store.selectedManifestRoute()).toBeNull();
+    expect(store.selectedManifestEta()).toBeNull();
+  });
+
+  it('goToToday() clears an existing manifest selection', async () => {
+    const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
+    flushManifestRoute();
+    flushManifestEta();
+    await selectPromise;
+
+    const goPromise = store.goToToday();
     httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
     await goPromise;
 

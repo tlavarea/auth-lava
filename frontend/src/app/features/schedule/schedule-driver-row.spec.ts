@@ -1,9 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
-import { WEEK_MS } from './schedule-chart';
+import { DAY_MS, DEFAULT_RANGE_DAYS } from './schedule-chart';
 import { ScheduleDriverRow } from './schedule-driver-row';
 import { DriverScheduleRow, ManifestSegment } from './schedule.models';
+
+const WEEK_MS = DEFAULT_RANGE_DAYS * DAY_MS;
 
 // A zone-naive "local wall clock" string, matching the shape of the backend's LocalDateTime fields (e.g.
 // pickupAppointmentStart/eta) - `new Date(...)` on this parses back to the same local hour/minute, unlike
@@ -49,14 +51,19 @@ describe('ScheduleDriverRow', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  async function render(driver: DriverScheduleRow, weekStartMs: number = weekStart): Promise<void> {
+  async function render(
+    driver: DriverScheduleRow,
+    rangeStartMs: number = weekStart,
+    rangeDays: number = DEFAULT_RANGE_DAYS
+  ): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [ScheduleDriverRow],
       providers: [provideRouter([])],
     }).compileComponents();
     fixture = TestBed.createComponent(ScheduleDriverRow);
     fixture.componentRef.setInput('driver', driver);
-    fixture.componentRef.setInput('weekStart', weekStartMs);
+    fixture.componentRef.setInput('rangeStart', rangeStartMs);
+    fixture.componentRef.setInput('rangeDays', rangeDays);
     fixture.detectChanges();
   }
 
@@ -178,6 +185,27 @@ describe('ScheduleDriverRow', () => {
     await render(activeDriver, weekStart - WEEK_MS);
 
     expect(fixture.nativeElement.querySelector('.bg-foreground\\/60')).toBeNull();
+  });
+
+  it('shows the now marker for a custom range that contains today without starting on it', async () => {
+    await render(activeDriver, weekStart - 3 * DAY_MS, 14);
+
+    expect(fixture.nativeElement.querySelector('.bg-foreground\\/60')).toBeTruthy();
+  });
+
+  it('positions a busy segment proportionally to a custom (non-7-day) range length', async () => {
+    await render(activeDriver, weekStart, 14);
+
+    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-success\\/20');
+    // 8:00 on day 0 of a 14-day (336h) range, half the percent it'd be at in a 7-day range.
+    expect(segment.style.left).toBe('2.380952380952381%');
+  });
+
+  it("widens the row's min-width to fit every day column at the 138px floor as rangeDays grows", async () => {
+    await render(activeDriver, weekStart, 14);
+
+    const row: HTMLElement = fixture.nativeElement.querySelector('.grid');
+    expect(row.style.minWidth).toBe(`${250 + 14 * 138}px`);
   });
 
   it('exposes button semantics on a busy segment for keyboard/AXE accessibility', async () => {

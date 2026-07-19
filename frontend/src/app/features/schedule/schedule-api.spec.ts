@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { ScheduleApi } from './schedule-api';
+import { DAY_MS } from './schedule-chart';
 
 describe('ScheduleApi', () => {
   let service: ScheduleApi;
@@ -20,15 +21,17 @@ describe('ScheduleApi', () => {
     httpMock.verify();
   });
 
-  it('list() GETs /api/sw-expedited/drivers/timeline with weekStart as an ISO query param', () => {
-    const weekStartMs = new Date(2026, 6, 17, 0, 0, 0).getTime();
+  it('list() GETs /api/sw-expedited/drivers/timeline with weekStart/end as ISO query params', () => {
+    const rangeStartMs = new Date(2026, 6, 17, 0, 0, 0).getTime();
+    const rangeDays = 14;
 
-    service.list(weekStartMs).subscribe();
+    service.list(rangeStartMs, rangeDays).subscribe();
 
     const request = httpMock.expectOne(
       (req) => req.url === '/api/sw-expedited/drivers/timeline' && req.params.get('weekStart') !== null
     );
-    expect(request.request.params.get('weekStart')).toBe(new Date(weekStartMs).toISOString());
+    expect(request.request.params.get('weekStart')).toBe(new Date(rangeStartMs).toISOString());
+    expect(request.request.params.get('end')).toBe(new Date(rangeStartMs + rangeDays * DAY_MS).toISOString());
     request.flush([]);
   });
 

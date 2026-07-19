@@ -5,16 +5,13 @@ import { RouterLink } from '@angular/router';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 
 import { driverDutyStatusLabel, driverDutyStatusVariant } from '@features/drivers/driver-status';
-import {
-  buildWeekDayTicks,
-  DayTick,
-  formatCityState,
-  percentForTime,
-  startOfDayMs,
-  WEEK_DAYS,
-  WEEK_MS,
-} from './schedule-chart';
+import { buildDayTicks, DAY_MS, DayTick, formatCityState, percentForTime, rangeContainsNow } from './schedule-chart';
 import { DriverScheduleRow, ManifestSegment } from './schedule.models';
+
+// Mirrors schedule-week-header.ts's column sizing exactly, so each row's track stretches/overflows in lockstep with
+// the shared header above it (day-boundary gridlines and segments would otherwise drift out of alignment).
+const MIN_DAY_COLUMN_PX = 138;
+const NAME_COLUMN_PX = 250;
 
 type BusySegment = {
   manifestNumber: number;
@@ -43,8 +40,10 @@ const NARROW_SEGMENT_THRESHOLD_PERCENT = 12;
   host: { class: 'block' },
   imports: [HlmBadgeImports, DatePipe, RouterLink],
   template: `
-    <div class="grid grid-cols-[250px_1fr] items-center gap-2 pb-4">
-      <div class="flex min-w-0 items-center justify-between">
+    <div
+      class="grid grid-cols-[250px_1fr] pb-4"
+      [style.min-width.px]="NAME_COLUMN_PX + rangeDays() * MIN_DAY_COLUMN_PX">
+      <div class="sticky left-0 z-10 flex h-full min-w-0 items-center justify-between self-stretch bg-background pr-2">
         <a class="truncate text-sm font-medium hover:underline" [routerLink]="['/drivers', driver().driverId]">
           {{ driver().driverName }}
         </a>
@@ -55,7 +54,7 @@ const NARROW_SEGMENT_THRESHOLD_PERCENT = 12;
         }
       </div>
 
-      <div class="relative h-12 overflow-hidden rounded bg-muted" [attr.aria-label]="ariaLabel()">
+      <div class="relative h-12 overflow-hidden rounded bg-muted pl-2" [attr.aria-label]="ariaLabel()">
         @for (tick of dayTicks(); track tick.dayIndex) {
           <span
             class="absolute inset-y-0 w-px"
@@ -103,28 +102,38 @@ const NARROW_SEGMENT_THRESHOLD_PERCENT = 12;
 })
 export class ScheduleDriverRow {
   readonly driver: InputSignal<DriverScheduleRow> = input.required<DriverScheduleRow>();
-  readonly weekStart: InputSignal<number> = input.required<number>();
+  readonly rangeStart: InputSignal<number> = input.required<number>();
+  readonly rangeDays: InputSignal<number> = input.required<number>();
 
   readonly manifestSelected: OutputEmitterRef<{ driverId: string; manifest: ManifestSegment }> = output();
 
-  protected readonly dayTicks: Signal<DayTick[]> = computed(() => buildWeekDayTicks(this.weekStart()));
+  protected readonly NAME_COLUMN_PX = NAME_COLUMN_PX;
+  protected readonly MIN_DAY_COLUMN_PX = MIN_DAY_COLUMN_PX;
+
+  protected readonly dayTicks: Signal<DayTick[]> = computed(() => buildDayTicks(this.rangeStart(), this.rangeDays()));
   protected readonly daySegmentTicks: Signal<number[]> = computed(() =>
-    ScheduleDriverRow.buildDaySegmentTicks(this.dayTicks())
+    ScheduleDriverRow.buildDaySegmentTicks(this.dayTicks(), this.rangeDays())
   );
   protected readonly driverDutyStatusVariant = driverDutyStatusVariant;
   protected readonly driverDutyStatusLabel = driverDutyStatusLabel;
   protected readonly formatCityState = formatCityState;
   protected readonly narrowSegmentThresholdPercent = NARROW_SEGMENT_THRESHOLD_PERCENT;
 
-  // Only meaningful (and rendered) when the visible week actually contains today - a "now" marker positioned in a
-  // past or future week wouldn't correspond to anything on that row.
-  protected readonly showNowMarker: Signal<boolean> = computed(() => this.weekStart() === startOfDayMs(Date.now()));
-  protected readonly nowPercent: Signal<number> = computed(() => percentForTime(Date.now(), this.weekStart(), WEEK_MS));
+  // Only meaningful (and rendered) when the visible range actually contains today - a "now" marker positioned in a
+  // past or future range wouldn't correspond to anything on that row. Uses "contains", not "starts on", today so a
+  // custom range (e.g. picked from the date-range-picker) still shows the marker even when today isn't day one.
+  protected readonly showNowMarker: Signal<boolean> = computed(() =>
+    rangeContainsNow(this.rangeStart(), this.rangeDays())
+  );
+  protected readonly nowPercent: Signal<number> = computed(() =>
+    percentForTime(Date.now(), this.rangeStart(), this.rangeDays() * DAY_MS)
+  );
 
   protected readonly busySegments: Signal<BusySegment[]> = computed(() => {
-    const weekStart = this.weekStart();
+    const rangeStart = this.rangeStart();
+    const rangeMs = this.rangeDays() * DAY_MS;
     return this.driver()
-      .manifests.map((manifest) => toBusySegment(manifest, weekStart))
+      .manifests.map((manifest) => toBusySegment(manifest, rangeStart, rangeMs))
       .filter((segment): segment is BusySegment => segment !== null);
   });
 
@@ -164,20 +173,20 @@ export class ScheduleDriverRow {
 
   // One extra faint tick at each day's 1/3 and 2/3 marks, echoing the week header's Morning/Noon/Evening sub-columns
   // so a bar's start/end can be read against the same day-part boundaries the header shows.
-  private static buildDaySegmentTicks(dayTicks: DayTick[]): number[] {
-    const dayWidthPercent = 100 / WEEK_DAYS;
+  private static buildDaySegmentTicks(dayTicks: DayTick[], rangeDays: number): number[] {
+    const dayWidthPercent = 100 / rangeDays;
     return dayTicks.flatMap((tick) => [tick.percent + dayWidthPercent / 3, tick.percent + (2 * dayWidthPercent) / 3]);
   }
 }
 
-function toBusySegment(manifest: ManifestSegment, weekStart: number): BusySegment | null {
+function toBusySegment(manifest: ManifestSegment, rangeStart: number, rangeMs: number): BusySegment | null {
   const startMs = new Date(manifest.pickupAppointmentStart).getTime();
   const endMs = new Date(manifest.eta).getTime();
   if (endMs <= startMs) {
     return null;
   }
-  const leftPercent = percentForTime(startMs, weekStart, WEEK_MS);
-  const widthPercent = Math.max(percentForTime(endMs, weekStart, WEEK_MS) - leftPercent, 1);
+  const leftPercent = percentForTime(startMs, rangeStart, rangeMs);
+  const widthPercent = Math.max(percentForTime(endMs, rangeStart, rangeMs) - leftPercent, 1);
   return {
     manifestNumber: manifest.manifestNumber,
     leftPercent,
