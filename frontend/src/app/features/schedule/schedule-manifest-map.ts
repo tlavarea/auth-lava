@@ -1,28 +1,19 @@
-import {
-  Component,
-  computed,
-  DestroyRef,
-  effect,
-  inject,
-  input,
-  InputSignal,
-  signal,
-  Signal,
-  viewChild,
-} from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, computed, effect, inject, input, InputSignal, signal, Signal } from '@angular/core';
 import { GoogleMap, MapMarker, MapPolyline } from '@angular/google-maps';
-import { firstValueFrom, timer } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 
-import { DriversApi } from '@features/drivers/drivers-api';
-import { DriverLiveLocationResponse } from '@features/drivers/drivers.models';
 import { decodePolyline } from './decode-polyline';
 import { computeBoundsCenter } from './map-bounds';
-import { ManifestRoute, ManifestSegment, ManifestStop } from './schedule.models';
+import { ScheduleApi } from './schedule-api';
+import { ManifestDriverLocation, ManifestRoute, ManifestSegment, ManifestStop } from './schedule.models';
 
 const DEFAULT_ZOOM = 6;
-// Matches driver-detail.page.ts's cadence for the same live-location call.
-const LIVE_LOCATION_POLL_INTERVAL_MS = 15_000;
+// A ceiling on how far the automatic route fit is allowed to zoom in - defends against Google Maps' well-known
+// fitBounds behavior of snapping to its maximum zoom (21, street level) when the bounds it's given are degenerate
+// (a single point, or two points close enough together to round to one) - which a manifest with only one geocoded
+// stop and no starting position would otherwise trigger. 12 is roughly "a single metro area" - loose enough not to
+// clip a real, deliberately tight local route, tight enough that a degenerate fit is still clearly visibly wrong.
+const MAX_AUTO_FIT_ZOOM = 12;
 const ARROW_SCALE = 6;
 const PIN_SCALE = 12;
 
@@ -80,12 +71,16 @@ type StopMarker = {
 
 /**
  * Renders a manifest's full route (a numbered marker per pickup/dropoff stop, the truck's starting position if
- * Vektor reported one, and the driving path visiting all of them in order) plus the driver's current position, for
- * the map panel that opens below the Schedule grid when a manifest segment is clicked. A self-contained sibling to
- * DriverLocationMap rather than a reuse of it - that component is purpose-built for a single live marker with
- * dead-reckoning animation in a layout suited to driver-detail's absolute-fill container. This component ports its
- * marker/heading gotchas (see the icon constants above) but skips the lerp/dead-reckoning animation, since this panel
- * doesn't need per-200ms smoothness - the driver marker just moves to its latest polled position on each tick.
+ * Vektor reported one, and the driving path visiting all of them in order) plus the driver's position as of when the
+ * manifest was opened, for the map panel that opens below the Schedule grid when a manifest segment is clicked. A
+ * self-contained sibling to DriverLocationMap rather than a reuse of it - that component is purpose-built for a
+ * single continuously-polled marker with dead-reckoning animation in a layout suited to driver-detail's
+ * absolute-fill container, and is where a dispatcher goes (via the driver's name) for actual live tracking. This
+ * component instead fetches the manifest-scoped, Vektor-sourced equivalent once (ScheduleApi.driverLocation, keyed
+ * by manifestNumber rather than a driverId input) - the same source ManifestRouteServiceImpl's route-splice uses, so
+ * the marker and the drawn route always agree on where the driver was - and does not re-fetch on a timer. It ports
+ * DriverLocationMap's marker/heading gotchas (see the icon constants above) but skips the lerp/dead-reckoning
+ * animation, which only makes sense for a marker that keeps moving.
  */
 @Component({
   selector: 'app-schedule-manifest-map',
@@ -100,7 +95,9 @@ type StopMarker = {
       [center]="center()"
       [zoom]="DEFAULT_ZOOM"
       [options]="mapOptions"
-      [attr.aria-label]="ariaLabel()">
+      [attr.aria-label]="ariaLabel()"
+      (idle)="onMapIdle()"
+      (mapInitialized)="googleMap.set($event)">
       @if (decodedPath(); as path) {
         <map-polyline [path]="path" [options]="polylineOptions" />
       }
@@ -125,15 +122,29 @@ type StopMarker = {
   `,
 })
 export class ScheduleManifestMap {
-  readonly driverId: InputSignal<string> = input.required<string>();
   readonly manifest: InputSignal<ManifestSegment> = input.required<ManifestSegment>();
   // Fetched by the parent (ScheduleStore) rather than by this component, so it and ScheduleManifestDetail render the
   // same data from a single request instead of each independently fetching the same manifest's route.
   readonly route: InputSignal<ManifestRoute | null> = input.required<ManifestRoute | null>();
 
-  private readonly driversApi: DriversApi = inject(DriversApi);
-  private readonly destroyRef: DestroyRef = inject(DestroyRef);
-  private readonly mapRef = viewChild(GoogleMap);
+  private readonly scheduleApi: ScheduleApi = inject(ScheduleApi);
+
+  // Set from the template's (mapInitialized) binding, not read via viewChild(GoogleMap)'s `.googleMap` property -
+  // that property is assigned imperatively, outside Angular's reactivity, once the underlying Google Maps JS
+  // instance actually finishes constructing (see @angular/google-maps' GoogleMap._initialize), which happens later
+  // than the <google-map> child component itself becoming queryable. A signal keyed on mapInitialized is the only
+  // way for the fitBounds effect below to reliably re-run once the map is *actually* ready, rather than possibly
+  // observing it as still-null on its one and only run and never getting a second chance.
+  protected readonly googleMap = signal<google.maps.Map | null>(null);
+
+  // Plain field, not a signal - read/written from inside the same effect that also reads routePoints(), and only
+  // needs to gate that effect's body, not participate in Angular's own dependency tracking (see the constructor's
+  // fitBounds effect for why this exists).
+  private fitBoundsForManifestNumber: number | null = null;
+  // Sends the next (idle) event to onMapIdle's zoom-clamp check - set right before calling fitBounds, cleared as
+  // soon as that check runs, so idle events from anything else (the map's initial construction, a dispatcher's own
+  // manual zoom/pan) are left alone.
+  private pendingZoomClampCheck = false;
 
   protected readonly DEFAULT_ZOOM = DEFAULT_ZOOM;
   // A starting position, when present, is the route's true origin - same play-button icon a first stop would get if
@@ -143,7 +154,10 @@ export class ScheduleManifestMap {
   protected readonly mapOptions: google.maps.MapOptions = { zoomControl: true };
   protected readonly polylineOptions: google.maps.PolylineOptions = { strokeColor: '#2563eb', strokeWeight: 4 };
 
-  private readonly liveLocation = signal<DriverLiveLocationResponse | null>(null);
+  // Set once, from a single fetch when the manifest is selected (see the constructor) - not polled, so this never
+  // updates again while the panel stays open. A dispatcher who needs an up-to-date position clicks the driver's name
+  // instead, which opens driver-detail's actual live-tracking map.
+  private readonly driverLocationSnapshot = signal<ManifestDriverLocation | null>(null);
 
   protected readonly decodedPath: Signal<google.maps.LatLngLiteral[] | null> = computed(() => {
     const route = this.route();
@@ -184,7 +198,7 @@ export class ScheduleManifestMap {
   });
 
   protected readonly driverPosition: Signal<google.maps.LatLngLiteral | null> = computed(() => {
-    const location = this.liveLocation();
+    const location = this.driverLocationSnapshot();
     if (location === null || location.latitude === null || location.longitude === null) {
       return null;
     }
@@ -192,7 +206,7 @@ export class ScheduleManifestMap {
   });
 
   protected readonly driverMarkerIcon: Signal<google.maps.Symbol | null> = computed(() => {
-    const heading = this.liveLocation()?.heading;
+    const heading = this.driverLocationSnapshot()?.headingDegrees;
     if (heading === null || heading === undefined) {
       return null;
     }
@@ -224,33 +238,45 @@ export class ScheduleManifestMap {
   });
 
   constructor() {
-    effect(() => void this.pollLiveLocation(this.driverId()));
+    effect(() => void this.fetchDriverLocation(this.manifest().manifestNumber));
 
-    timer(LIVE_LOCATION_POLL_INTERVAL_MS, LIVE_LOCATION_POLL_INTERVAL_MS)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => void this.pollLiveLocation(this.driverId()));
-
-    // Keeps the whole route (every stop, the starting position, and the driver's position, if known) in view rather
-    // than relying on a fixed zoom, which could easily clip either end of a long-haul, multi-stop route.
+    // Keeps the whole route (every stop and the starting position) in view rather than relying on a fixed zoom,
+    // which could easily clip either end of a long-haul, multi-stop route - exactly once per manifest selection,
+    // deliberately keyed off the route's own static points rather than allKnownPositions() (which also folds in the
+    // driver's position): the driver's location fetch above is async and could resolve after this effect's first
+    // run, so including it here could trigger a second, jarring re-fit once it lands. routePoints() only changes
+    // when a different manifest (or its route) is selected, so gating on manifestNumber is mostly a defensive
+    // no-op, not the load-bearing guard fitBoundsForManifestNumber used to be.
     effect(() => {
-      const map = this.mapRef()?.googleMap;
-      const points = this.allKnownPositions();
-      if (!map || points.length === 0) {
+      const map = this.googleMap();
+      const manifestNumber = this.manifest().manifestNumber;
+      const points = this.routePoints();
+      if (!map || points.length === 0 || this.fitBoundsForManifestNumber === manifestNumber) {
         return;
       }
       const bounds = new google.maps.LatLngBounds();
       points.forEach((point) => bounds.extend(point));
+      this.pendingZoomClampCheck = true;
       map.fitBounds(bounds);
+      this.fitBoundsForManifestNumber = manifestNumber;
     });
   }
 
-  private allKnownPositions(): google.maps.LatLngLiteral[] {
+  // The route's own static points (starting position + every geocoded stop) - used for the one-time auto-fit (see
+  // the constructor) specifically because it does *not* include the driver's position, which can arrive later than
+  // the initial fit (see the constructor's comment on why that's excluded).
+  private routePoints(): google.maps.LatLngLiteral[] {
     const points: google.maps.LatLngLiteral[] = [];
     const startingPosition = this.startingPosition();
     if (startingPosition !== null) {
       points.push(startingPosition);
     }
     points.push(...this.stopMarkers().map((marker) => marker.position));
+    return points;
+  }
+
+  private allKnownPositions(): google.maps.LatLngLiteral[] {
+    const points = this.routePoints();
     const driver = this.driverPosition();
     if (driver !== null) {
       points.push(driver);
@@ -258,12 +284,29 @@ export class ScheduleManifestMap {
     return points;
   }
 
-  private async pollLiveLocation(driverId: string): Promise<void> {
+  // Runs after every 'idle' event - which fires after any map settling, including our own programmatic fitBounds
+  // call above, a dispatcher's manual zoom/pan, and the map's very first construction - but pendingZoomClampCheck
+  // means the zoom-clamp logic itself only actually runs immediately following that one fitBounds call, not any of
+  // the others (where clamping the zoom would fight the dispatcher's own input instead of protecting them from a
+  // degenerate auto-fit).
+  protected onMapIdle(): void {
+    if (!this.pendingZoomClampCheck) {
+      return;
+    }
+    this.pendingZoomClampCheck = false;
+    const map = this.googleMap();
+    const zoom = map?.getZoom();
+    if (map && zoom !== undefined && zoom > MAX_AUTO_FIT_ZOOM) {
+      map.setZoom(MAX_AUTO_FIT_ZOOM);
+    }
+  }
+
+  private async fetchDriverLocation(manifestNumber: number): Promise<void> {
     try {
-      const liveLocation = await firstValueFrom(this.driversApi.liveLocation(driverId));
-      this.liveLocation.set(liveLocation);
+      const driverLocation = await firstValueFrom(this.scheduleApi.driverLocation(manifestNumber));
+      this.driverLocationSnapshot.set(driverLocation);
     } catch {
-      // Silent - a transient failure to fetch the driver's live position shouldn't disrupt an already-rendered map.
+      // Silent - a transient failure to fetch the driver's position shouldn't disrupt an already-rendered map.
     }
   }
 }

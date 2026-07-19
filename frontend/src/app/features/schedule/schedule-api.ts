@@ -3,7 +3,7 @@ import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '@env/environment';
-import { DriverScheduleRow, ManifestRoute } from './schedule.models';
+import { DriverScheduleRow, ManifestDriverLocation, ManifestEta, ManifestRoute } from './schedule.models';
 
 const TIMELINE_URL = `${environment.apiUrl}/api/sw-expedited/drivers/timeline`;
 const MANIFESTS_URL = `${environment.apiUrl}/api/sw-expedited/manifests`;
@@ -20,5 +20,13 @@ export class ScheduleApi {
 
   route(manifestNumber: number): Observable<ManifestRoute> {
     return this.http.get<ManifestRoute>(`${MANIFESTS_URL}/${manifestNumber}/route`);
+  }
+
+  driverLocation(manifestNumber: number): Observable<ManifestDriverLocation> {
+    return this.http.get<ManifestDriverLocation>(`${MANIFESTS_URL}/${manifestNumber}/driver-location`);
+  }
+
+  eta(manifestNumber: number): Observable<ManifestEta> {
+    return this.http.get<ManifestEta>(`${MANIFESTS_URL}/${manifestNumber}/eta`);
   }
 }

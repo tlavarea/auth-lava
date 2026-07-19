@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { startOfDayMs, WEEK_MS } from './schedule-chart';
-import { DriverScheduleRow, ManifestRoute } from './schedule.models';
+import { DriverScheduleRow, ManifestEta, ManifestRoute } from './schedule.models';
 import { ScheduleStore } from './schedule.store';
 
 describe('ScheduleStore', () => {
@@ -36,8 +36,19 @@ describe('ScheduleStore', () => {
     duration: '64800s',
   };
 
+  const eta: ManifestEta = {
+    stopSequenceNumber: 1,
+    remainingMiles: 553,
+    remainingMinutes: 540,
+    estimatedArrival: '2026-07-19T02:16:00',
+  };
+
   function flushManifestRoute(): void {
     httpMock.expectOne((req) => req.url === '/api/sw-expedited/manifests/1000589/route').flush(route);
+  }
+
+  function flushManifestEta(): void {
+    httpMock.expectOne((req) => req.url === '/api/sw-expedited/manifests/1000589/eta').flush(eta);
   }
 
   beforeEach(() => {
@@ -61,24 +72,29 @@ describe('ScheduleStore', () => {
     expect(store.selectedDriverId()).toBeNull();
     expect(store.selectedManifest()).toBeNull();
     expect(store.selectedManifestRoute()).toBeNull();
+    expect(store.selectedManifestEta()).toBeNull();
   });
 
-  it('selectManifest() sets the selected driver id and manifest, then fetches its route', async () => {
+  it('selectManifest() sets the selected driver id and manifest, then fetches its route and eta', async () => {
     const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
 
     expect(store.selectedDriverId()).toBe('driver-42');
     expect(store.selectedManifest()).toEqual(row.manifests[0]);
     expect(store.selectedManifestRoute()).toBeNull();
+    expect(store.selectedManifestEta()).toBeNull();
 
     flushManifestRoute();
+    flushManifestEta();
     await selectPromise;
 
     expect(store.selectedManifestRoute()).toEqual(route);
+    expect(store.selectedManifestEta()).toEqual(eta);
   });
 
-  it('clearSelection() resets the selected driver id, manifest, and route', async () => {
+  it('clearSelection() resets the selected driver id, manifest, route, and eta', async () => {
     const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
     flushManifestRoute();
+    flushManifestEta();
     await selectPromise;
 
     store.clearSelection();
@@ -86,6 +102,7 @@ describe('ScheduleStore', () => {
     expect(store.selectedDriverId()).toBeNull();
     expect(store.selectedManifest()).toBeNull();
     expect(store.selectedManifestRoute()).toBeNull();
+    expect(store.selectedManifestEta()).toBeNull();
   });
 
   it('loadSchedule() populates rows on success', async () => {
@@ -172,6 +189,7 @@ describe('ScheduleStore', () => {
   it('goToPreviousWeek() clears an existing manifest selection', async () => {
     const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
     flushManifestRoute();
+    flushManifestEta();
     await selectPromise;
 
     const goPromise = store.goToPreviousWeek();
@@ -181,11 +199,13 @@ describe('ScheduleStore', () => {
     expect(store.selectedDriverId()).toBeNull();
     expect(store.selectedManifest()).toBeNull();
     expect(store.selectedManifestRoute()).toBeNull();
+    expect(store.selectedManifestEta()).toBeNull();
   });
 
   it('goToNextWeek() clears an existing manifest selection', async () => {
     const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
     flushManifestRoute();
+    flushManifestEta();
     await selectPromise;
 
     const goPromise = store.goToNextWeek();
@@ -195,11 +215,13 @@ describe('ScheduleStore', () => {
     expect(store.selectedDriverId()).toBeNull();
     expect(store.selectedManifest()).toBeNull();
     expect(store.selectedManifestRoute()).toBeNull();
+    expect(store.selectedManifestEta()).toBeNull();
   });
 
   it('goToCurrentWeek() clears an existing manifest selection', async () => {
     const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
     flushManifestRoute();
+    flushManifestEta();
     await selectPromise;
 
     const goPromise = store.goToCurrentWeek();
@@ -209,5 +231,6 @@ describe('ScheduleStore', () => {
     expect(store.selectedDriverId()).toBeNull();
     expect(store.selectedManifest()).toBeNull();
     expect(store.selectedManifestRoute()).toBeNull();
+    expect(store.selectedManifestEta()).toBeNull();
   });
 });
