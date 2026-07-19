@@ -12,15 +12,52 @@ export type ManifestSegment = {
   loadReference: string | null;
 };
 
-// Mirrors the backend's GET /api/manifests/{manifestNumber}/route response shape (ManifestRouteResponse).
-// originLatitude/originLongitude come from Google's route response (vektor_manifest only stores the destination's
-// coordinates); encodedPolyline is Google's polyline-encoded route geometry, decoded client-side via
-// google.maps.geometry.encoding.decodePath.
+// Mirrors the backend's ManifestStopResponse - one pickup/dropoff on a manifest's route, in sequenceNumber order.
+// arrivedAt/checkedInAt/checkedOutAt are null until the driver actually reaches/checks in/checks out of this stop -
+// that's also how a stop's Completed/Arrived/En Route status is derived client-side (see schedule-manifest-detail.ts),
+// since Vektor has no separate status field per stop. estimatedMilesToNext/actualMilesToNext/odometerMiles describe
+// this stop's outbound leg to the following stop and are null/zero on the last stop, which has no next leg.
+export type ManifestStop = {
+  sequenceNumber: number;
+  stopType: 'PICKUP' | 'DROPOFF';
+  siteName: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  timezoneAbbreviation: string | null;
+  appointmentWindowStart: string | null;
+  appointmentWindowEnd: string | null;
+  arrivedAt: string | null;
+  checkedInAt: string | null;
+  checkedOutAt: string | null;
+  referenceNumbers: string | null;
+  notes: string | null;
+  contactPhone: string | null;
+  estimatedMilesToNext: number | null;
+  actualMilesToNext: number | null;
+  odometerMiles: number | null;
+};
+
+// Mirrors the backend's ManifestStartingPositionResponse - the truck's position when the manifest begins, carried
+// over from wherever its previous manifest left off. Not a pickup/dropoff on this manifest, so it's not part of
+// ManifestRoute.stops - and not every manifest has one. estimatedMilesToNext/actualMilesToNext/odometerMiles describe
+// the leg from here to the first real stop, same meaning as the same-named fields on ManifestStop.
+export type ManifestStartingPosition = {
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  note: string | null;
+  estimatedMilesToNext: number | null;
+  actualMilesToNext: number | null;
+  odometerMiles: number | null;
+};
+
+// Mirrors the backend's GET /api/manifests/{manifestNumber}/route response shape (ManifestRouteResponse):
+// every stop on the manifest plus the driving route (geometry, not just distance/duration) that visits them in
+// order. encodedPolyline is Google's polyline-encoded route geometry, decoded client-side via decode-polyline.ts.
 export type ManifestRoute = {
-  originLatitude: number;
-  originLongitude: number;
-  destinationLatitude: number;
-  destinationLongitude: number;
+  stops: ManifestStop[];
+  startingPosition: ManifestStartingPosition | null;
   encodedPolyline: string;
   distanceMeters: number | null;
   duration: string | null;

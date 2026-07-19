@@ -9,9 +9,10 @@ import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
 import { formatCityState, startOfDayMs } from './schedule-chart';
 import { ScheduleDriverRow } from './schedule-driver-row';
+import { ScheduleManifestDetail } from './schedule-manifest-detail';
 import { ScheduleManifestMap } from './schedule-manifest-map';
 import { ScheduleWeekHeader } from './schedule-week-header';
-import { DriverScheduleRow, ManifestSegment } from './schedule.models';
+import { DriverScheduleRow, ManifestRoute, ManifestSegment } from './schedule.models';
 import { ScheduleRequestStatus, ScheduleStore, ScheduleStoreType } from './schedule.store';
 
 const REFRESH_INTERVAL_MS = 60_000;
@@ -31,7 +32,15 @@ function sortForSchedule(rows: DriverScheduleRow[]): DriverScheduleRow[] {
 
 @Component({
   selector: 'app-schedule',
-  imports: [HlmButtonImports, HlmSpinnerImports, NgIcon, ScheduleWeekHeader, ScheduleDriverRow, ScheduleManifestMap],
+  imports: [
+    HlmButtonImports,
+    HlmSpinnerImports,
+    NgIcon,
+    ScheduleWeekHeader,
+    ScheduleDriverRow,
+    ScheduleManifestDetail,
+    ScheduleManifestMap,
+  ],
   providers: [ScheduleStore],
   viewProviders: [provideIcons({ lucideChevronLeft, lucideChevronRight, lucideX })],
   template: `
@@ -85,7 +94,8 @@ function sortForSchedule(rows: DriverScheduleRow[]): DriverScheduleRow[] {
               <div class="flex min-h-0 flex-1 flex-col gap-2 rounded-md border bg-card p-2">
                 <div class="flex items-center justify-between">
                   <p class="text-sm font-medium">
-                    {{ formatCityState(manifest.origin) }} → {{ formatCityState(manifest.destination) }}
+                    {{ selectedDriverName() }}: {{ formatCityState(manifest.origin) }} →
+                    {{ formatCityState(manifest.destination) }}
                   </p>
                   <button
                     type="button"
@@ -97,10 +107,14 @@ function sortForSchedule(rows: DriverScheduleRow[]): DriverScheduleRow[] {
                     <ng-icon name="lucideX" />
                   </button>
                 </div>
-                <app-schedule-manifest-map
-                  class="min-h-0 flex-1"
-                  [driverId]="selectedDriverId()!"
-                  [manifest]="manifest" />
+                <div class="grid min-h-0 flex-1 grid-cols-[3fr_7fr] gap-2">
+                  <app-schedule-manifest-detail class="min-h-0" [route]="selectedManifestRoute()" />
+                  <app-schedule-manifest-map
+                    class="min-h-0"
+                    [driverId]="selectedDriverId()!"
+                    [manifest]="manifest"
+                    [route]="selectedManifestRoute()" />
+                </div>
               </div>
             }
           </div>
@@ -121,7 +135,15 @@ export class SchedulePage implements OnInit {
   protected readonly idleCount: Signal<number> = computed(() => this.sortedRows().length - this.activeCount());
   protected readonly selectedDriverId: Signal<string | null> = this.store.selectedDriverId;
   protected readonly selectedManifest: Signal<ManifestSegment | null> = this.store.selectedManifest;
+  protected readonly selectedManifestRoute: Signal<ManifestRoute | null> = this.store.selectedManifestRoute;
   protected readonly formatCityState = formatCityState;
+
+  // Looked up from the already-loaded schedule rows rather than stored separately - the manifest panel's header
+  // otherwise only shows "origin -> destination", giving no indication of whose manifest is open.
+  protected readonly selectedDriverName: Signal<string | null> = computed(() => {
+    const driverId = this.selectedDriverId();
+    return driverId === null ? null : (this.sortedRows().find((row) => row.driverId === driverId)?.driverName ?? null);
+  });
 
   ngOnInit(): void {
     void this.store.loadSchedule();
@@ -152,7 +174,7 @@ export class SchedulePage implements OnInit {
   }
 
   protected onManifestSelected(event: { driverId: string; manifest: ManifestSegment }): void {
-    this.store.selectManifest(event.driverId, event.manifest);
+    void this.store.selectManifest(event.driverId, event.manifest);
   }
 
   protected closeMap(): void {
