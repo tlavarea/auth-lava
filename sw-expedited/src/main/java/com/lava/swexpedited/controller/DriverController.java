@@ -15,17 +15,20 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 public class DriverController {
 
     private static final Duration DEFAULT_ACTIVITY_WINDOW = Duration.ofHours(24);
-    private static final Duration WEEK_WINDOW = Duration.ofDays(7);
+    private static final Duration DEFAULT_TIMELINE_WINDOW = Duration.ofDays(7);
+    private static final Duration MAX_TIMELINE_WINDOW = Duration.ofDays(31);
 
     private final SamsaraDriverService samsaraDriverService;
     private final SamsaraDriverLiveLocationService samsaraDriverLiveLocationService;
@@ -50,22 +53,30 @@ public class DriverController {
 
     /**
      * One row per driver joining current HOS duty status with every vektor_manifest matching them whose scheduled
-     * pickup->dropoff window overlaps the requested week - see {@link DriverTimelineService}'s javadoc. Backs the
-     * Schedule view's week navigation. {@code weekStart} defaults to the start of today when absent, same pattern as
-     * {@link #activity}'s {@code since} default; the window is always {@code [weekStart, weekStart + 7 days)}.
-     * Converted with the system default zone, not UTC - vektor_manifest's pickup_appointment_start/eta are parsed
-     * straight from Vektor's raw appointment strings with no timezone conversion of their own (see
-     * {@code VektorManifestMapper#parseAppointmentStart}), so there's no established zone convention to match here
-     * beyond "wall-clock time as the server sees it".
+     * pickup->dropoff window overlaps the requested range - see {@link DriverTimelineService}'s javadoc. Backs the
+     * Schedule view's date-range navigation. {@code weekStart} defaults to the start of today when absent, same pattern
+     * as {@link #activity}'s {@code since} default; {@code end} defaults to {@code weekStart + 7 days} when absent,
+     * matching the view's default one-week window. The frontend clamps its date-range picker to 31 days, but an
+     * out-of-range {@code end} is rejected here too rather than trusted, since {@code weekStart}/{@code end} are plain
+     * client-suppliable query params. Converted with the system default zone, not UTC - vektor_manifest's
+     * pickup_appointment_start/eta are parsed straight from Vektor's raw appointment strings with no timezone
+     * conversion of their own (see {@code VektorManifestMapper#parseAppointmentStart}), so there's no established zone
+     * convention to match here beyond "wall-clock time as the server sees it".
      */
     @GetMapping("/api/drivers/timeline")
-    public List<DriverTimelineRow> timeline(@RequestParam(required = false) Instant weekStart) {
-        Instant resolvedWeekStart =
-                weekStart != null ? weekStart : Instant.now().truncatedTo(ChronoUnit.DAYS);
+    public List<DriverTimelineRow> timeline(
+            @RequestParam(required = false) Instant weekStart, @RequestParam(required = false) Instant end) {
+        Instant resolvedStart = weekStart != null ? weekStart : Instant.now().truncatedTo(ChronoUnit.DAYS);
+        Instant resolvedEnd = end != null ? end : resolvedStart.plus(DEFAULT_TIMELINE_WINDOW);
+        if (Duration.between(resolvedStart, resolvedEnd).compareTo(MAX_TIMELINE_WINDOW) > 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Requested timeline window exceeds the " + MAX_TIMELINE_WINDOW.toDays() + "-day maximum");
+        }
         ZoneId zone = ZoneId.systemDefault();
-        LocalDateTime start = LocalDateTime.ofInstant(resolvedWeekStart, zone);
-        LocalDateTime end = LocalDateTime.ofInstant(resolvedWeekStart.plus(WEEK_WINDOW), zone);
-        return driverTimelineService.findForWeek(start, end);
+        LocalDateTime start = LocalDateTime.ofInstant(resolvedStart, zone);
+        LocalDateTime windowEnd = LocalDateTime.ofInstant(resolvedEnd, zone);
+        return driverTimelineService.findForWeek(start, windowEnd);
     }
 
     @GetMapping("/api/drivers/{driverId}")

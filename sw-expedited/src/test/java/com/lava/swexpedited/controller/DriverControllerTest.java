@@ -2,6 +2,7 @@ package com.lava.swexpedited.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -21,8 +22,10 @@ import com.lava.swexpedited.service.SamsaraDriverLiveLocationService;
 import com.lava.swexpedited.service.SamsaraDriverService;
 import jakarta.servlet.http.Cookie;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -173,6 +176,42 @@ class DriverControllerTest {
                 .andExpect(jsonPath("$[0].manifests[0].manifestStatus").value("manifest_in_progress"))
                 .andExpect(jsonPath("$[0].manifests[0].origin").value("4251 Turin Dr, Bessemer, AL 35020"))
                 .andExpect(jsonPath("$[0].manifests[0].loadReference").value("SwX-1000589"));
+    }
+
+    @Test
+    void timeline_withWeekStartAndEndParams_passesResolvedWindowToService() throws Exception {
+        Jwt jwt = authenticatedJwt();
+        when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
+        Instant weekStart = Instant.parse("2026-07-13T00:00:00Z");
+        Instant end = weekStart.plus(Duration.ofDays(14));
+        when(this.driverTimelineService.findForWeek(any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(List.of());
+
+        this.mockMvc
+                .perform(get("/api/drivers/timeline")
+                        .param("weekStart", weekStart.toString())
+                        .param("end", end.toString())
+                        .cookie(new Cookie("ACCESS_TOKEN", "token-value")))
+                .andExpect(status().isOk());
+
+        ZoneId zone = ZoneId.systemDefault();
+        verify(this.driverTimelineService)
+                .findForWeek(LocalDateTime.ofInstant(weekStart, zone), LocalDateTime.ofInstant(end, zone));
+    }
+
+    @Test
+    void timeline_withEndBeyond31Days_returns400() throws Exception {
+        Jwt jwt = authenticatedJwt();
+        when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
+        Instant weekStart = Instant.parse("2026-07-13T00:00:00Z");
+        Instant end = weekStart.plus(Duration.ofDays(32));
+
+        this.mockMvc
+                .perform(get("/api/drivers/timeline")
+                        .param("weekStart", weekStart.toString())
+                        .param("end", end.toString())
+                        .cookie(new Cookie("ACCESS_TOKEN", "token-value")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
