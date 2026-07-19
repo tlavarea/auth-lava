@@ -1,9 +1,7 @@
 package com.lava.swexpedited.batch.pickupmatch;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.lava.swexpedited.batch.RetryingHttpClient;
-import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -13,13 +11,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 /**
- * Computes an actual driving route (geometry, not just distance/duration) between a manifest's origin and destination
- * via Google Routes API's {@code computeRoutes}, backing the Schedule page's manifest-route map. Unlike
+ * Computes an actual driving route (geometry, not just distance/duration) through an ordered list of waypoints via
+ * Google Routes API's {@code computeRoutes}, backing the Schedule page's manifest-route map. Unlike
  * {@link RouteMatrixClient}, which batches many origin/destination pairs into one matrix call, this client only ever
- * needs a single pair per call, so there's no batching here. Origin is always a free-text address
- * (vektor_manifest.origin) and destination is always lat/lng (vektor_manifest's already-geocoded destination) - same
- * mixed-waypoint convention as {@link RouteMatrixClient}, and {@link RouteMatrixClient.LatLng} is reused directly here
- * rather than duplicated, since it's already public exactly for cross-client reuse of this data shape.
+ * needs a single route per call, so there's no batching here. Every waypoint is lat/lng - every manifest stop now
+ * carries its own already-geocoded coordinates (see {@code VektorManifestStop}), so unlike the address-based origin
+ * this client used to accept, there's no geocoding step left to do here at all.
  */
 @Component
 public class GoogleRoutesClient extends RetryingHttpClient {
@@ -35,14 +32,22 @@ public class GoogleRoutesClient extends RetryingHttpClient {
     }
 
     /**
-     * Returns the first route Google finds between {@code originAddress} and {@code destination}, or empty if Google
-     * returns no drivable route. The returned {@link ComputedRoute}'s origin coordinates come from Google's response
-     * (the {@code legs[0].startLocation} of the returned route) since this app never geocodes a manifest's origin
-     * address itself.
+     * Returns the first route Google finds through {@code waypoints} in order (first = origin, last = destination,
+     * everything in between = an intermediate stop the route must pass through), or empty if Google returns no drivable
+     * route. Requires at least two waypoints.
      */
-    public Optional<ComputedRoute> computeRoute(String originAddress, RouteMatrixClient.LatLng destination) {
+    public Optional<ComputedRoute> computeRoute(List<RouteMatrixClient.LatLng> waypoints) {
+        if (waypoints.size() < 2) {
+            throw new IllegalArgumentException("computeRoute needs at least an origin and a destination waypoint");
+        }
+
         ComputeRoutesRequest request = new ComputeRoutesRequest(
-                new Waypoint(originAddress, null), new Waypoint(null, new Location(destination)), "DRIVE");
+                new Waypoint(new Location(waypoints.getFirst())),
+                new Waypoint(new Location(waypoints.getLast())),
+                waypoints.subList(1, waypoints.size() - 1).stream()
+                        .map(point -> new Waypoint(new Location(point)))
+                        .toList(),
+                "DRIVE");
 
         ComputeRoutesResponse response = retrying(
                 () -> this.googleRoutesComputeRestClient
@@ -58,22 +63,16 @@ public class GoogleRoutesClient extends RetryingHttpClient {
         }
 
         Route route = response.routes().getFirst();
-        RouteMatrixClient.LatLng origin = route.legs() == null || route.legs().isEmpty()
-                ? null
-                : route.legs().getFirst().startLocation().latLng();
-
         return Optional.of(new ComputedRoute(
-                origin == null ? null : origin.latitude(),
-                origin == null ? null : origin.longitude(),
                 route.polyline() == null ? null : route.polyline().encodedPolyline(),
                 route.distanceMeters(),
                 route.duration()));
     }
 
-    record ComputeRoutesRequest(Waypoint origin, Waypoint destination, String travelMode) {}
+    record ComputeRoutesRequest(
+            Waypoint origin, Waypoint destination, List<Waypoint> intermediates, String travelMode) {}
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    record Waypoint(String address, Location location) {}
+    record Waypoint(Location location) {}
 
     record Location(RouteMatrixClient.LatLng latLng) {}
 
@@ -81,21 +80,10 @@ public class GoogleRoutesClient extends RetryingHttpClient {
     record ComputeRoutesResponse(List<Route> routes) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record Route(Long distanceMeters, String duration, Polyline polyline, List<Leg> legs) {}
+    record Route(Long distanceMeters, String duration, Polyline polyline) {}
 
     record Polyline(String encodedPolyline) {}
 
-    record Leg(Location startLocation) {}
-
-    /**
-     * Public - it's this client's return type. {@code originLatitude}/{@code originLongitude} are null only if Google's
-     * response omits {@code legs} entirely, which shouldn't happen for a successful route but is tolerated rather than
-     * thrown on.
-     */
-    public record ComputedRoute(
-            BigDecimal originLatitude,
-            BigDecimal originLongitude,
-            String encodedPolyline,
-            Long distanceMeters,
-            String duration) {}
+    /** Public - it's this client's return type. */
+    public record ComputedRoute(String encodedPolyline, Long distanceMeters, String duration) {}
 }

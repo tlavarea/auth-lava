@@ -81,6 +81,8 @@ class NameNormalizingDriverMatchStrategyTest {
                 null,
                 null,
                 null,
+                List.of(),
+                null,
                 "{}",
                 null);
     }

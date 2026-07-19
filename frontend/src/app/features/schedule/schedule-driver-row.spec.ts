@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 
 import { WEEK_MS } from './schedule-chart';
 import { ScheduleDriverRow } from './schedule-driver-row';
@@ -49,7 +50,10 @@ describe('ScheduleDriverRow', () => {
   afterEach(() => vi.useRealTimers());
 
   async function render(driver: DriverScheduleRow, weekStartMs: number = weekStart): Promise<void> {
-    await TestBed.configureTestingModule({ imports: [ScheduleDriverRow] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [ScheduleDriverRow],
+      providers: [provideRouter([])],
+    }).compileComponents();
     fixture = TestBed.createComponent(ScheduleDriverRow);
     fixture.componentRef.setInput('driver', driver);
     fixture.componentRef.setInput('weekStart', weekStartMs);
@@ -61,6 +65,14 @@ describe('ScheduleDriverRow', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Jane Doe');
     expect(fixture.nativeElement.textContent).toContain('Driving');
+  });
+
+  it('links the driver name to their driver-detail page', async () => {
+    await render(activeDriver);
+
+    const link: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a');
+    expect(link?.textContent?.trim()).toBe('Jane Doe');
+    expect(link?.getAttribute('href')).toBe('/drivers/driver-42');
   });
 
   it('positions a busy segment spanning pickupAppointmentStart to eta within the visible week', async () => {

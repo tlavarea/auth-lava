@@ -1,0 +1,36 @@
+databaseChangeLog:
+  - changeSet:
+      id: "12"
+      author: tlavarea
+      comment: >
+        Adds stops (JSON, not null) and starting_position (JSON, nullable) to vektor_manifest:
+        the full ordered stop-by-stop detail Vektor reports for a manifest (every pickup/dropoff,
+        not just the first/last VektorManifestMapper already collapses into origin/destination),
+        plus the truck's starting position when the manifest begins if Vektor reported one. Backs
+        the Schedule page's manifest-route map (numbered stop markers, multi-waypoint routing) and
+        its new stop detail pane. Same JSON-column pattern as raw_response (008) rather than a
+        child table, since stops are always read as one unit per manifest and never queried on
+        their own. stops defaults to '[]' so the backfill for existing rows (synced before this
+        column existed, until the next ~20-minute Vektor sync overwrites them) satisfies the not-
+        null constraint instead of needing a nullable column.
+      changes:
+        - addColumn:
+            tableName: vektor_manifest
+            columns:
+              - column:
+                  name: stops
+                  type: JSON
+                  defaultValueComputed: "'[]'"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: starting_position
+                  type: JSON
+      rollback:
+        - dropColumn:
+            tableName: vektor_manifest
+            columns:
+              - column:
+                  name: stops
+              - column:
+                  name: starting_position
