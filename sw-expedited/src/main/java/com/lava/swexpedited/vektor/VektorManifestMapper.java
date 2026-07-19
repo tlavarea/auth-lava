@@ -25,14 +25,15 @@ import org.springframework.stereotype.Component;
  * <p>{@code origin}/{@code destination}/{@code destinationLatitude}/{@code destinationLongitude}/
  * {@code pickupAppointmentStart}/{@code eta} still collapse a multi-stop manifest down to just its <em>first</em>
  * pickup and <em>last</em> dropoff stop, for the Schedule grid's compact per-driver segment bars (unchanged behavior).
- * {@code stops} instead carries every real stop, in order, with the full per-stop detail Vektor reports: a nested
- * location (field 19: {@code 2}/{@code 3} lat/lng, {@code 4} formatted address, {@code 5} timezone abbreviation,
- * {@code 6} site/company name), an appointment window ({@code 24} start, {@code 25} end), actual
- * arrival/check-in/check-out timestamps ({@code 7}/{@code 8}/{@code 9} - null until the driver reaches/checks in/checks
- * out of that stop), combined reference numbers ({@code 26}), free-text notes ({@code 18}), a contact phone number
- * ({@code 36} - present inconsistently), and the outbound leg to the next stop's estimated/actual mileage and odometer
- * reading ({@code 11}/{@code 15}/{@code 13}). All of the above use the same {@code yyyy-MM-dd HH:mm:ss} timestamp
- * format as {@code appointment_start_datetime}.
+ * {@code stops} instead carries every real stop, in order, with the full per-stop detail Vektor reports: a per-stop
+ * identifier ({@code 3}, previously only read to populate {@code loadReference} - now also surfaced directly, since
+ * {@code Manifests/TruckEtaStatesGet} keys its live ETA snapshots by this same id), a nested location (field 19:
+ * {@code 2}/{@code 3} lat/lng, {@code 4} formatted address, {@code 5} timezone abbreviation, {@code 6} site/company
+ * name), an appointment window ({@code 24} start, {@code 25} end), actual arrival/check-in/check-out timestamps
+ * ({@code 7}/{@code 8}/{@code 9} - null until the driver reaches/checks in/checks out of that stop), combined reference
+ * numbers ({@code 26}), free-text notes ({@code 18}), a contact phone number ({@code 36} - present inconsistently), and
+ * the outbound leg to the next stop's estimated/actual mileage and odometer reading ({@code 11}/{@code 15}/{@code 13}).
+ * All of the above use the same {@code yyyy-MM-dd HH:mm:ss} timestamp format as {@code appointment_start_datetime}.
  */
 @Component
 public class VektorManifestMapper {
@@ -122,6 +123,7 @@ public class VektorManifestMapper {
     private VektorManifestStop toStop(VektorGrpcWeb.Message stop) {
         VektorGrpcWeb.Message location = stop.getMessage(19).orElseThrow();
         return new VektorManifestStop(
+                stop.getString(3).orElse(null),
                 stop.getVarint(6).orElseThrow().intValue(),
                 stopType(stop),
                 location.getString(6).orElse(null),

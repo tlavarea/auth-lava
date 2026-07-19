@@ -18,6 +18,7 @@ export type ManifestSegment = {
 // since Vektor has no separate status field per stop. estimatedMilesToNext/actualMilesToNext/odometerMiles describe
 // this stop's outbound leg to the following stop and are null/zero on the last stop, which has no next leg.
 export type ManifestStop = {
+  stopId: string | null;
   sequenceNumber: number;
   stopType: 'PICKUP' | 'DROPOFF';
   siteName: string | null;
@@ -61,6 +62,28 @@ export type ManifestRoute = {
   encodedPolyline: string;
   distanceMeters: number | null;
   duration: string | null;
+};
+
+// Mirrors the backend's GET /api/manifests/{manifestNumber}/driver-location response shape
+// (ManifestDriverLocationResponse) - the manifest's driver's live location, sourced from Vektor directly (keyed by
+// its own driver_id) rather than Samsara's name-matched equivalent. No speed field, unlike the Drivers feature's
+// DriverLiveLocationResponse - Vektor's location data doesn't report one.
+export type ManifestDriverLocation = {
+  latitude: number | null;
+  longitude: number | null;
+  headingDegrees: number | null;
+  asOf: string | null;
+  formattedLocation: string | null;
+};
+
+// Mirrors the backend's GET /api/manifests/{manifestNumber}/eta response shape (ManifestEtaResponse) - a manifest's
+// live ETA to its current active stop (the first stop not yet checked out of). estimatedArrival is Vektor's own
+// precomputed value, not something computed client-side.
+export type ManifestEta = {
+  stopSequenceNumber: number;
+  remainingMiles: number | null;
+  remainingMinutes: number;
+  estimatedArrival: string | null;
 };
 
 // Mirrors the backend's GET /api/drivers/timeline response shape (DriverScheduleRow). manifests is empty when no

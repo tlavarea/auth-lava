@@ -15,7 +15,13 @@ beforeEach(() => {
   (window as unknown as { google: unknown }).google = {
     maps: {
       Map: vi.fn(function () {
-        return { setCenter: vi.fn(), setZoom: vi.fn(), fitBounds: vi.fn() };
+        return {
+          setCenter: vi.fn(),
+          setZoom: vi.fn(),
+          fitBounds: vi.fn(),
+          getZoom: vi.fn(() => 6),
+          addListener: vi.fn(() => ({ remove: vi.fn() })),
+        };
       }),
       Marker: vi.fn(function () {
         return { setMap: vi.fn(), setPosition: vi.fn() };
@@ -105,7 +111,8 @@ describe('SchedulePage', () => {
     expect(fixture.nativeElement.textContent).toContain('Litchfield Park, AZ');
 
     httpMock.expectOne('/api/sw-expedited/manifests/1000589/route').flush(null);
-    httpMock.expectOne('/api/sw-expedited/drivers/driver-42/location').flush(null);
+    httpMock.expectOne('/api/sw-expedited/manifests/1000589/eta').flush(null, { status: 404, statusText: 'Not Found' });
+    httpMock.expectOne('/api/sw-expedited/manifests/1000589/driver-location').flush(null);
   });
 
   it('closes the route map panel when the close button is clicked', async () => {
@@ -113,7 +120,8 @@ describe('SchedulePage', () => {
     segment.click();
     fixture.detectChanges();
     httpMock.expectOne('/api/sw-expedited/manifests/1000589/route').flush(null);
-    httpMock.expectOne('/api/sw-expedited/drivers/driver-42/location').flush(null);
+    httpMock.expectOne('/api/sw-expedited/manifests/1000589/eta').flush(null, { status: 404, statusText: 'Not Found' });
+    httpMock.expectOne('/api/sw-expedited/manifests/1000589/driver-location').flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
 

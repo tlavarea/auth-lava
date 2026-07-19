@@ -99,6 +99,7 @@ class VektorManifestMapperTest {
                 .writeVarint(1, 1)
                 .writeVarint(6, 1)
                 .writeVarint(22, 1)
+                .writeString(3, "4bcab31e-6d01-456b-b61d-f9291904b3a5")
                 .writeString(4, "SwX-1000588")
                 .writeString(7, "2026-07-17 10:06:14")
                 .writeString(8, "2026-07-17 10:06:16")
@@ -152,6 +153,7 @@ class VektorManifestMapperTest {
         assertThat(row.stops()).extracting(VektorManifestStop::sequenceNumber).containsExactly(1, 2);
 
         VektorManifestStop pickup = row.stops().getFirst();
+        assertThat(pickup.stopId()).isEqualTo("4bcab31e-6d01-456b-b61d-f9291904b3a5");
         assertThat(pickup.stopType()).isEqualTo(StopType.PICKUP);
         assertThat(pickup.siteName()).isEqualTo("Dealer Warehouse C/O Keen Transport");
         assertThat(pickup.address()).isEqualTo("122 Norwest Ct, Savannah, GA 31407");

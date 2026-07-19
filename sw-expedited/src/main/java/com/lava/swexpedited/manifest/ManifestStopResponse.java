@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
  * (arrival/check-in/check-out until reached, mileage-to-next on the last stop).
  */
 public record ManifestStopResponse(
+        String stopId,
         int sequenceNumber,
         StopType stopType,
         String siteName,

@@ -21,27 +21,27 @@ import org.springframework.stereotype.Service;
  * every request - same live, on-demand, no-persisted-cache convention as {@link SamsaraDriverLiveLocationServiceImpl},
  * since this is only ever called while a dispatcher has a single manifest's map panel open.
  *
- * <p>The waypoint list also includes the driver's current live location (via {@link SamsaraDriverLiveLocationService}),
- * spliced in immediately before the first stop that hasn't been checked out of yet - without this, the route is
- * computed purely from Vektor's static stop coordinates and can end up visibly far from where the driver actually is (a
- * real-world route deviation, not just imprecision). The driver's location is resolved once, at the moment this is
- * called, same as everything else here - it isn't re-fetched as the driver keeps moving after a dispatcher opens the
- * map panel.
+ * <p>The waypoint list also includes the driver's current live location (via {@link ManifestDriverLocationService},
+ * Vektor's own - not Samsara's, which needed a fuzzy name-matched join that could simply be missing), spliced in
+ * immediately before the first stop that hasn't been checked out of yet - without this, the route is computed purely
+ * from Vektor's static stop coordinates and can end up visibly far from where the driver actually is (a real-world
+ * route deviation, not just imprecision). The driver's location is resolved once, at the moment this is called, same as
+ * everything else here - it isn't re-fetched as the driver keeps moving after a dispatcher opens the map panel.
  */
 @Service
 public class ManifestRouteServiceImpl implements ManifestRouteService {
 
     private final VektorManifestRepository vektorManifestRepository;
     private final GoogleRoutesClient googleRoutesClient;
-    private final SamsaraDriverLiveLocationService samsaraDriverLiveLocationService;
+    private final ManifestDriverLocationService manifestDriverLocationService;
 
     public ManifestRouteServiceImpl(
             VektorManifestRepository vektorManifestRepository,
             GoogleRoutesClient googleRoutesClient,
-            SamsaraDriverLiveLocationService samsaraDriverLiveLocationService) {
+            ManifestDriverLocationService manifestDriverLocationService) {
         this.vektorManifestRepository = vektorManifestRepository;
         this.googleRoutesClient = googleRoutesClient;
-        this.samsaraDriverLiveLocationService = samsaraDriverLiveLocationService;
+        this.manifestDriverLocationService = manifestDriverLocationService;
     }
 
     @Override
@@ -86,12 +86,8 @@ public class ManifestRouteServiceImpl implements ManifestRouteService {
     }
 
     private Optional<LatLng> driverLocationOf(VektorManifestRow manifest) {
-        String matchedSamsaraDriverId = manifest.matchedSamsaraDriverId();
-        if (matchedSamsaraDriverId == null) {
-            return Optional.empty();
-        }
-        return samsaraDriverLiveLocationService
-                .findLiveLocation(matchedSamsaraDriverId)
+        return manifestDriverLocationService
+                .findLiveLocation(manifest.manifestNumber())
                 .filter(location -> location.latitude() != null && location.longitude() != null)
                 .map(location -> new LatLng(location.latitude(), location.longitude()));
     }
@@ -109,6 +105,7 @@ public class ManifestRouteServiceImpl implements ManifestRouteService {
 
     private static ManifestStopResponse toStopResponse(VektorManifestStop stop) {
         return new ManifestStopResponse(
+                stop.stopId(),
                 stop.sequenceNumber(),
                 stop.stopType(),
                 stop.siteName(),

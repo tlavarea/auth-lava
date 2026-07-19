@@ -12,7 +12,7 @@ import { ScheduleDriverRow } from './schedule-driver-row';
 import { ScheduleManifestDetail } from './schedule-manifest-detail';
 import { ScheduleManifestMap } from './schedule-manifest-map';
 import { ScheduleWeekHeader } from './schedule-week-header';
-import { DriverScheduleRow, ManifestRoute, ManifestSegment } from './schedule.models';
+import { DriverScheduleRow, ManifestEta, ManifestRoute, ManifestSegment } from './schedule.models';
 import { ScheduleRequestStatus, ScheduleStore, ScheduleStoreType } from './schedule.store';
 
 const REFRESH_INTERVAL_MS = 60_000;
@@ -108,12 +108,11 @@ function sortForSchedule(rows: DriverScheduleRow[]): DriverScheduleRow[] {
                   </button>
                 </div>
                 <div class="grid min-h-0 flex-1 grid-cols-[3fr_7fr] gap-2">
-                  <app-schedule-manifest-detail class="min-h-0" [route]="selectedManifestRoute()" />
-                  <app-schedule-manifest-map
+                  <app-schedule-manifest-detail
                     class="min-h-0"
-                    [driverId]="selectedDriverId()!"
-                    [manifest]="manifest"
-                    [route]="selectedManifestRoute()" />
+                    [route]="selectedManifestRoute()"
+                    [eta]="selectedManifestEta()" />
+                  <app-schedule-manifest-map class="min-h-0" [manifest]="manifest" [route]="selectedManifestRoute()" />
                 </div>
               </div>
             }
@@ -136,6 +135,7 @@ export class SchedulePage implements OnInit {
   protected readonly selectedDriverId: Signal<string | null> = this.store.selectedDriverId;
   protected readonly selectedManifest: Signal<ManifestSegment | null> = this.store.selectedManifest;
   protected readonly selectedManifestRoute: Signal<ManifestRoute | null> = this.store.selectedManifestRoute;
+  protected readonly selectedManifestEta: Signal<ManifestEta | null> = this.store.selectedManifestEta;
   protected readonly formatCityState = formatCityState;
 
   // Looked up from the already-loaded schedule rows rather than stored separately - the manifest panel's header

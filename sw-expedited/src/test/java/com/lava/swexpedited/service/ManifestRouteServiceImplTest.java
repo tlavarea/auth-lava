@@ -3,16 +3,15 @@ package com.lava.swexpedited.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.lava.swexpedited.batch.pickupmatch.GoogleRoutesClient;
 import com.lava.swexpedited.batch.pickupmatch.GoogleRoutesClient.ComputedRoute;
 import com.lava.swexpedited.batch.pickupmatch.RouteMatrixClient.LatLng;
+import com.lava.swexpedited.manifest.ManifestDriverLocationResponse;
 import com.lava.swexpedited.manifest.ManifestRouteResponse;
 import com.lava.swexpedited.manifest.ManifestStopResponse;
 import com.lava.swexpedited.repository.VektorManifestRepository;
-import com.lava.swexpedited.samsara.DriverLiveLocationResponse;
 import com.lava.swexpedited.vektor.StopType;
 import com.lava.swexpedited.vektor.VektorManifestRow;
 import com.lava.swexpedited.vektor.VektorManifestStartingPosition;
@@ -33,7 +32,6 @@ class ManifestRouteServiceImplTest {
     private static final LatLng PICKUP = new LatLng(new BigDecimal("32.16"), new BigDecimal("-81.23"));
     private static final LatLng DESTINATION = new LatLng(new BigDecimal("29.57"), new BigDecimal("-97.93"));
     private static final LatLng DRIVER_LOCATION = new LatLng(new BigDecimal("30.0"), new BigDecimal("-90.0"));
-    private static final String MATCHED_SAMSARA_DRIVER_ID = "41000123";
 
     @Mock
     private VektorManifestRepository vektorManifestRepository;
@@ -42,7 +40,7 @@ class ManifestRouteServiceImplTest {
     private GoogleRoutesClient googleRoutesClient;
 
     @Mock
-    private SamsaraDriverLiveLocationService samsaraDriverLiveLocationService;
+    private ManifestDriverLocationService manifestDriverLocationService;
 
     @Test
     void findRoute_manifestNotFound_isEmpty() {
@@ -126,7 +124,7 @@ class ManifestRouteServiceImplTest {
                 stop(2, StopType.DROPOFF, DESTINATION.latitude(), DESTINATION.longitude(), null);
         when(this.vektorManifestRepository.findByManifestNumber(1000589L))
                 .thenReturn(Optional.of(manifestRow(null, List.of(completedPickup, incompleteDropoff))));
-        when(this.samsaraDriverLiveLocationService.findLiveLocation(MATCHED_SAMSARA_DRIVER_ID))
+        when(this.manifestDriverLocationService.findLiveLocation(1000589L))
                 .thenReturn(Optional.of(driverLiveLocation(DRIVER_LOCATION)));
         when(this.googleRoutesClient.computeRoute(List.of(PICKUP, DRIVER_LOCATION, DESTINATION)))
                 .thenReturn(Optional.of(new ComputedRoute("abc123", 160934L, "7203.500s")));
@@ -150,7 +148,7 @@ class ManifestRouteServiceImplTest {
                 LocalDateTime.of(2026, 7, 18, 9, 0));
         when(this.vektorManifestRepository.findByManifestNumber(1000589L))
                 .thenReturn(Optional.of(manifestRow(null, List.of(completedPickup, completedDropoff))));
-        when(this.samsaraDriverLiveLocationService.findLiveLocation(MATCHED_SAMSARA_DRIVER_ID))
+        when(this.manifestDriverLocationService.findLiveLocation(1000589L))
                 .thenReturn(Optional.of(driverLiveLocation(DRIVER_LOCATION)));
         when(this.googleRoutesClient.computeRoute(List.of(PICKUP, DESTINATION)))
                 .thenReturn(Optional.of(new ComputedRoute("abc123", 160934L, "7203.500s")));
@@ -163,27 +161,29 @@ class ManifestRouteServiceImplTest {
     }
 
     @Test
-    void findRoute_noMatchedSamsaraDriverId_liveLocationServiceNeverCalled() {
+    void findRoute_driverLocationUnavailable_routeComputedWithoutIt() {
         VektorManifestStop pickup = stop(1, StopType.PICKUP, PICKUP.latitude(), PICKUP.longitude());
         VektorManifestStop dropoff = stop(2, StopType.DROPOFF, DESTINATION.latitude(), DESTINATION.longitude());
-        VektorManifestRow manifest = manifestRow(null, List.of(pickup, dropoff)).withMatchedSamsaraDriverId(null);
-        when(this.vektorManifestRepository.findByManifestNumber(1000589L)).thenReturn(Optional.of(manifest));
+        when(this.vektorManifestRepository.findByManifestNumber(1000589L))
+                .thenReturn(Optional.of(manifestRow(null, List.of(pickup, dropoff))));
+        when(this.manifestDriverLocationService.findLiveLocation(1000589L)).thenReturn(Optional.empty());
         when(this.googleRoutesClient.computeRoute(List.of(PICKUP, DESTINATION)))
                 .thenReturn(Optional.of(new ComputedRoute("abc123", 160934L, "7203.500s")));
         ManifestRouteServiceImpl service = service();
 
-        service.findRoute(1000589L);
+        Optional<ManifestRouteResponse> result = service.findRoute(1000589L);
 
-        verifyNoInteractions(this.samsaraDriverLiveLocationService);
+        assertThat(result).isPresent();
+        verify(this.googleRoutesClient).computeRoute(eq(List.of(PICKUP, DESTINATION)));
     }
 
     private ManifestRouteServiceImpl service() {
         return new ManifestRouteServiceImpl(
-                this.vektorManifestRepository, this.googleRoutesClient, this.samsaraDriverLiveLocationService);
+                this.vektorManifestRepository, this.googleRoutesClient, this.manifestDriverLocationService);
     }
 
-    private DriverLiveLocationResponse driverLiveLocation(LatLng location) {
-        return new DriverLiveLocationResponse(location.latitude(), location.longitude(), null, null, null, null);
+    private ManifestDriverLocationResponse driverLiveLocation(LatLng location) {
+        return new ManifestDriverLocationResponse(location.latitude(), location.longitude(), null, null, null);
     }
 
     private VektorManifestStop stop(int sequenceNumber, StopType stopType, BigDecimal latitude, BigDecimal longitude) {
@@ -197,6 +197,7 @@ class ManifestRouteServiceImplTest {
             BigDecimal longitude,
             LocalDateTime checkedOutAt) {
         return new VektorManifestStop(
+                "stop-" + sequenceNumber,
                 sequenceNumber,
                 stopType,
                 "Site",
@@ -224,7 +225,7 @@ class ManifestRouteServiceImplTest {
                 "71da0ba8-865b-4c1a-8ad1-b95a4d2b8398",
                 "b4a58cf3-150c-4ab8-9f9a-31a03da29bc2",
                 "Warren Ruawhare",
-                MATCHED_SAMSARA_DRIVER_ID,
+                "41000123",
                 "manifest_in_progress",
                 "4251 Turin Dr, Bessemer, AL 35020",
                 "6390 N Alsup Rd, Litchfield Park, AZ 85340",

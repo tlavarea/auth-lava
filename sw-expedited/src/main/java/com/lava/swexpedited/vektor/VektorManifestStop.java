@@ -16,8 +16,13 @@ import java.time.LocalDateTime;
  * <p>{@code estimatedMilesToNext}/{@code actualMilesToNext}/{@code odometerMiles} describe this stop's outbound leg to
  * the following stop (both are {@code null}/zero on the last stop, which has no next leg) - Vektor reports these
  * per-stop rather than per-leg, so they're read off the stop that precedes the leg they describe.
+ *
+ * <p>{@code stopId} is Vektor's own per-stop identifier (distinct from {@code sequenceNumber}, which is just this
+ * stop's position within the manifest) - it's what {@code Manifests/TruckEtaStatesGet} snapshots use to say which stop
+ * an ETA calculation targets, so it's needed to correlate a live ETA back to a specific stop.
  */
 public record VektorManifestStop(
+        String stopId,
         int sequenceNumber,
         StopType stopType,
         String siteName,
