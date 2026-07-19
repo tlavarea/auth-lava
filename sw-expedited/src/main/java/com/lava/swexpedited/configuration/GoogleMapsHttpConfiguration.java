@@ -37,9 +37,9 @@ public class GoogleMapsHttpConfiguration {
 
     /**
      * Backs {@code GoogleRoutesClient#computeRoute} - the Schedule page's manifest-route map, which needs actual route
-     * geometry rather than just a distance/duration matrix. {@code routes.legs.startLocation} is included because
-     * vektor_manifest only stores the destination's lat/lng (the origin is address-only); the origin pin's coordinates
-     * for the map come back from Google's own route response instead.
+     * geometry rather than just a distance/duration matrix. Every waypoint passed to that call already carries its own
+     * lat/lng (every manifest stop is geocoded by Vektor itself), so unlike the matrix client above, nothing here needs
+     * to read coordinates back out of Google's response.
      */
     @Bean(name = "googleRoutesComputeRestClient")
     public RestClient googleRoutesComputeRestClient(
@@ -47,8 +47,7 @@ public class GoogleMapsHttpConfiguration {
         return builder.baseUrl(googleMapsProperties.baseUrl())
                 .defaultHeader("X-Goog-Api-Key", googleMapsProperties.apiKey())
                 .defaultHeader(
-                        "X-Goog-FieldMask",
-                        "routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration,routes.legs.startLocation")
+                        "X-Goog-FieldMask", "routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration")
                 .build();
     }
 }

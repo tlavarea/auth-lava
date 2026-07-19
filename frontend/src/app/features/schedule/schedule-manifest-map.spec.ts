@@ -79,10 +79,49 @@ describe('ScheduleManifestMap', () => {
   };
 
   const route: ManifestRoute = {
-    originLatitude: 33.101,
-    originLongitude: -87.99,
-    destinationLatitude: 33.489,
-    destinationLongitude: -112.361,
+    stops: [
+      {
+        sequenceNumber: 1,
+        stopType: 'PICKUP',
+        siteName: 'Dealer Warehouse',
+        address: '4251 Turin Dr, Bessemer, AL 35020',
+        latitude: 33.101,
+        longitude: -87.99,
+        timezoneAbbreviation: 'CDT',
+        appointmentWindowStart: '2026-07-17T08:00:00',
+        appointmentWindowEnd: '2026-07-17T10:00:00',
+        arrivedAt: null,
+        checkedInAt: null,
+        checkedOutAt: null,
+        referenceNumbers: 'CO 01660967',
+        notes: null,
+        contactPhone: null,
+        estimatedMilesToNext: 1800,
+        actualMilesToNext: null,
+        odometerMiles: 406717,
+      },
+      {
+        sequenceNumber: 2,
+        stopType: 'DROPOFF',
+        siteName: 'Alsup Facility',
+        address: '6390 N Alsup Rd, Litchfield Park, AZ 85340',
+        latitude: 33.489,
+        longitude: -112.361,
+        timezoneAbbreviation: 'MST',
+        appointmentWindowStart: '2026-07-20T08:00:00',
+        appointmentWindowEnd: '2026-07-20T10:00:00',
+        arrivedAt: null,
+        checkedInAt: null,
+        checkedOutAt: null,
+        referenceNumbers: 'CO 01660967',
+        notes: null,
+        contactPhone: null,
+        estimatedMilesToNext: null,
+        actualMilesToNext: null,
+        odometerMiles: null,
+      },
+    ],
+    startingPosition: null,
     // Decodes to [(38.5,-120.2), (40.7,-120.95), (43.252,-126.453)] - Google's canonical worked example.
     encodedPolyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
     distanceMeters: 1_800_000,
@@ -108,11 +147,11 @@ describe('ScheduleManifestMap', () => {
     fixture = TestBed.createComponent(ScheduleManifestMap);
     fixture.componentRef.setInput('driverId', 'driver-42');
     fixture.componentRef.setInput('manifest', manifest);
+    fixture.componentRef.setInput('route', route);
     fixture.detectChanges();
   }
 
-  async function flushRouteAndLiveLocation(): Promise<void> {
-    httpMock.expectOne('/api/sw-expedited/manifests/1000589/route').flush(route);
+  async function flushLiveLocation(): Promise<void> {
     httpMock.expectOne('/api/sw-expedited/drivers/driver-42/location').flush(liveLocation);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -122,26 +161,82 @@ describe('ScheduleManifestMap', () => {
     httpMock.verify();
   });
 
-  it('mounts and fetches the manifest route and driver live location on init', async () => {
+  it('mounts and fetches the driver live location on init', async () => {
     await render();
 
-    httpMock.expectOne('/api/sw-expedited/manifests/1000589/route').flush(route);
     httpMock.expectOne('/api/sw-expedited/drivers/driver-42/location').flush(liveLocation);
   });
 
-  it('renders origin and destination markers at the route response coordinates', async () => {
+  it('renders a numbered marker per stop at its coordinates', async () => {
     await render();
-    await flushRouteAndLiveLocation();
+    await flushLiveLocation();
 
-    expect(markerConstructor).toHaveBeenCalledWith(expect.objectContaining({ position: { lat: 33.101, lng: -87.99 } }));
     expect(markerConstructor).toHaveBeenCalledWith(
-      expect.objectContaining({ position: { lat: 33.489, lng: -112.361 } })
+      expect.objectContaining({
+        position: { lat: 33.101, lng: -87.99 },
+        label: expect.objectContaining({ text: '1' }),
+      })
+    );
+    expect(markerConstructor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        position: { lat: 33.489, lng: -112.361 },
+        label: expect.objectContaining({ text: '2' }),
+      })
+    );
+  });
+
+  it('marks the first stop as the origin (play icon) and the last stop as the destination (stop icon) when there is no starting position', async () => {
+    await render();
+    await flushLiveLocation();
+
+    expect(markerConstructor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        position: { lat: 33.101, lng: -87.99 },
+        icon: expect.objectContaining({ path: 'M -5,-7 L 7,0 L -5,7 Z' }),
+      })
+    );
+    expect(markerConstructor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        position: { lat: 33.489, lng: -112.361 },
+        icon: expect.objectContaining({ path: 'M -6,-6 L 6,-6 L 6,6 L -6,6 Z' }),
+      })
+    );
+  });
+
+  it('marks the starting position as the origin instead of the first stop when one is present', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ScheduleManifestMap],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(ScheduleManifestMap);
+    fixture.componentRef.setInput('driverId', 'driver-42');
+    fixture.componentRef.setInput('manifest', manifest);
+    fixture.componentRef.setInput('route', {
+      ...route,
+      startingPosition: { address: 'Prior stop, GA', latitude: 31.19, longitude: -81.47, note: null },
+    });
+    fixture.detectChanges();
+    await flushLiveLocation();
+
+    expect(markerConstructor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        position: { lat: 31.19, lng: -81.47 },
+        icon: expect.objectContaining({ path: 'M -5,-7 L 7,0 L -5,7 Z' }),
+      })
+    );
+    expect(markerConstructor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        position: { lat: 33.101, lng: -87.99 },
+        icon: expect.objectContaining({ fillColor: '#16a34a', path: 0 }),
+      })
     );
   });
 
   it('renders a polyline decoded from the route response', async () => {
     await render();
-    await flushRouteAndLiveLocation();
+    await flushLiveLocation();
 
     expect(polylineConstructor).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -152,7 +247,7 @@ describe('ScheduleManifestMap', () => {
 
   it('renders a heading-rotated driver marker at the live location once loaded', async () => {
     await render();
-    await flushRouteAndLiveLocation();
+    await flushLiveLocation();
 
     expect(markerConstructor).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -164,7 +259,7 @@ describe('ScheduleManifestMap', () => {
 
   it('fits the map bounds to the route once loaded', async () => {
     await render();
-    await flushRouteAndLiveLocation();
+    await flushLiveLocation();
 
     expect(boundsConstructor).toHaveBeenCalled();
     expect(fakeBoundsInstance.extend).toHaveBeenCalledWith({ lat: 33.101, lng: -87.99 });
@@ -174,7 +269,7 @@ describe('ScheduleManifestMap', () => {
 
   it('labels the map with the manifest origin and destination for accessibility', async () => {
     await render();
-    await flushRouteAndLiveLocation();
+    await flushLiveLocation();
 
     const container: HTMLElement | null = fixture.nativeElement.querySelector('google-map[role="img"]');
     expect(container?.getAttribute('aria-label')).toBe(

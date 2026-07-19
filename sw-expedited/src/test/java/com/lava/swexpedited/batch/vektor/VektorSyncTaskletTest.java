@@ -143,6 +143,8 @@ class VektorSyncTaskletTest {
                 null,
                 null,
                 "SwX-1000589",
+                List.of(),
+                null,
                 "{}",
                 null);
     }

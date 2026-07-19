@@ -214,6 +214,8 @@ class PickupMatchTaskletTest {
                 null,
                 eta,
                 "SwX-" + manifestNumber,
+                List.of(),
+                null,
                 "{}",
                 null);
     }

@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { startOfDayMs, WEEK_MS } from './schedule-chart';
-import { DriverScheduleRow } from './schedule.models';
+import { DriverScheduleRow, ManifestRoute } from './schedule.models';
 import { ScheduleStore } from './schedule.store';
 
 describe('ScheduleStore', () => {
@@ -28,6 +28,18 @@ describe('ScheduleStore', () => {
     ],
   };
 
+  const route: ManifestRoute = {
+    stops: [],
+    startingPosition: null,
+    encodedPolyline: 'abc123',
+    distanceMeters: 1_800_000,
+    duration: '64800s',
+  };
+
+  function flushManifestRoute(): void {
+    httpMock.expectOne((req) => req.url === '/api/sw-expedited/manifests/1000589/route').flush(route);
+  }
+
   beforeEach(() => {
     vi.setSystemTime(new Date(2026, 6, 17, 12, 0, 0));
     TestBed.configureTestingModule({
@@ -48,22 +60,32 @@ describe('ScheduleStore', () => {
     expect(store.weekStartMs()).toBe(startOfDayMs(Date.now()));
     expect(store.selectedDriverId()).toBeNull();
     expect(store.selectedManifest()).toBeNull();
+    expect(store.selectedManifestRoute()).toBeNull();
   });
 
-  it('selectManifest() sets the selected driver id and manifest', () => {
-    store.selectManifest('driver-42', row.manifests[0]);
+  it('selectManifest() sets the selected driver id and manifest, then fetches its route', async () => {
+    const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
 
     expect(store.selectedDriverId()).toBe('driver-42');
     expect(store.selectedManifest()).toEqual(row.manifests[0]);
+    expect(store.selectedManifestRoute()).toBeNull();
+
+    flushManifestRoute();
+    await selectPromise;
+
+    expect(store.selectedManifestRoute()).toEqual(route);
   });
 
-  it('clearSelection() resets the selected driver id and manifest', () => {
-    store.selectManifest('driver-42', row.manifests[0]);
+  it('clearSelection() resets the selected driver id, manifest, and route', async () => {
+    const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
+    flushManifestRoute();
+    await selectPromise;
 
     store.clearSelection();
 
     expect(store.selectedDriverId()).toBeNull();
     expect(store.selectedManifest()).toBeNull();
+    expect(store.selectedManifestRoute()).toBeNull();
   });
 
   it('loadSchedule() populates rows on success', async () => {
@@ -148,7 +170,9 @@ describe('ScheduleStore', () => {
   });
 
   it('goToPreviousWeek() clears an existing manifest selection', async () => {
-    store.selectManifest('driver-42', row.manifests[0]);
+    const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
+    flushManifestRoute();
+    await selectPromise;
 
     const goPromise = store.goToPreviousWeek();
     httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
@@ -156,10 +180,13 @@ describe('ScheduleStore', () => {
 
     expect(store.selectedDriverId()).toBeNull();
     expect(store.selectedManifest()).toBeNull();
+    expect(store.selectedManifestRoute()).toBeNull();
   });
 
   it('goToNextWeek() clears an existing manifest selection', async () => {
-    store.selectManifest('driver-42', row.manifests[0]);
+    const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
+    flushManifestRoute();
+    await selectPromise;
 
     const goPromise = store.goToNextWeek();
     httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
@@ -167,10 +194,13 @@ describe('ScheduleStore', () => {
 
     expect(store.selectedDriverId()).toBeNull();
     expect(store.selectedManifest()).toBeNull();
+    expect(store.selectedManifestRoute()).toBeNull();
   });
 
   it('goToCurrentWeek() clears an existing manifest selection', async () => {
-    store.selectManifest('driver-42', row.manifests[0]);
+    const selectPromise = store.selectManifest('driver-42', row.manifests[0]);
+    flushManifestRoute();
+    await selectPromise;
 
     const goPromise = store.goToCurrentWeek();
     httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
@@ -178,5 +208,6 @@ describe('ScheduleStore', () => {
 
     expect(store.selectedDriverId()).toBeNull();
     expect(store.selectedManifest()).toBeNull();
+    expect(store.selectedManifestRoute()).toBeNull();
   });
 });

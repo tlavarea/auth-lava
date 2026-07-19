@@ -156,6 +156,8 @@ class DriverTimelineServiceImplTest {
                 pickupAppointmentStart,
                 LocalDateTime.of(2026, 7, 20, 10, 0),
                 "SwX-" + manifestNumber,
+                List.of(),
+                null,
                 "{}",
                 null);
     }
