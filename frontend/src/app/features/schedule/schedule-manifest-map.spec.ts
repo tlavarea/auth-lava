@@ -2,9 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { DriverLiveLocationResponse } from '@features/drivers/drivers.models';
 import { ScheduleManifestMap } from './schedule-manifest-map';
-import { ManifestRoute, ManifestSegment } from './schedule.models';
+import { ManifestDriverLocation, ManifestRoute, ManifestSegment } from './schedule.models';
 
 // jsdom has no real layout/rendering engine for the Google Maps JS API, and @angular/google-maps throws in its
 // constructor if `window.google` isn't present at all, so it's stubbed with fakes here - same approach as
@@ -14,8 +13,22 @@ let fakeMapInstance: {
   setCenter: ReturnType<typeof vi.fn>;
   setZoom: ReturnType<typeof vi.fn>;
   fitBounds: ReturnType<typeof vi.fn>;
+  getZoom: ReturnType<typeof vi.fn>;
+  addListener: ReturnType<typeof vi.fn>;
 };
-let fakeMarkerInstance: { setMap: ReturnType<typeof vi.fn>; setPosition: ReturnType<typeof vi.fn> };
+// Captures listeners registered via fakeMapInstance.addListener (mirroring how @angular/google-maps wires its
+// (idle)/(zoomChanged)/etc. outputs - see MapEventManager.getLazyEmitter, which calls `target.addListener(name, fn)`
+// directly on the underlying map instance), so tests can simulate the map firing one of those events.
+let mapListeners: Record<string, (() => void)[]>;
+
+function fireMapEvent(name: string): void {
+  (mapListeners[name] ?? []).forEach((listener) => listener());
+}
+let fakeMarkerInstance: {
+  setMap: ReturnType<typeof vi.fn>;
+  setPosition: ReturnType<typeof vi.fn>;
+  setIcon: ReturnType<typeof vi.fn>;
+};
 let fakePolylineInstance: {
   setMap: ReturnType<typeof vi.fn>;
   setPath: ReturnType<typeof vi.fn>;
@@ -28,8 +41,18 @@ let polylineConstructor: ReturnType<typeof vi.fn>;
 let boundsConstructor: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  fakeMapInstance = { setCenter: vi.fn(), setZoom: vi.fn(), fitBounds: vi.fn() };
-  fakeMarkerInstance = { setMap: vi.fn(), setPosition: vi.fn() };
+  mapListeners = {};
+  fakeMapInstance = {
+    setCenter: vi.fn(),
+    setZoom: vi.fn(),
+    fitBounds: vi.fn(),
+    getZoom: vi.fn(() => 6),
+    addListener: vi.fn((name: string, listener: () => void) => {
+      (mapListeners[name] ??= []).push(listener);
+      return { remove: vi.fn() };
+    }),
+  };
+  fakeMarkerInstance = { setMap: vi.fn(), setPosition: vi.fn(), setIcon: vi.fn() };
   fakePolylineInstance = { setMap: vi.fn(), setPath: vi.fn(), setOptions: vi.fn() };
   fakeBoundsInstance = { extend: vi.fn() };
   // Must be `function`, not an arrow function - Google Maps constructs these with `new`, which arrow functions
@@ -81,6 +104,7 @@ describe('ScheduleManifestMap', () => {
   const route: ManifestRoute = {
     stops: [
       {
+        stopId: 'stop-uuid-1',
         sequenceNumber: 1,
         stopType: 'PICKUP',
         siteName: 'Dealer Warehouse',
@@ -101,6 +125,7 @@ describe('ScheduleManifestMap', () => {
         odometerMiles: 406717,
       },
       {
+        stopId: 'stop-uuid-2',
         sequenceNumber: 2,
         stopType: 'DROPOFF',
         siteName: 'Alsup Facility',
@@ -128,12 +153,11 @@ describe('ScheduleManifestMap', () => {
     duration: '64800s',
   };
 
-  const liveLocation: DriverLiveLocationResponse = {
+  const liveLocation: ManifestDriverLocation = {
     latitude: 34.5,
     longitude: -100.0,
-    heading: 270,
-    speed: 62,
-    locationTime: '2026-07-18T12:00:00',
+    headingDegrees: 270,
+    asOf: '2026-07-18T12:00:00',
     formattedLocation: 'Somewhere, TX',
   };
 
@@ -145,14 +169,13 @@ describe('ScheduleManifestMap', () => {
 
     httpMock = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(ScheduleManifestMap);
-    fixture.componentRef.setInput('driverId', 'driver-42');
     fixture.componentRef.setInput('manifest', manifest);
     fixture.componentRef.setInput('route', route);
     fixture.detectChanges();
   }
 
   async function flushLiveLocation(): Promise<void> {
-    httpMock.expectOne('/api/sw-expedited/drivers/driver-42/location').flush(liveLocation);
+    httpMock.expectOne('/api/sw-expedited/manifests/1000589/driver-location').flush(liveLocation);
     await fixture.whenStable();
     fixture.detectChanges();
   }
@@ -161,10 +184,10 @@ describe('ScheduleManifestMap', () => {
     httpMock.verify();
   });
 
-  it('mounts and fetches the driver live location on init', async () => {
+  it('mounts and fetches the driver location once on init', async () => {
     await render();
 
-    httpMock.expectOne('/api/sw-expedited/drivers/driver-42/location').flush(liveLocation);
+    httpMock.expectOne('/api/sw-expedited/manifests/1000589/driver-location').flush(liveLocation);
   });
 
   it('renders a numbered marker per stop at its coordinates', async () => {
@@ -211,7 +234,6 @@ describe('ScheduleManifestMap', () => {
 
     httpMock = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(ScheduleManifestMap);
-    fixture.componentRef.setInput('driverId', 'driver-42');
     fixture.componentRef.setInput('manifest', manifest);
     fixture.componentRef.setInput('route', {
       ...route,
@@ -245,7 +267,7 @@ describe('ScheduleManifestMap', () => {
     );
   });
 
-  it('renders a heading-rotated driver marker at the live location once loaded', async () => {
+  it('renders a heading-rotated driver marker at the fetched location once loaded', async () => {
     await render();
     await flushLiveLocation();
 
@@ -265,6 +287,61 @@ describe('ScheduleManifestMap', () => {
     expect(fakeBoundsInstance.extend).toHaveBeenCalledWith({ lat: 33.101, lng: -87.99 });
     expect(fakeBoundsInstance.extend).toHaveBeenCalledWith({ lat: 33.489, lng: -112.361 });
     expect(fakeMapInstance.fitBounds).toHaveBeenCalledWith(fakeBoundsInstance);
+  });
+
+  // Regression test: Google Maps' fitBounds snaps to its maximum zoom (~21, street level) when given a degenerate
+  // bounds box (e.g. a manifest with only one geocoded stop and no starting position) - "zoomed as far in as
+  // possible, can't see the route" from a dispatcher's perspective. Clamped defensively via the map's next 'idle'
+  // event, regardless of why the auto-fit landed too tight.
+  it('clamps the zoom down after the automatic fit lands tighter than the max auto-fit zoom', async () => {
+    fakeMapInstance.getZoom.mockReturnValue(21);
+    await render();
+    await flushLiveLocation();
+
+    fireMapEvent('idle');
+
+    expect(fakeMapInstance.setZoom).toHaveBeenCalledWith(12);
+  });
+
+  it('does not clamp the zoom when the automatic fit already lands within a reasonable zoom', async () => {
+    fakeMapInstance.getZoom.mockReturnValue(7);
+    await render();
+    await flushLiveLocation();
+
+    fireMapEvent('idle');
+
+    expect(fakeMapInstance.setZoom).not.toHaveBeenCalled();
+  });
+
+  it('does not clamp the zoom on a later idle event unrelated to the automatic fit, e.g. a manual zoom', async () => {
+    fakeMapInstance.getZoom.mockReturnValue(21);
+    await render();
+    await flushLiveLocation();
+    fireMapEvent('idle');
+    fakeMapInstance.setZoom.mockClear();
+
+    fireMapEvent('idle');
+
+    expect(fakeMapInstance.setZoom).not.toHaveBeenCalled();
+  });
+
+  // Regression test: this map used to re-poll the driver's location on a 15s timer for a "live tracking" marker -
+  // removed in favor of a single fetch, since a dispatcher who wants actual live tracking now clicks the driver's
+  // name instead (opening driver-detail's continuously-polled map). Confirms no second request goes out unprompted.
+  it('does not re-fetch the driver location after the initial fetch, even after 15s pass', async () => {
+    vi.useFakeTimers();
+    try {
+      await render();
+      httpMock.expectOne('/api/sw-expedited/manifests/1000589/driver-location').flush(liveLocation);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      await vi.advanceTimersByTimeAsync(15_000);
+
+      httpMock.expectNone('/api/sw-expedited/manifests/1000589/driver-location');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('labels the map with the manifest origin and destination for accessibility', async () => {
