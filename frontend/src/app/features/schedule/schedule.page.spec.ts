@@ -89,12 +89,46 @@ describe('SchedulePage', () => {
     expect(header.className).toContain('grid-cols-[250px_1fr]');
 
     const navButtons: HTMLButtonElement[] = Array.from(
-      header.querySelectorAll('button[aria-label="Previous week"], button[aria-label="Next week"]')
+      header.querySelectorAll('button[aria-label="Previous range"], button[aria-label="Next range"]')
     );
     expect(navButtons).toHaveLength(2);
     for (const button of navButtons) {
       expect(button.className).toContain('border-border'); // outline variant's distinguishing class
     }
+  });
+
+  it('shows the current range as a read-only date-range trigger, formatted MM/DD/YYYY - MM/DD/YYYY', () => {
+    const trigger: HTMLButtonElement = fixture.nativeElement.querySelector('hlm-date-picker-trigger button');
+
+    expect(trigger.textContent).toContain('07/17/2026 - 07/23/2026');
+    expect(trigger.tagName).toBe('BUTTON'); // a button, not a text input - can't be typed into
+  });
+
+  it('hides the "Today" button while viewing the default range', () => {
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    expect(buttons.some((button) => button.textContent?.trim() === 'Today')).toBe(false);
+  });
+
+  it('shows the "Today" button after paging away, and it resets the range on click', async () => {
+    const previousButton: HTMLButtonElement = fixture.nativeElement.querySelector(
+      'button[aria-label="Previous range"]'
+    );
+    previousButton.click();
+    httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const buttons: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('button'));
+    const todayButton = buttons.find((button) => button.textContent?.trim() === 'Today');
+    expect(todayButton).toBeTruthy();
+
+    todayButton?.click();
+    httpMock.expectOne((req) => req.url === '/api/sw-expedited/drivers/timeline').flush([row]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const trigger: HTMLButtonElement = fixture.nativeElement.querySelector('hlm-date-picker-trigger button');
+    expect(trigger.textContent).toContain('07/17/2026 - 07/23/2026');
   });
 
   it('shows no route map panel until a manifest is selected', () => {

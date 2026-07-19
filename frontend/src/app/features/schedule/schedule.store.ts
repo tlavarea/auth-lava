@@ -3,7 +3,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 
 import { ScheduleApi } from './schedule-api';
-import { startOfDayMs, WEEK_MS } from './schedule-chart';
+import { DAY_MS, DEFAULT_RANGE_DAYS, MAX_RANGE_DAYS, startOfDayMs } from './schedule-chart';
 import { DriverScheduleRow, ManifestEta, ManifestRoute, ManifestSegment } from './schedule.models';
 
 export type ScheduleRequestStatus = 'idle' | 'loading' | 'error';
@@ -11,7 +11,8 @@ export type ScheduleRequestStatus = 'idle' | 'loading' | 'error';
 type ScheduleState = {
   rows: DriverScheduleRow[];
   status: ScheduleRequestStatus;
-  weekStartMs: number;
+  rangeStartMs: number;
+  rangeDays: number;
   selectedDriverId: string | null;
   selectedManifest: ManifestSegment | null;
   // Fetched once here (rather than by the map/detail panes independently) so both panes render the same data from a
@@ -22,13 +23,14 @@ type ScheduleState = {
   selectedManifestEta: ManifestEta | null;
 };
 
-// A factory, not a static object - weekStartMs needs to reflect "today" at store creation time (each visit to
+// A factory, not a static object - rangeStartMs needs to reflect "today" at store creation time (each visit to
 // /schedule), not whatever moment this module happened to be first imported.
 function initialState(): ScheduleState {
   return {
     rows: [],
     status: 'idle',
-    weekStartMs: startOfDayMs(Date.now()),
+    rangeStartMs: startOfDayMs(Date.now()),
+    rangeDays: DEFAULT_RANGE_DAYS,
     selectedDriverId: null,
     selectedManifest: null,
     selectedManifestRoute: null,
@@ -55,7 +57,7 @@ export const ScheduleStore = signalStore(
     async function loadSchedule(): Promise<void> {
       patchState(store, { status: 'loading' });
       try {
-        const rows = await firstValueFrom(scheduleApi.list(store.weekStartMs()));
+        const rows = await firstValueFrom(scheduleApi.list(store.rangeStartMs(), store.rangeDays()));
         patchState(store, { rows, status: 'idle' });
       } catch {
         patchState(store, { status: 'error' });
@@ -69,25 +71,44 @@ export const ScheduleStore = signalStore(
       // spinner over an already-rendered schedule - mirrors DriversStore.refreshDriverDetail.
       async refreshSchedule(): Promise<void> {
         try {
-          const rows = await firstValueFrom(scheduleApi.list(store.weekStartMs()));
+          const rows = await firstValueFrom(scheduleApi.list(store.rangeStartMs(), store.rangeDays()));
           patchState(store, { rows });
         } catch {
           // Silent: a transient refresh failure shouldn't disrupt an already-rendered schedule.
         }
       },
 
-      async goToPreviousWeek(): Promise<void> {
-        patchState(store, { weekStartMs: store.weekStartMs() - WEEK_MS, ...NO_SELECTION });
+      // Pages by the *currently selected* range length (not always a fixed week), so a dispatcher who's widened the
+      // view to e.g. 14 days keeps paging in 14-day steps rather than snapping back to a week-sized jump.
+      async goToPreviousRange(): Promise<void> {
+        patchState(store, { rangeStartMs: store.rangeStartMs() - store.rangeDays() * DAY_MS, ...NO_SELECTION });
         await loadSchedule();
       },
 
-      async goToNextWeek(): Promise<void> {
-        patchState(store, { weekStartMs: store.weekStartMs() + WEEK_MS, ...NO_SELECTION });
+      async goToNextRange(): Promise<void> {
+        patchState(store, { rangeStartMs: store.rangeStartMs() + store.rangeDays() * DAY_MS, ...NO_SELECTION });
         await loadSchedule();
       },
 
-      async goToCurrentWeek(): Promise<void> {
-        patchState(store, { weekStartMs: startOfDayMs(Date.now()), ...NO_SELECTION });
+      // Always resets to the default one-week view, discarding any custom range length - "Today" is a reset
+      // affordance, not a "shift the current range to include today" one.
+      async goToToday(): Promise<void> {
+        patchState(store, {
+          rangeStartMs: startOfDayMs(Date.now()),
+          rangeDays: DEFAULT_RANGE_DAYS,
+          ...NO_SELECTION,
+        });
+        await loadSchedule();
+      },
+
+      // Commits a custom range picked from the date-range-picker. Clamps rangeDays defensively - the picker's own
+      // transformDates already enforces the 31-day max, but this is the one place every range change actually lands.
+      async setRange(rangeStartMs: number, rangeDays: number): Promise<void> {
+        patchState(store, {
+          rangeStartMs,
+          rangeDays: Math.min(rangeDays, MAX_RANGE_DAYS),
+          ...NO_SELECTION,
+        });
         await loadSchedule();
       },
 

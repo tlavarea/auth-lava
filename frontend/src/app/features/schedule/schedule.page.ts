@@ -5,9 +5,18 @@ import { timer } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideChevronLeft, lucideChevronRight, lucideX } from '@ng-icons/lucide';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
+import { HlmDatePickerTrigger, HlmDateRangePicker } from '@spartan-ng/helm/date-picker';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
-import { formatCityState, startOfDayMs } from './schedule-chart';
+import {
+  DAY_MS,
+  DEFAULT_RANGE_DAYS,
+  formatCityState,
+  formatDateRange,
+  MAX_RANGE_DAYS,
+  rangeContainsNow,
+  startOfDayMs,
+} from './schedule-chart';
 import { ScheduleDriverRow } from './schedule-driver-row';
 import { ScheduleManifestDetail } from './schedule-manifest-detail';
 import { ScheduleManifestMap } from './schedule-manifest-map';
@@ -34,6 +43,8 @@ function sortForSchedule(rows: DriverScheduleRow[]): DriverScheduleRow[] {
   selector: 'app-schedule',
   imports: [
     HlmButtonImports,
+    HlmDateRangePicker,
+    HlmDatePickerTrigger,
     HlmSpinnerImports,
     NgIcon,
     ScheduleWeekHeader,
@@ -53,15 +64,30 @@ function sortForSchedule(rows: DriverScheduleRow[]): DriverScheduleRow[] {
               type="button"
               hlmBtn
               variant="outline"
-              size="icon"
-              aria-label="Previous week"
-              (click)="goToPreviousWeek()">
+              size="icon-lg"
+              aria-label="Previous range"
+              (click)="goToPreviousRange()">
               <ng-icon name="lucideChevronLeft" />
             </button>
-            @if (!isCurrentWeek()) {
-              <button type="button" hlmBtn variant="outline" size="sm" (click)="goToCurrentWeek()">Today</button>
+            <hlm-date-range-picker
+              [date]="selectedRange()"
+              [formatDates]="formatDateRange"
+              [transformDates]="clampRange"
+              (dateChange)="onRangeChange($event)">
+              <hlm-date-picker-trigger variant="outline" class="w-[190px] justify-center" [showTrigger]="false">
+                Select date range
+              </hlm-date-picker-trigger>
+            </hlm-date-range-picker>
+            @if (!isDefaultRange()) {
+              <button type="button" hlmBtn variant="outline" (click)="goToToday()">Today</button>
             }
-            <button type="button" hlmBtn variant="outline" size="icon" aria-label="Next week" (click)="goToNextWeek()">
+            <button
+              type="button"
+              hlmBtn
+              variant="outline"
+              size="icon-lg"
+              aria-label="Next range"
+              (click)="goToNextRange()">
               <ng-icon name="lucideChevronRight" />
             </button>
           </div>
@@ -81,13 +107,23 @@ function sortForSchedule(rows: DriverScheduleRow[]): DriverScheduleRow[] {
         @default {
           <div class="flex min-h-0 flex-1 flex-col gap-4">
             <div [class]="selectedManifest() ? 'shrink-0' : 'min-h-0 flex-1 overflow-y-auto'">
-              <app-schedule-week-header [weekStart]="weekStartMs()" />
-              @for (driver of sortedRows(); track driver.driverId) {
-                <app-schedule-driver-row
-                  [driver]="driver"
-                  [weekStart]="weekStartMs()"
-                  (manifestSelected)="onManifestSelected($event)" />
-              }
+              <!--
+                Horizontal scroll lives on this inner wrapper (sized to its content) rather than the outer
+                vertically-growing/scrolling div above - that div stretches to fill all remaining page height, which
+                would otherwise pin the horizontal scrollbar to the bottom of the viewport instead of directly under
+                the last driver row. This is also the ancestor the sticky (left-0) driver-name column resolves
+                against, which is the correct one for a horizontal sticky column anyway.
+              -->
+              <div class="overflow-x-auto">
+                <app-schedule-week-header [rangeStart]="rangeStartMs()" [rangeDays]="rangeDays()" />
+                @for (driver of sortedRows(); track driver.driverId) {
+                  <app-schedule-driver-row
+                    [driver]="driver"
+                    [rangeStart]="rangeStartMs()"
+                    [rangeDays]="rangeDays()"
+                    (manifestSelected)="onManifestSelected($event)" />
+                }
+              </div>
             </div>
 
             @if (selectedManifest(); as manifest) {
@@ -101,7 +137,7 @@ function sortForSchedule(rows: DriverScheduleRow[]): DriverScheduleRow[] {
                     type="button"
                     hlmBtn
                     variant="ghost"
-                    size="icon"
+                    size="icon-lg"
                     aria-label="Close route map"
                     (click)="closeMap()">
                     <ng-icon name="lucideX" />
@@ -127,8 +163,11 @@ export class SchedulePage implements OnInit {
   private readonly destroyRef: DestroyRef = inject(DestroyRef);
 
   protected readonly status: Signal<ScheduleRequestStatus> = this.store.status;
-  protected readonly weekStartMs: Signal<number> = this.store.weekStartMs;
-  protected readonly isCurrentWeek: Signal<boolean> = computed(() => this.weekStartMs() === startOfDayMs(Date.now()));
+  protected readonly rangeStartMs: Signal<number> = this.store.rangeStartMs;
+  protected readonly rangeDays: Signal<number> = this.store.rangeDays;
+  protected readonly isDefaultRange: Signal<boolean> = computed(
+    () => this.rangeStartMs() === startOfDayMs(Date.now()) && this.rangeDays() === DEFAULT_RANGE_DAYS
+  );
   protected readonly sortedRows: Signal<DriverScheduleRow[]> = computed(() => sortForSchedule(this.store.rows()));
   protected readonly activeCount: Signal<number> = computed(() => this.sortedRows().filter(hasActiveLoad).length);
   protected readonly idleCount: Signal<number> = computed(() => this.sortedRows().length - this.activeCount());
@@ -137,6 +176,23 @@ export class SchedulePage implements OnInit {
   protected readonly selectedManifestRoute: Signal<ManifestRoute | null> = this.store.selectedManifestRoute;
   protected readonly selectedManifestEta: Signal<ManifestEta | null> = this.store.selectedManifestEta;
   protected readonly formatCityState = formatCityState;
+  protected readonly formatDateRange = formatDateRange;
+
+  // The date-range-picker's controlled value - the *last selected day* (inclusive), not an exclusive end, matching
+  // how a range picker naturally represents "start...end" dates. Converted back to a day count in onRangeChange.
+  protected readonly selectedRange: Signal<[Date, Date]> = computed(() => [
+    new Date(this.rangeStartMs()),
+    new Date(this.rangeStartMs() + (this.rangeDays() - 1) * DAY_MS),
+  ]);
+
+  // Clamps an in-progress end-date selection to the 31-day max before it's committed - the real, documented
+  // extension point HlmDateRangePicker calls on every end-date pick (see its transformDates input), not a
+  // client-side afterthought bolted onto onRangeChange.
+  protected readonly clampRange = (dates: [Date, Date]): [Date, Date] => {
+    const [start, end] = dates;
+    const maxEndMs = start.getTime() + (MAX_RANGE_DAYS - 1) * DAY_MS;
+    return end.getTime() > maxEndMs ? [start, new Date(maxEndMs)] : dates;
+  };
 
   // Looked up from the already-loaded schedule rows rather than stored separately - the manifest panel's header
   // otherwise only shows "origin -> destination", giving no indication of whose manifest is open.
@@ -150,27 +206,38 @@ export class SchedulePage implements OnInit {
 
     // The backing data (samsara_driver_duty_status, vektor_manifest) re-syncs on independent 1-20 min cadences -
     // poll on the same ~60s cadence DriversStore uses so the page stays roughly live without a manual refresh. Only
-    // while viewing the current week: a past/future week's data is effectively frozen, so refreshing it on a timer
-    // would just be wasted requests.
+    // while the visible range actually contains today: a range entirely in the past or future is effectively frozen,
+    // so refreshing it on a timer would just be wasted requests.
     timer(REFRESH_INTERVAL_MS, REFRESH_INTERVAL_MS)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
-        if (this.isCurrentWeek()) {
+        if (rangeContainsNow(this.rangeStartMs(), this.rangeDays())) {
           void this.store.refreshSchedule();
         }
       });
   }
 
-  protected goToPreviousWeek(): void {
-    void this.store.goToPreviousWeek();
+  protected goToPreviousRange(): void {
+    void this.store.goToPreviousRange();
   }
 
-  protected goToNextWeek(): void {
-    void this.store.goToNextWeek();
+  protected goToNextRange(): void {
+    void this.store.goToNextRange();
   }
 
-  protected goToCurrentWeek(): void {
-    void this.store.goToCurrentWeek();
+  protected goToToday(): void {
+    void this.store.goToToday();
+  }
+
+  // Commits a range picked from the date-range-picker. `range` is only null via HlmDateRangePicker.reset(), which
+  // this page never calls, but the output's type allows it.
+  protected onRangeChange(range: [Date, Date] | null): void {
+    if (!range) {
+      return;
+    }
+    const [start, end] = range;
+    const days = Math.round((startOfDayMs(end.getTime()) - startOfDayMs(start.getTime())) / DAY_MS) + 1;
+    void this.store.setRange(startOfDayMs(start.getTime()), days);
   }
 
   protected onManifestSelected(event: { driverId: string; manifest: ManifestSegment }): void {
