@@ -6,11 +6,14 @@ import static org.mockito.Mockito.when;
 import com.lava.swexpedited.repository.SamsaraDriverDutyStatusRepository;
 import com.lava.swexpedited.repository.SamsaraDriverRepository;
 import com.lava.swexpedited.repository.VektorManifestRepository;
+import com.lava.swexpedited.repository.VektorTimeOffRepository;
 import com.lava.swexpedited.samsara.DriverTimelineRow;
 import com.lava.swexpedited.samsara.DriverTimelineRow.ManifestSegment;
+import com.lava.swexpedited.samsara.DriverTimelineRow.TimeOffSegment;
 import com.lava.swexpedited.samsara.SamsaraDriverDutyStatusRow;
 import com.lava.swexpedited.samsara.SamsaraDriverRow;
 import com.lava.swexpedited.vektor.VektorManifestRow;
+import com.lava.swexpedited.vektor.VektorTimeOffRow;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,9 @@ class DriverTimelineServiceImplTest {
     @Mock
     private VektorManifestRepository vektorManifestRepository;
 
+    @Mock
+    private VektorTimeOffRepository vektorTimeOffRepository;
+
     private static final LocalDateTime WEEK_START = LocalDateTime.of(2026, 7, 13, 0, 0);
     private static final LocalDateTime WEEK_END = LocalDateTime.of(2026, 7, 20, 0, 0);
 
@@ -41,7 +47,10 @@ class DriverTimelineServiceImplTest {
         when(this.vektorManifestRepository.findByAppointmentWindow(WEEK_START, WEEK_END))
                 .thenReturn(List.of(manifestRow(1000589L, "41000123", LocalDateTime.of(2026, 7, 17, 8, 0))));
         DriverTimelineServiceImpl service = new DriverTimelineServiceImpl(
-                this.samsaraDriverRepository, this.samsaraDriverDutyStatusRepository, this.vektorManifestRepository);
+                this.samsaraDriverRepository,
+                this.samsaraDriverDutyStatusRepository,
+                this.vektorManifestRepository,
+                this.vektorTimeOffRepository);
 
         List<DriverTimelineRow> result = service.findForWeek(WEEK_START, WEEK_END);
 
@@ -67,7 +76,10 @@ class DriverTimelineServiceImplTest {
         when(this.vektorManifestRepository.findByAppointmentWindow(WEEK_START, WEEK_END))
                 .thenReturn(List.of());
         DriverTimelineServiceImpl service = new DriverTimelineServiceImpl(
-                this.samsaraDriverRepository, this.samsaraDriverDutyStatusRepository, this.vektorManifestRepository);
+                this.samsaraDriverRepository,
+                this.samsaraDriverDutyStatusRepository,
+                this.vektorManifestRepository,
+                this.vektorTimeOffRepository);
 
         List<DriverTimelineRow> result = service.findForWeek(WEEK_START, WEEK_END);
 
@@ -84,7 +96,10 @@ class DriverTimelineServiceImplTest {
         when(this.vektorManifestRepository.findByAppointmentWindow(WEEK_START, WEEK_END))
                 .thenReturn(List.of(manifestRow(1000589L, null, LocalDateTime.of(2026, 7, 17, 8, 0))));
         DriverTimelineServiceImpl service = new DriverTimelineServiceImpl(
-                this.samsaraDriverRepository, this.samsaraDriverDutyStatusRepository, this.vektorManifestRepository);
+                this.samsaraDriverRepository,
+                this.samsaraDriverDutyStatusRepository,
+                this.vektorManifestRepository,
+                this.vektorTimeOffRepository);
 
         List<DriverTimelineRow> result = service.findForWeek(WEEK_START, WEEK_END);
 
@@ -101,7 +116,10 @@ class DriverTimelineServiceImplTest {
                         manifestRow(1000589L, "41000123", LocalDateTime.of(2026, 7, 18, 8, 0)),
                         manifestRow(1000590L, "41000123", LocalDateTime.of(2026, 7, 17, 8, 0))));
         DriverTimelineServiceImpl service = new DriverTimelineServiceImpl(
-                this.samsaraDriverRepository, this.samsaraDriverDutyStatusRepository, this.vektorManifestRepository);
+                this.samsaraDriverRepository,
+                this.samsaraDriverDutyStatusRepository,
+                this.vektorManifestRepository,
+                this.vektorTimeOffRepository);
 
         List<DriverTimelineRow> result = service.findForWeek(WEEK_START, WEEK_END);
 
@@ -109,6 +127,91 @@ class DriverTimelineServiceImplTest {
         assertThat(result.getFirst().manifests())
                 .extracting(ManifestSegment::pickupAppointmentStart)
                 .containsExactly(LocalDateTime.of(2026, 7, 17, 8, 0), LocalDateTime.of(2026, 7, 18, 8, 0));
+    }
+
+    @Test
+    void findForWeek_driverWithMatchedTimeOff_includesTimeOffFields() {
+        when(this.samsaraDriverRepository.findAll()).thenReturn(List.of(driverRow("41000123")));
+        when(this.samsaraDriverDutyStatusRepository.findAll()).thenReturn(List.of());
+        when(this.vektorManifestRepository.findByAppointmentWindow(WEEK_START, WEEK_END))
+                .thenReturn(List.of());
+        when(this.vektorTimeOffRepository.findByWindow(WEEK_START, WEEK_END))
+                .thenReturn(List.of(timeOffRow(
+                        "time-off-uuid",
+                        "41000123",
+                        LocalDateTime.of(2026, 7, 17, 0, 0),
+                        LocalDateTime.of(2026, 7, 18, 0, 0))));
+        DriverTimelineServiceImpl service = new DriverTimelineServiceImpl(
+                this.samsaraDriverRepository,
+                this.samsaraDriverDutyStatusRepository,
+                this.vektorManifestRepository,
+                this.vektorTimeOffRepository);
+
+        List<DriverTimelineRow> result = service.findForWeek(WEEK_START, WEEK_END);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().timeOff()).hasSize(1);
+        TimeOffSegment segment = result.getFirst().timeOff().getFirst();
+        assertThat(segment.id()).isEqualTo("time-off-uuid");
+        assertThat(segment.startAt()).isEqualTo(LocalDateTime.of(2026, 7, 17, 0, 0));
+        assertThat(segment.endAt()).isEqualTo(LocalDateTime.of(2026, 7, 18, 0, 0));
+        assertThat(segment.reason()).isEqualTo("Vacation");
+    }
+
+    @Test
+    void findForWeek_unmatchedTimeOff_isIgnored() {
+        when(this.samsaraDriverRepository.findAll()).thenReturn(List.of(driverRow("41000123")));
+        when(this.samsaraDriverDutyStatusRepository.findAll()).thenReturn(List.of());
+        when(this.vektorManifestRepository.findByAppointmentWindow(WEEK_START, WEEK_END))
+                .thenReturn(List.of());
+        when(this.vektorTimeOffRepository.findByWindow(WEEK_START, WEEK_END))
+                .thenReturn(List.of(timeOffRow(
+                        "time-off-uuid",
+                        null,
+                        LocalDateTime.of(2026, 7, 17, 0, 0),
+                        LocalDateTime.of(2026, 7, 18, 0, 0))));
+        DriverTimelineServiceImpl service = new DriverTimelineServiceImpl(
+                this.samsaraDriverRepository,
+                this.samsaraDriverDutyStatusRepository,
+                this.vektorManifestRepository,
+                this.vektorTimeOffRepository);
+
+        List<DriverTimelineRow> result = service.findForWeek(WEEK_START, WEEK_END);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().timeOff()).isEmpty();
+    }
+
+    @Test
+    void findForWeek_multipleMatchedTimeOffForSameDriver_sortedByStartAscending() {
+        when(this.samsaraDriverRepository.findAll()).thenReturn(List.of(driverRow("41000123")));
+        when(this.samsaraDriverDutyStatusRepository.findAll()).thenReturn(List.of());
+        when(this.vektorManifestRepository.findByAppointmentWindow(WEEK_START, WEEK_END))
+                .thenReturn(List.of());
+        when(this.vektorTimeOffRepository.findByWindow(WEEK_START, WEEK_END))
+                .thenReturn(List.of(
+                        timeOffRow(
+                                "time-off-2",
+                                "41000123",
+                                LocalDateTime.of(2026, 7, 18, 0, 0),
+                                LocalDateTime.of(2026, 7, 19, 0, 0)),
+                        timeOffRow(
+                                "time-off-1",
+                                "41000123",
+                                LocalDateTime.of(2026, 7, 14, 0, 0),
+                                LocalDateTime.of(2026, 7, 15, 0, 0))));
+        DriverTimelineServiceImpl service = new DriverTimelineServiceImpl(
+                this.samsaraDriverRepository,
+                this.samsaraDriverDutyStatusRepository,
+                this.vektorManifestRepository,
+                this.vektorTimeOffRepository);
+
+        List<DriverTimelineRow> result = service.findForWeek(WEEK_START, WEEK_END);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().timeOff())
+                .extracting(TimeOffSegment::id)
+                .containsExactly("time-off-1", "time-off-2");
     }
 
     private SamsaraDriverRow driverRow(String id) {
@@ -147,6 +250,7 @@ class DriverTimelineServiceImplTest {
                 "71da0ba8-865b-4c1a-8ad1-b95a4d2b8398",
                 "b4a58cf3-150c-4ab8-9f9a-31a03da29bc2",
                 "Warren Ruawhare",
+                "5e0045bc-a89f-4ae8-beda-c40f1c0735cf",
                 matchedSamsaraDriverId,
                 "manifest_in_progress",
                 "4251 Turin Dr, Bessemer, AL 35020",
@@ -160,5 +264,10 @@ class DriverTimelineServiceImplTest {
                 null,
                 "{}",
                 null);
+    }
+
+    private VektorTimeOffRow timeOffRow(
+            String id, String matchedSamsaraDriverId, LocalDateTime startAt, LocalDateTime endAt) {
+        return new VektorTimeOffRow(id, "truck-uuid", matchedSamsaraDriverId, startAt, endAt, "Vacation", "{}", null);
     }
 }

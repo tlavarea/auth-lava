@@ -225,6 +225,7 @@ class ManifestRouteServiceImplTest {
                 "71da0ba8-865b-4c1a-8ad1-b95a4d2b8398",
                 "b4a58cf3-150c-4ab8-9f9a-31a03da29bc2",
                 "Warren Ruawhare",
+                "5e0045bc-a89f-4ae8-beda-c40f1c0735cf",
                 "41000123",
                 "manifest_in_progress",
                 "4251 Turin Dr, Bessemer, AL 35020",

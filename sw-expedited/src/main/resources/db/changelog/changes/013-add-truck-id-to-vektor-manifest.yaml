@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: "13"
+      author: tlavarea
+      comment: >
+        Adds truck_id (nullable) to vektor_manifest: the manifest's Vektor truck identifier (top-level field 3),
+        a UUID space entirely distinct from driver_id - see VektorManifestMapper's javadoc. Not surfaced on the
+        Schedule page directly; it's how vektor_time_off entries (keyed by truck, not driver - see
+        014-create-vektor-time-off.yaml) get attributed to a driver: VektorManifestRepository#findLatestDriverIdByTruckId
+        looks up the most-recently-active driver for a given truck from this column's history.
+      changes:
+        - addColumn:
+            tableName: vektor_manifest
+            columns:
+              - column:
+                  name: truck_id
+                  type: VARCHAR
+      rollback:
+        - dropColumn:
+            tableName: vektor_manifest
+            columns:
+              - column:
+                  name: truck_id

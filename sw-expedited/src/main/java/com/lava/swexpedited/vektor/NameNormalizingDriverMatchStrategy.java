@@ -19,12 +19,12 @@ import org.springframework.stereotype.Component;
 public class NameNormalizingDriverMatchStrategy implements VektorDriverMatchStrategy {
 
     @Override
-    public Optional<String> match(VektorManifestRow row, List<SamsaraDriverRow> candidates) {
-        if (row.driverName() == null) {
+    public Optional<String> match(String driverName, List<SamsaraDriverRow> candidates) {
+        if (driverName == null) {
             return Optional.empty();
         }
 
-        String normalizedTarget = normalize(row.driverName());
+        String normalizedTarget = normalize(driverName);
         List<SamsaraDriverRow> matches = candidates.stream()
                 .filter(candidate ->
                         candidate.name() != null && normalize(candidate.name()).equals(normalizedTarget))

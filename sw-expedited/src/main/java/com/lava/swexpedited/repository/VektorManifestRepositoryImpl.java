@@ -17,9 +17,10 @@ import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.jooq.DSLContext;
-import org.jooq.InsertValuesStep17;
+import org.jooq.InsertValuesStep18;
 import org.jooq.JSON;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,9 +53,10 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
         }
 
         LocalDateTime syncedAt = LocalDateTime.now();
-        InsertValuesStep17<
+        InsertValuesStep18<
                         VektorManifestRecord,
                         Long,
+                        String,
                         String,
                         String,
                         String,
@@ -77,6 +79,7 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
                         VEKTOR_MANIFEST.MANIFEST_ID,
                         VEKTOR_MANIFEST.DRIVER_ID,
                         VEKTOR_MANIFEST.DRIVER_NAME,
+                        VEKTOR_MANIFEST.TRUCK_ID,
                         VEKTOR_MANIFEST.MATCHED_SAMSARA_DRIVER_ID,
                         VEKTOR_MANIFEST.STATUS,
                         VEKTOR_MANIFEST.ORIGIN,
@@ -97,6 +100,7 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
                     row.manifestId(),
                     row.driverId(),
                     row.driverName(),
+                    row.truckId(),
                     row.matchedSamsaraDriverId(),
                     row.status(),
                     row.origin(),
@@ -117,6 +121,7 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
                 .set(VEKTOR_MANIFEST.MANIFEST_ID, excluded(VEKTOR_MANIFEST.MANIFEST_ID))
                 .set(VEKTOR_MANIFEST.DRIVER_ID, excluded(VEKTOR_MANIFEST.DRIVER_ID))
                 .set(VEKTOR_MANIFEST.DRIVER_NAME, excluded(VEKTOR_MANIFEST.DRIVER_NAME))
+                .set(VEKTOR_MANIFEST.TRUCK_ID, excluded(VEKTOR_MANIFEST.TRUCK_ID))
                 .set(VEKTOR_MANIFEST.MATCHED_SAMSARA_DRIVER_ID, excluded(VEKTOR_MANIFEST.MATCHED_SAMSARA_DRIVER_ID))
                 .set(VEKTOR_MANIFEST.STATUS, excluded(VEKTOR_MANIFEST.STATUS))
                 .set(VEKTOR_MANIFEST.ORIGIN, excluded(VEKTOR_MANIFEST.ORIGIN))
@@ -171,12 +176,27 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
                 .toList();
     }
 
+    @Override
+    public Map<String, String> findLatestDriverIdByTruckId() {
+        return this.dsl
+                .selectDistinct(VEKTOR_MANIFEST.TRUCK_ID, VEKTOR_MANIFEST.DRIVER_ID)
+                .on(VEKTOR_MANIFEST.TRUCK_ID)
+                .from(VEKTOR_MANIFEST)
+                .where(VEKTOR_MANIFEST.TRUCK_ID.isNotNull())
+                .and(VEKTOR_MANIFEST.DRIVER_ID.isNotNull())
+                .orderBy(
+                        VEKTOR_MANIFEST.TRUCK_ID,
+                        VEKTOR_MANIFEST.PICKUP_APPOINTMENT_START.desc().nullsLast())
+                .fetchMap(VEKTOR_MANIFEST.TRUCK_ID, VEKTOR_MANIFEST.DRIVER_ID);
+    }
+
     private VektorManifestRow toRow(VektorManifest row) {
         return new VektorManifestRow(
                 row.manifestNumber(),
                 row.manifestId(),
                 row.driverId(),
                 row.driverName(),
+                row.truckId(),
                 row.matchedSamsaraDriverId(),
                 row.status(),
                 row.origin(),

@@ -86,14 +86,27 @@ export type ManifestEta = {
   estimatedArrival: string | null;
 };
 
+// One vektor_time_off block's schedule-relevant fields (mirrors the backend's DriverTimelineRow.TimeOffSegment).
+// startAt/endAt position and size the block on the driver's row the same way a ManifestSegment's
+// pickupAppointmentStart/eta do. id has no client-side lookup use (there's no time-off detail view) but is kept as a
+// stable track key.
+export type TimeOffSegment = {
+  id: string;
+  startAt: string;
+  endAt: string;
+  reason: string | null;
+};
+
 // Mirrors the backend's GET /api/drivers/timeline response shape (DriverScheduleRow). manifests is empty when no
 // vektor_manifest matching this driver overlaps the requested week - i.e. the driver has no load that week, not a
 // failed lookup. dutyStatus is always the driver's current status regardless of which week is being viewed, since
-// duty status has no history of its own.
+// duty status has no history of its own. timeOff is likewise empty when this driver has no vektor_time_off block
+// overlapping the requested week.
 export type DriverScheduleRow = {
   driverId: string;
   driverName: string;
   activationStatus: string;
   dutyStatus: string | null;
   manifests: ManifestSegment[];
+  timeOff: TimeOffSegment[];
 };

@@ -1,0 +1,70 @@
+databaseChangeLog:
+  - changeSet:
+      id: "14"
+      author: tlavarea
+      comment: >
+        VEKTOR_TIME_OFF - driver time-off blocks synced periodically from app.vektortms.com's gRPC-Web
+        TruckTimeOff/Get endpoint, shown on the Schedule page's driver timeline alongside vektor_manifest loads.
+        Keyed on Vektor's own time-off entry id (a stable UUID, unlike vektor_manifest's history-retaining upsert
+        key choice this mirrors - see 011-add-vektor-manifest-appointment-window-index.yaml). Confusingly, the
+        source endpoint groups entries by truck_id, not driver_id (a UUID space entirely distinct from Vektor's
+        driver_id - see VektorManifestMapper's javadoc); matched_samsara_driver_id is resolved at sync time by
+        looking up the most-recently-active driver for that truck via VektorManifestRepository
+        #findLatestDriverIdByTruckId, then matching that driver's name the same best-effort way vektor_manifest
+        does (VektorDriverMatchStrategy) - deliberately no FK constraint, same reasoning as
+        vektor_manifest.matched_samsara_driver_id. raw_response holds the full decoded entry so future fields
+        (e.g. the two currently-unidentified constant UUIDs seen on every entry) can be surfaced later without a
+        schema change.
+      changes:
+        - createTable:
+            tableName: vektor_time_off
+            columns:
+              - column:
+                  name: id
+                  type: VARCHAR
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: truck_id
+                  type: VARCHAR
+                  constraints:
+                    nullable: false
+              - column:
+                  name: matched_samsara_driver_id
+                  type: VARCHAR
+              - column:
+                  name: start_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reason
+                  type: VARCHAR
+              - column:
+                  name: raw_response
+                  type: JSON
+                  constraints:
+                    nullable: false
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: vektor_time_off
+            indexName: idx_vektor_time_off_window
+            columns:
+              - column:
+                  name: start_at
+              - column:
+                  name: end_at
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS vektor_time_off CASCADE;

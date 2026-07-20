@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 class VektorManifestMapperTest {
 
     private static final String DRIVER_ID = "b4a58cf3-150c-4ab8-9f9a-31a03da29bc2";
+    private static final String TRUCK_ID = "5e0045bc-a89f-4ae8-beda-c40f1c0735cf";
 
     private final VektorManifestMapper vektorManifestMapper = new VektorManifestMapper();
 
@@ -23,6 +24,7 @@ class VektorManifestMapperTest {
         assertThat(row.manifestId()).isEqualTo("71da0ba8-865b-4c1a-8ad1-b95a4d2b8398");
         assertThat(row.driverId()).isEqualTo(DRIVER_ID);
         assertThat(row.driverName()).isEqualTo("Warren Ruawhare");
+        assertThat(row.truckId()).isEqualTo(TRUCK_ID);
         assertThat(row.status()).isEqualTo("manifest_in_progress");
         assertThat(row.origin()).isEqualTo("4251 Turin Dr, Bessemer, AL 35020");
         assertThat(row.destination()).isEqualTo("6390 N Alsup Rd, Litchfield Park, AZ 85340");
@@ -193,7 +195,8 @@ class VektorManifestMapperTest {
     private VektorGrpcWeb.Writer manifestWriter(VektorGrpcWeb.Writer... stops) {
         VektorGrpcWeb.Writer manifest = new VektorGrpcWeb.Writer()
                 .writeString(1, "71da0ba8-865b-4c1a-8ad1-b95a4d2b8398")
-                .writeVarint(2, 1000589L);
+                .writeVarint(2, 1000589L)
+                .writeString(3, TRUCK_ID);
         for (VektorGrpcWeb.Writer stop : stops) {
             manifest.writeMessage(32, stop);
         }

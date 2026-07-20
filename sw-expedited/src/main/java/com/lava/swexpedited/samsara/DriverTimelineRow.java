@@ -10,14 +10,16 @@ import java.util.List;
  * {@code DriverListingRow.dutyStatus}, and - unlike {@code manifests} - is always the driver's <em>current</em> status
  * regardless of which week is being viewed, since duty status has no history of its own. {@code manifests} is empty
  * when no manifest matching this driver overlaps the requested week - i.e. the driver has no load that week - not when
- * a match failed to load.
+ * a match failed to load. {@code timeOff} is likewise every vektor_time_off block whose [startAt, endAt] window
+ * overlaps the requested week (see {@code VektorTimeOffRepository#findByWindow}), empty when this driver has none.
  */
 public record DriverTimelineRow(
         String driverId,
         String driverName,
         String activationStatus,
         String dutyStatus,
-        List<ManifestSegment> manifests) {
+        List<ManifestSegment> manifests,
+        List<TimeOffSegment> timeOff) {
 
     /**
      * One manifest's schedule-relevant fields. {@code pickupAppointmentStart}/{@code eta} are the load's scheduled
@@ -34,4 +36,10 @@ public record DriverTimelineRow(
             String origin,
             String destination,
             String loadReference) {}
+
+    /**
+     * One time-off block's schedule-relevant fields, positioned/sized on a driver's row the same way a
+     * {@link ManifestSegment} is, using {@code startAt}/{@code endAt} instead of pickup/eta.
+     */
+    public record TimeOffSegment(String id, LocalDateTime startAt, LocalDateTime endAt, String reason) {}
 }

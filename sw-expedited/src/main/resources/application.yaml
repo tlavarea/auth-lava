@@ -96,7 +96,9 @@ vektor:
   company-id: ${VEKTOR_COMPANY_ID:}
   base-url: ${VEKTOR_BASE_URL:https://app.vektortms.com}
   retry-backoff: ${VEKTOR_RETRY_BACKOFF:5s}
-  synced-statuses: ${VEKTOR_SYNCED_STATUSES:manifest_in_progress}
+  synced-statuses: ${VEKTOR_SYNCED_STATUSES:manifest_planning,manifest_assigned,manifest_dispatched,manifest_in_progress,manifest_delivered,manifest_tonu}
+  sync-window-days-back: ${VEKTOR_SYNC_WINDOW_DAYS_BACK:14}
+  sync-window-days-ahead: ${VEKTOR_SYNC_WINDOW_DAYS_AHEAD:60}
 
 vektor-sync:
   cron: ${VEKTOR_SYNC_CRON:0 */20 * ? * *}
