@@ -6,7 +6,8 @@ import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 
 import { driverDutyStatusLabel, driverDutyStatusVariant } from '@features/drivers/driver-status';
 import { buildDayTicks, DAY_MS, DayTick, formatCityState, percentForTime, rangeContainsNow } from './schedule-chart';
-import { DriverScheduleRow, ManifestSegment } from './schedule.models';
+import { manifestStatusVariant, ManifestStatusVariant } from './schedule-manifest-status';
+import { DriverScheduleRow, ManifestSegment, TimeOffSegment } from './schedule.models';
 
 // Mirrors schedule-week-header.ts's column sizing exactly, so each row's track stretches/overflows in lockstep with
 // the shared header above it (day-boundary gridlines and segments would otherwise drift out of alignment).
@@ -15,6 +16,7 @@ const NAME_COLUMN_PX = 250;
 
 type BusySegment = {
   manifestNumber: number;
+  manifestStatus: string;
   leftPercent: number;
   widthPercent: number;
   origin: string | null;
@@ -22,7 +24,43 @@ type BusySegment = {
   pickupAppointmentStart: string;
   eta: string;
   loadReference: string | null;
+  hasVisibleStart: boolean;
+  hasVisibleEnd: boolean;
 };
+
+type TimeOffBar = {
+  id: string;
+  leftPercent: number;
+  widthPercent: number;
+  startAt: string;
+  endAt: string;
+  reason: string | null;
+  hasVisibleStart: boolean;
+  hasVisibleEnd: boolean;
+};
+
+// Colors mirror Vektor's own scheme for these statuses (see manifestStatusVariant); planning/assigned/dispatched
+// have no requested color and fall back to 'muted'. Border color reuses the same token as the fill, just at a much
+// higher opacity, so a segment's start/end reads as a clearly darker/thicker accent without needing separate
+// light/dark-specific border colors (the underlying CSS variable already swaps per theme). Border *color* is set
+// here unconditionally (all 4 sides); which sides actually render a border comes from borderWidthClasses below, so
+// a side with 0 width simply shows no border regardless of the color being set.
+const BUSY_SEGMENT_VARIANT_CLASSES: Record<ManifestStatusVariant, string> = {
+  info: 'border-info/70 bg-info/20 hover:bg-info/30 dark:bg-info/25 dark:hover:bg-info/35',
+  success: 'border-success/70 bg-success/20 hover:bg-success/30 dark:bg-success/25 dark:hover:bg-success/35',
+  destructive:
+    'border-destructive/70 bg-destructive/20 hover:bg-destructive/30 dark:bg-destructive/25 dark:hover:bg-destructive/35',
+  muted:
+    'border-muted-foreground/40 bg-muted-foreground/15 hover:bg-muted-foreground/25 dark:bg-muted-foreground/20 dark:hover:bg-muted-foreground/30',
+};
+
+// The accent border marks a genuine start/end of an event, not wherever a bar happens to get visually clipped by the
+// edge of the visible date range - percentForTime clamps a segment's left/right edges into [0, 100]%, so a manifest
+// that started before the range or ends after it would otherwise get a border on a side that's just a viewport
+// boundary, not the event's actual beginning or end.
+function borderWidthClasses(hasVisibleStart: boolean, hasVisibleEnd: boolean): string {
+  return [hasVisibleStart ? 'border-l-4' : '', hasVisibleEnd ? 'border-r-4' : ''].filter(Boolean).join(' ');
+}
 
 // Below this width, a busy segment's own bar isn't wide enough to fit both the origin and destination label blocks
 // without them overlapping - drop the (less critical) origin block and show only the destination/load-reference
@@ -56,19 +94,31 @@ const NARROW_SEGMENT_THRESHOLD_PERCENT = 12;
 
       <div class="relative h-12 overflow-hidden rounded bg-muted pl-2" [attr.aria-label]="ariaLabel()">
         @for (tick of dayTicks(); track tick.dayIndex) {
-          <span
-            class="absolute inset-y-0 w-px"
-            [class]="{ 'bg-neutral-300': busySegments().length === 0, 'bg-success': busySegments().length > 0 }"
-            [style.left.%]="tick.percent"></span>
+          <span class="absolute inset-y-0 w-px bg-neutral-400 dark:bg-neutral-600" [style.left.%]="tick.percent"></span>
         }
         @for (tick of daySegmentTicks(); track tick) {
           <span class="absolute inset-y-0 w-px bg-border" [style.left.%]="tick"></span>
         }
+        @for (timeOff of timeOffBars(); track timeOff.id) {
+          <div
+            class="absolute inset-y-2 overflow-hidden rounded px-1.5"
+            [class]="timeOffBarClasses(timeOff)"
+            [style.left.%]="timeOff.leftPercent"
+            [style.width.%]="timeOff.widthPercent"
+            [attr.aria-label]="timeOffAriaLabel(timeOff)">
+            @if (timeOff.widthPercent >= narrowSegmentThresholdPercent) {
+              <span class="flex h-full items-center truncate text-[11px] font-medium text-time-off">
+                {{ timeOff.reason ?? 'Time off' }}
+              </span>
+            }
+          </div>
+        }
         @for (segment of busySegments(); track segment.manifestNumber) {
           <div
-            class="absolute inset-y-0 flex cursor-pointer items-center justify-between gap-1 overflow-hidden rounded bg-success/20 px-1.5 outline-offset-1 hover:bg-success/30 dark:bg-success/25 dark:hover:bg-success/35"
+            class="absolute inset-y-2 flex cursor-pointer items-center justify-between gap-1 overflow-hidden rounded px-1.5 outline-offset-1"
             role="button"
             tabindex="0"
+            [class]="busySegmentClasses(segment)"
             [style.left.%]="segment.leftPercent"
             [style.width.%]="segment.widthPercent"
             [attr.aria-label]="segmentAriaLabel(segment)"
@@ -137,6 +187,14 @@ export class ScheduleDriverRow {
       .filter((segment): segment is BusySegment => segment !== null);
   });
 
+  protected readonly timeOffBars: Signal<TimeOffBar[]> = computed(() => {
+    const rangeStart = this.rangeStart();
+    const rangeMs = this.rangeDays() * DAY_MS;
+    return this.driver()
+      .timeOff.map((timeOff) => toTimeOffBar(timeOff, rangeStart, rangeMs))
+      .filter((bar): bar is TimeOffBar => bar !== null);
+  });
+
   // Carries the same load detail the removed hover card used to show, since screen-reader users no longer get it
   // from hover-triggered content.
   protected readonly ariaLabel: Signal<string> = computed(() => {
@@ -147,6 +205,22 @@ export class ScheduleDriverRow {
     }
     return `${driver.driverName}: ${segments.length} load${segments.length === 1 ? '' : 's'} this week`;
   });
+
+  protected busySegmentClasses(segment: BusySegment): string {
+    const variantClasses = BUSY_SEGMENT_VARIANT_CLASSES[manifestStatusVariant(segment.manifestStatus)];
+    return `${variantClasses} ${borderWidthClasses(segment.hasVisibleStart, segment.hasVisibleEnd)}`;
+  }
+
+  protected timeOffBarClasses(timeOff: TimeOffBar): string {
+    return `border-time-off/70 bg-time-off/15 dark:bg-time-off/20 ${borderWidthClasses(timeOff.hasVisibleStart, timeOff.hasVisibleEnd)}`;
+  }
+
+  protected timeOffAriaLabel(timeOff: TimeOffBar): string {
+    const from = new Date(timeOff.startAt).toLocaleDateString();
+    const to = new Date(timeOff.endAt).toLocaleDateString();
+    const reason = timeOff.reason ? ` (${timeOff.reason})` : '';
+    return `Time off from ${from} to ${to}${reason}`;
+  }
 
   protected segmentAriaLabel(segment: BusySegment): string {
     const from = segment.origin ?? 'unknown origin';
@@ -179,6 +253,26 @@ export class ScheduleDriverRow {
   }
 }
 
+function toTimeOffBar(timeOff: TimeOffSegment, rangeStart: number, rangeMs: number): TimeOffBar | null {
+  const startMs = new Date(timeOff.startAt).getTime();
+  const endMs = new Date(timeOff.endAt).getTime();
+  if (endMs <= startMs) {
+    return null;
+  }
+  const leftPercent = percentForTime(startMs, rangeStart, rangeMs);
+  const widthPercent = Math.max(percentForTime(endMs, rangeStart, rangeMs) - leftPercent, 1);
+  return {
+    id: timeOff.id,
+    leftPercent,
+    widthPercent,
+    startAt: timeOff.startAt,
+    endAt: timeOff.endAt,
+    reason: timeOff.reason,
+    hasVisibleStart: startMs >= rangeStart,
+    hasVisibleEnd: endMs <= rangeStart + rangeMs,
+  };
+}
+
 function toBusySegment(manifest: ManifestSegment, rangeStart: number, rangeMs: number): BusySegment | null {
   const startMs = new Date(manifest.pickupAppointmentStart).getTime();
   const endMs = new Date(manifest.eta).getTime();
@@ -189,6 +283,7 @@ function toBusySegment(manifest: ManifestSegment, rangeStart: number, rangeMs: n
   const widthPercent = Math.max(percentForTime(endMs, rangeStart, rangeMs) - leftPercent, 1);
   return {
     manifestNumber: manifest.manifestNumber,
+    manifestStatus: manifest.manifestStatus,
     leftPercent,
     widthPercent,
     origin: manifest.origin,
@@ -196,5 +291,7 @@ function toBusySegment(manifest: ManifestSegment, rangeStart: number, rangeMs: n
     pickupAppointmentStart: manifest.pickupAppointmentStart,
     eta: manifest.eta,
     loadReference: manifest.loadReference,
+    hasVisibleStart: startMs >= rangeStart,
+    hasVisibleEnd: endMs <= rangeStart + rangeMs,
   };
 }

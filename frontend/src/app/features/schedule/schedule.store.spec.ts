@@ -28,6 +28,7 @@ describe('ScheduleStore', () => {
         loadReference: 'SwX-1000589',
       },
     ],
+    timeOff: [],
   };
 
   const route: ManifestRoute = {

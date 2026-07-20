@@ -62,6 +62,7 @@ describe('SchedulePage', () => {
         loadReference: 'SwX-1000589',
       },
     ],
+    timeOff: [],
   };
 
   beforeEach(async () => {
@@ -136,7 +137,7 @@ describe('SchedulePage', () => {
   });
 
   it('opens the route map panel below the grid when a manifest segment is clicked', async () => {
-    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-success\\/20');
+    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-info\\/20');
     segment.click();
     fixture.detectChanges();
 
@@ -150,7 +151,7 @@ describe('SchedulePage', () => {
   });
 
   it('closes the route map panel when the close button is clicked', async () => {
-    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-success\\/20');
+    const segment: HTMLElement = fixture.nativeElement.querySelector('.bg-info\\/20');
     segment.click();
     fixture.detectChanges();
     httpMock.expectOne('/api/sw-expedited/manifests/1000589/route').flush(null);
