@@ -15,13 +15,17 @@ import java.util.List;
  * {@link VektorManifestMapper}) for the Schedule grid's compact per-driver segment bars. {@code stops} is the full,
  * ordered stop-by-stop detail (every pickup/dropoff on the manifest, not just the first/last) backing the Schedule
  * page's manifest-route map and detail pane; {@code startingPosition} is the truck's position when the manifest begins,
- * if Vektor reported one.
+ * if Vektor reported one. {@code truckId} is Vektor's own truck identifier (a UUID space distinct from
+ * {@code driverId}) - not surfaced anywhere on the Schedule page itself, but it's how {@code vektor_time_off} entries
+ * (keyed by truck, not driver) get attributed to a driver: the most-recently-active manifest for a given truck tells us
+ * who was driving it (see {@code VektorManifestRepository#findLatestDriverIdByTruckId}).
  */
 public record VektorManifestRow(
         Long manifestNumber,
         String manifestId,
         String driverId,
         String driverName,
+        String truckId,
         String matchedSamsaraDriverId,
         String status,
         String origin,
@@ -42,6 +46,7 @@ public record VektorManifestRow(
                 manifestId,
                 driverId,
                 driverName,
+                truckId,
                 matchedSamsaraDriverId,
                 status,
                 origin,

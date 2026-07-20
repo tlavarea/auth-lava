@@ -41,7 +41,7 @@ class ManifestEtaServiceImplTest {
     private VektorTruckEtaStatesClient vektorTruckEtaStatesClient;
 
     private final VektorProperties vektorProperties = new VektorProperties(
-            "user", "pass", "test-company-id", "https://example.com", Duration.ofSeconds(5), List.of());
+            "user", "pass", "test-company-id", "https://example.com", Duration.ofSeconds(5), List.of(), 14, 60);
 
     @Test
     void findEta_manifestNotFound_isEmpty() {
@@ -175,6 +175,7 @@ class ManifestEtaServiceImplTest {
                 MANIFEST_ID,
                 "019c76aa-28e6-4274-b9da-2923cc6949e9",
                 "Michael Goodson",
+                "truck-uuid",
                 null,
                 "manifest_in_progress",
                 "origin",

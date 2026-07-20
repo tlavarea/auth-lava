@@ -64,7 +64,9 @@ class VektorAuthenticatorTest {
                 "test-company-id",
                 wireMockRuntimeInfo.getHttpBaseUrl(),
                 Duration.ofMillis(10),
-                List.of("manifest_in_progress"));
+                List.of("manifest_in_progress"),
+                14,
+                60);
     }
 
     private RestClient vektorRestClient(WireMockRuntimeInfo wireMockRuntimeInfo) {

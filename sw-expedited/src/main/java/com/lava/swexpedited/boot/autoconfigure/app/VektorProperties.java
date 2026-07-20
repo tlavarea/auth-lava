@@ -19,7 +19,15 @@ import org.springframework.validation.annotation.Validated;
  *
  * <p>syncedStatuses is which Manifests/Get {@code effective_status} values to sync - a product decision (do we only
  * want currently-"Traveling" manifests, or also look ahead at dispatched/planned ones?) more than a technical one, so
- * it's configurable rather than hardcoded to the one status this was validated against during investigation.
+ * it's configurable rather than hardcoded. Defaults to every status except {@code manifest_canceled}/
+ * {@code manifest_deleted}, matching Vektor's own default "Manifests" grid filter (see {@code VektorManifestClient}'s
+ * javadoc).
+ *
+ * <p>syncWindowDaysBack/syncWindowDaysAhead bound the {@code first_last_stop_appointment_start_datetime_range} filter
+ * {@code VektorManifestClient} sends alongside the status filter - without a date bound, a wide status list (e.g.
+ * including {@code manifest_delivered}) would re-fetch the account's entire manifest history every ~20-minute sync,
+ * forever, since manifests are retained as history via upsert rather than replaced each run. Defaults are a product
+ * judgment call about how far back/ahead the Schedule page is actually browsed, not a technical constraint.
  */
 @ConfigurationProperties(prefix = "vektor")
 @Validated
@@ -29,4 +37,6 @@ public record VektorProperties(
         String companyId,
         @NotBlank String baseUrl,
         Duration retryBackoff,
-        List<String> syncedStatuses) {}
+        List<String> syncedStatuses,
+        int syncWindowDaysBack,
+        int syncWindowDaysAhead) {}

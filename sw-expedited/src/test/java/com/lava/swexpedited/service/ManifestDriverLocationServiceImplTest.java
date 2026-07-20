@@ -37,7 +37,7 @@ class ManifestDriverLocationServiceImplTest {
     private VektorEntityLocationClient vektorEntityLocationClient;
 
     private final VektorProperties vektorProperties = new VektorProperties(
-            "user", "pass", "test-company-id", "https://example.com", Duration.ofSeconds(5), List.of());
+            "user", "pass", "test-company-id", "https://example.com", Duration.ofSeconds(5), List.of(), 14, 60);
 
     @Test
     void findLiveLocation_manifestNotFound_isEmpty() {
@@ -135,6 +135,7 @@ class ManifestDriverLocationServiceImplTest {
                 "0e2bb5f0-d639-4ce4-b9bd-73c5ec34a20c",
                 driverId,
                 "Michael Goodson",
+                "truck-uuid",
                 null,
                 "manifest_in_progress",
                 "origin",

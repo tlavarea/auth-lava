@@ -17,6 +17,12 @@ import org.springframework.stereotype.Component;
  * numbers below are reverse-engineered from real captured traffic, cross-validated end-to-end against a real
  * dispatch-sheet PDF (see the Vektor manifest sync plan) - there's no {@code .proto} schema to generate this from.
  *
+ * <p>The manifest's own top-level field {@code 3} is its {@code truck_id} - a UUID space entirely distinct from
+ * {@code driver_id} (fields {@code 35}/{@code 36}), confirmed by cross-referencing {@code Manifests/Get}'s
+ * {@code driver_id_count} vs {@code truck_id_count} facet responses. Not to be confused with the per-<em>stop</em>
+ * field {@code 3} below (a stop identifier) - same field number, different message scope, same as field {@code 36}
+ * meaning {@code driverId} at the manifest level but a stop's contact phone at the stop level.
+ *
  * <p>A manifest's stops (field 32, repeated) each carry an entry-kind marker (field 1): {@code 1} for a real stop,
  * {@code 2} for a synthetic "starting position" entry (the truck's position when the manifest begins, carried over from
  * wherever its previous manifest left off - not a pickup/dropoff on this manifest). Real stops carry a stop-type marker
@@ -54,6 +60,7 @@ public class VektorManifestMapper {
         String driverId =
                 manifest.getString(35).or(() -> manifest.getString(36)).orElse(null);
         String driverName = driverId == null ? null : driverNamesById.get(driverId);
+        String truckId = manifest.getString(3).orElse(null);
         String status = manifest.getString(50).orElse(null);
 
         List<VektorGrpcWeb.Message> stopMessages = manifest.getMessages(32);
@@ -65,6 +72,7 @@ public class VektorManifestMapper {
                 manifestId,
                 driverId,
                 driverName,
+                truckId,
                 null,
                 status,
                 pickup == null ? null : formattedAddress(pickup),

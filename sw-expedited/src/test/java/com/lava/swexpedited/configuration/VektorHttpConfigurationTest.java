@@ -20,7 +20,9 @@ class VektorHttpConfigurationTest {
                 "test-company-id",
                 "https://app.vektortms.com",
                 Duration.ofSeconds(5),
-                List.of("manifest_in_progress"));
+                List.of("manifest_in_progress"),
+                14,
+                60);
 
         RestClient restClient = this.vektorHttpConfiguration.vektorRestClient(RestClient.builder(), vektorProperties);
 

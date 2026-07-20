@@ -205,6 +205,7 @@ class PickupMatchTaskletTest {
                 "manifest-" + manifestNumber,
                 "driver-uuid",
                 "Warren Ruawhare",
+                "truck-uuid",
                 null,
                 "manifest_in_progress",
                 "origin",

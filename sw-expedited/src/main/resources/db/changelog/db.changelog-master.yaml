@@ -23,3 +23,7 @@ databaseChangeLog:
       file: db/changelog/changes/011-add-vektor-manifest-appointment-window-index.yaml
   - include:
       file: db/changelog/changes/012-add-stops-to-vektor-manifest.yaml
+  - include:
+      file: db/changelog/changes/013-add-truck-id-to-vektor-manifest.yaml
+  - include:
+      file: db/changelog/changes/014-create-vektor-time-off.yaml

@@ -3,6 +3,7 @@ package com.lava.swexpedited.repository;
 import com.lava.swexpedited.vektor.VektorManifestRow;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface VektorManifestRepository {
@@ -26,4 +27,13 @@ public interface VektorManifestRepository {
      * matching the frontend's rule that both are required to render a schedule segment.
      */
     List<VektorManifestRow> findByAppointmentWindow(LocalDateTime windowStart, LocalDateTime windowEnd);
+
+    /**
+     * The most-recently-active driver for each truck, derived from vektor_manifest's retained history (not just the
+     * current sync run - see {@code upsertAll}'s javadoc) rather than any direct truck-roster lookup, since Vektor has
+     * no captured RPC that maps a truck to its currently-assigned driver directly. Best-effort, same spirit as
+     * {@code matched_samsara_driver_id}: this is how a vektor_time_off entry (keyed by truck_id, not driver_id - see
+     * {@code VektorManifestMapper}'s javadoc) gets attributed to a driver on the Schedule page.
+     */
+    Map<String, String> findLatestDriverIdByTruckId();
 }

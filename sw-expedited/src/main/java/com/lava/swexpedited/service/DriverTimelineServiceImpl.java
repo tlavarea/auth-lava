@@ -3,11 +3,14 @@ package com.lava.swexpedited.service;
 import com.lava.swexpedited.repository.SamsaraDriverDutyStatusRepository;
 import com.lava.swexpedited.repository.SamsaraDriverRepository;
 import com.lava.swexpedited.repository.VektorManifestRepository;
+import com.lava.swexpedited.repository.VektorTimeOffRepository;
 import com.lava.swexpedited.samsara.DriverTimelineRow;
 import com.lava.swexpedited.samsara.DriverTimelineRow.ManifestSegment;
+import com.lava.swexpedited.samsara.DriverTimelineRow.TimeOffSegment;
 import com.lava.swexpedited.samsara.SamsaraDriverDutyStatusRow;
 import com.lava.swexpedited.samsara.SamsaraDriverRow;
 import com.lava.swexpedited.vektor.VektorManifestRow;
+import com.lava.swexpedited.vektor.VektorTimeOffRow;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -25,7 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
  * {@code VektorDriverMatchStrategy}) and grouped, sorted by soonest {@code pickupAppointmentStart} first (nulls last)
  * so a driver's row lists their loads for the week in chronological order - a driver can have several manifests in one
  * week now that vektor_manifest retains history instead of only "what's active right now" (see
- * {@code VektorManifestRepository#upsertAll}'s javadoc).
+ * {@code VektorManifestRepository#upsertAll}'s javadoc). vektor_time_off is joined the same best-effort way, via its
+ * own {@code matchedSamsaraDriverId} (resolved at sync time - see {@code VektorSyncTasklet}).
  */
 @Service
 @Transactional(readOnly = true)
@@ -34,14 +38,17 @@ public class DriverTimelineServiceImpl implements DriverTimelineService {
     private final SamsaraDriverRepository samsaraDriverRepository;
     private final SamsaraDriverDutyStatusRepository samsaraDriverDutyStatusRepository;
     private final VektorManifestRepository vektorManifestRepository;
+    private final VektorTimeOffRepository vektorTimeOffRepository;
 
     public DriverTimelineServiceImpl(
             SamsaraDriverRepository samsaraDriverRepository,
             SamsaraDriverDutyStatusRepository samsaraDriverDutyStatusRepository,
-            VektorManifestRepository vektorManifestRepository) {
+            VektorManifestRepository vektorManifestRepository,
+            VektorTimeOffRepository vektorTimeOffRepository) {
         this.samsaraDriverRepository = samsaraDriverRepository;
         this.samsaraDriverDutyStatusRepository = samsaraDriverDutyStatusRepository;
         this.vektorManifestRepository = vektorManifestRepository;
+        this.vektorTimeOffRepository = vektorTimeOffRepository;
     }
 
     @Override
@@ -56,25 +63,33 @@ public class DriverTimelineServiceImpl implements DriverTimelineService {
                                 VektorManifestRow::pickupAppointmentStart,
                                 Comparator.nullsLast(Comparator.naturalOrder())))
                         .collect(Collectors.groupingBy(VektorManifestRow::matchedSamsaraDriverId));
+        Map<String, List<VektorTimeOffRow>> timeOffByDriverId =
+                vektorTimeOffRepository.findByWindow(weekStart, weekEnd).stream()
+                        .filter(timeOff -> timeOff.matchedSamsaraDriverId() != null)
+                        .sorted(Comparator.comparing(VektorTimeOffRow::startAt))
+                        .collect(Collectors.groupingBy(VektorTimeOffRow::matchedSamsaraDriverId));
 
         return samsaraDriverRepository.findAll().stream()
                 .map(driver -> toRow(
                         driver,
                         Optional.ofNullable(dutyStatusesByDriverId.get(driver.id())),
-                        manifestsByDriverId.getOrDefault(driver.id(), List.of())))
+                        manifestsByDriverId.getOrDefault(driver.id(), List.of()),
+                        timeOffByDriverId.getOrDefault(driver.id(), List.of())))
                 .toList();
     }
 
     private DriverTimelineRow toRow(
             SamsaraDriverRow driver,
             Optional<SamsaraDriverDutyStatusRow> dutyStatus,
-            List<VektorManifestRow> manifests) {
+            List<VektorManifestRow> manifests,
+            List<VektorTimeOffRow> timeOff) {
         return new DriverTimelineRow(
                 driver.id(),
                 driver.name(),
                 driver.activationStatus(),
                 dutyStatus.map(SamsaraDriverDutyStatusRow::dutyStatus).orElse(null),
-                manifests.stream().map(DriverTimelineServiceImpl::toSegment).toList());
+                manifests.stream().map(DriverTimelineServiceImpl::toSegment).toList(),
+                timeOff.stream().map(DriverTimelineServiceImpl::toSegment).toList());
     }
 
     private static ManifestSegment toSegment(VektorManifestRow manifest) {
@@ -86,5 +101,9 @@ public class DriverTimelineServiceImpl implements DriverTimelineService {
                 manifest.origin(),
                 manifest.destination(),
                 manifest.loadReference());
+    }
+
+    private static TimeOffSegment toSegment(VektorTimeOffRow timeOff) {
+        return new TimeOffSegment(timeOff.id(), timeOff.startAt(), timeOff.endAt(), timeOff.reason());
     }
 }

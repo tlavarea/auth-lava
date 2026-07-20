@@ -16,6 +16,7 @@ import com.lava.swexpedited.samsara.DriverListingRow;
 import com.lava.swexpedited.samsara.DriverLiveLocationResponse;
 import com.lava.swexpedited.samsara.DriverTimelineRow;
 import com.lava.swexpedited.samsara.DriverTimelineRow.ManifestSegment;
+import com.lava.swexpedited.samsara.DriverTimelineRow.TimeOffSegment;
 import com.lava.swexpedited.service.DriverTimelineService;
 import com.lava.swexpedited.service.SamsaraDriverActivityService;
 import com.lava.swexpedited.service.SamsaraDriverLiveLocationService;
@@ -165,7 +166,12 @@ class DriverControllerTest {
                                 LocalDateTime.of(2026, 7, 20, 10, 0, 0),
                                 "4251 Turin Dr, Bessemer, AL 35020",
                                 "6390 N Alsup Rd, Litchfield Park, AZ 85340",
-                                "SwX-1000589")))));
+                                "SwX-1000589")),
+                        List.of(new TimeOffSegment(
+                                "time-off-uuid",
+                                LocalDateTime.of(2026, 7, 21, 0, 0, 0),
+                                LocalDateTime.of(2026, 7, 22, 0, 0, 0),
+                                "Vacation")))));
 
         this.mockMvc
                 .perform(get("/api/drivers/timeline").cookie(new Cookie("ACCESS_TOKEN", "token-value")))
@@ -175,7 +181,9 @@ class DriverControllerTest {
                 .andExpect(jsonPath("$[0].manifests[0].manifestNumber").value(1000589))
                 .andExpect(jsonPath("$[0].manifests[0].manifestStatus").value("manifest_in_progress"))
                 .andExpect(jsonPath("$[0].manifests[0].origin").value("4251 Turin Dr, Bessemer, AL 35020"))
-                .andExpect(jsonPath("$[0].manifests[0].loadReference").value("SwX-1000589"));
+                .andExpect(jsonPath("$[0].manifests[0].loadReference").value("SwX-1000589"))
+                .andExpect(jsonPath("$[0].timeOff[0].id").value("time-off-uuid"))
+                .andExpect(jsonPath("$[0].timeOff[0].reason").value("Vacation"));
     }
 
     @Test
