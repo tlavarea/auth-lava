@@ -33,3 +33,5 @@ databaseChangeLog:
       file: db/changelog/changes/016-create-vektor-truck.yaml
   - include:
       file: db/changelog/changes/017-create-vektor-trailer.yaml
+  - include:
+      file: db/changelog/changes/018-relax-vektor-manifest-origin-destination-not-null.yaml

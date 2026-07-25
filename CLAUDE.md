@@ -14,12 +14,16 @@ auth-lava and the frontend talk over HTTP: the Angular dev server proxies `/api`
 
 ## Commands
 
-- Shared dev infra (Postgres + Mailpit + Zipkin at `localhost:9411`): `docker-compose up -d` from the repo root
+- Shared dev infra (Postgres + Mailpit + Zipkin at `localhost:9411` + Loki/Grafana at `localhost:3000`): `docker-compose up -d` from the repo root
 - Backend: `cd backend && ./mvnw verify` (build + test), `./mvnw spring-boot:run` (run locally, needs a `.env` — see `backend/CLAUDE.md`)
 - sw-expedited: `cd sw-expedited && ./mvnw verify` (build + test), `./mvnw spring-boot:run` (run locally; needs auth-lava running on `localhost:8080` for JWKS verification, Postgres running (`docker-compose up -d` from the repo root) and the root `.env`'s `POSTGRES_USER`/`POSTGRES_PASSWORD`; the GFM shipment sync additionally needs `GFM_KEYSTORE_PATH`/`GFM_KEYSTORE_PASSWORD`/`GFM_TRUSTSTORE_PATH`/`GFM_TRUSTSTORE_PASSWORD` env vars for the cert-based GFM login, pointing at a PKCS12 client cert and JKS truststore kept outside the repo; the Samsara driver sync additionally needs a `SAMSARA_API_TOKEN` env var, a bearer token created in the Samsara dashboard with "Read ELD Compliance Settings (US)" scope enabled — needed for the driver duty-status sync (`/fleet/hos/clocks`), not just the driver roster/location endpoints; the Vektor manifest sync additionally needs `VEKTOR_USERNAME`/`VEKTOR_PASSWORD`/`VEKTOR_COMPANY_ID` env vars — a login and fixed company UUID for app.vektortms.com, which has no public API and is instead reverse-engineered as a gRPC-Web backend (see `VektorGrpcWeb`'s javadoc for the wire format; `VektorProperties`' javadoc for why `company_id` is a per-account header rather than something fetched at runtime); the pickup-viability match (`PickupMatchTasklet`, chained onto the end of the GFM shipment sync) additionally needs a `GOOGLE_MAPS_API_KEY` env var, a billing-enabled Google Cloud API key with the Routes API (not Distance Matrix or Geocoding) enabled, used to compute driving distance between a Vektor-tracked driver's destination and a shipment's pickup location)
 - Frontend: `cd frontend && pnpm install && pnpm start` (dev server at `localhost:4200`), `pnpm build`, `pnpm test`
 
 For anything specific to one side (testing conventions, schema migrations, Angular state management, etc.), see that subdirectory's `CLAUDE.md`.
+
+## Logs
+
+`backend/` and `sw-expedited/` each push their logs directly to Loki (`docker-compose`'s `loki` service) via a Logback appender (`logback-spring.xml`, `com.github.loki4j:loki-logback-appender`) rather than the more common container-log-collection setup — both apps run as host processes (`./mvnw spring-boot:run`), not Docker containers, so there's no container stdout for a log driver or Promtail to pick up. Query logs (and Zipkin traces, provisioned as a second datasource) at `localhost:3000` (Grafana, anonymous admin access — this stack is dev-only, not for a shared/production deployment). If Loki isn't running, the appender just drops batches on connection failure rather than blocking app startup or requests.
 
 ## CI
 

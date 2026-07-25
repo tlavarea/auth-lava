@@ -45,6 +45,37 @@ services:
       - "9411:9411"
     restart: unless-stopped
 
+  # Log storage/query backend. backend/ and sw-expedited/ run outside Docker (via ./mvnw spring-boot:run), so logs
+  # are pushed here directly by a Logback appender (loki4j) rather than collected from container stdout.
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+    volumes:
+      - loki_data:/loki
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      # Local dev only - anonymous admin access, same low-friction posture as Mailpit/Zipkin above.
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+
 volumes:
   mailpit_data:
   pgdata:
+  loki_data:
+  grafana_data:
