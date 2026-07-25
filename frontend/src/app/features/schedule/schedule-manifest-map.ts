@@ -159,9 +159,12 @@ export class ScheduleManifestMap {
   // instead, which opens driver-detail's actual live-tracking map.
   private readonly driverLocationSnapshot = signal<ManifestDriverLocation | null>(null);
 
+  // encodedPolyline is null when Google couldn't find a drivable route through this manifest's waypoints (see
+  // ManifestRouteServiceImpl's javadoc) - the stop/starting-position markers below still render from route's other
+  // fields in that case, just without a connecting line.
   protected readonly decodedPath: Signal<google.maps.LatLngLiteral[] | null> = computed(() => {
-    const route = this.route();
-    return route === null ? null : decodePolyline(route.encodedPolyline);
+    const encodedPolyline = this.route()?.encodedPolyline ?? null;
+    return encodedPolyline === null ? null : decodePolyline(encodedPolyline);
   });
 
   protected readonly startingPosition: Signal<google.maps.LatLngLiteral | null> = computed(() => {

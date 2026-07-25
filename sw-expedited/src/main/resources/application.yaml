@@ -22,6 +22,11 @@ google-maps:
   base-url: ${GOOGLE_MAPS_BASE_URL:https://routes.googleapis.com}
   retry-backoff: ${GOOGLE_MAPS_RETRY_BACKOFF:5s}
 
+# Places API (New) - shares google-maps.api-key rather than its own; see GooglePlacesProperties' javadoc.
+google-places:
+  base-url: ${GOOGLE_PLACES_BASE_URL:https://places.googleapis.com}
+  retry-backoff: ${GOOGLE_PLACES_RETRY_BACKOFF:5s}
+
 logging:
   level:
     com.lava: ${LOG_LEVEL_COM_LAVA:info}
