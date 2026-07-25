@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: "17"
+      author: tlavarea
+      comment: >
+        VEKTOR_TRAILER - Vektor's full trailer roster synced periodically from app.vektortms.com's gRPC-Web
+        Trailers/Get endpoint (see VektorFleetSyncTasklet), giving vektor_truck.current_trailer_id something
+        to resolve against. Fully replaced (delete+reinsert) every sync, same reasoning as
+        015-create-vektor-driver.yaml. label is the combined display string Vektor itself sends (e.g. "T231 -
+        53' SDL") - stored as-is rather than split into a trailer number/type, since not every trailer's label
+        has the " - " separator observed on most. Fields describing trailer status/type/ownership seen in a
+        real capture aren't yet confidently understood and are intentionally not surfaced as columns,
+        remaining available only via raw_response - including one unexplained numeric field (a double, 700.0)
+        seen on a single trailer, which might turn out to be a capacity/weight figure useful for a future
+        "does this shipment fit on this trailer" feature, but isn't confirmed enough to surface yet.
+      changes:
+        - createTable:
+            tableName: vektor_trailer
+            columns:
+              - column:
+                  name: id
+                  type: VARCHAR
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: label
+                  type: VARCHAR
+              - column:
+                  name: manufacturer
+                  type: VARCHAR
+              - column:
+                  name: year
+                  type: INT
+              - column:
+                  name: raw_response
+                  type: JSON
+                  constraints:
+                    nullable: false
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS vektor_trailer CASCADE;

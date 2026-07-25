@@ -27,3 +27,9 @@ databaseChangeLog:
       file: db/changelog/changes/013-add-truck-id-to-vektor-manifest.yaml
   - include:
       file: db/changelog/changes/014-create-vektor-time-off.yaml
+  - include:
+      file: db/changelog/changes/015-create-vektor-driver.yaml
+  - include:
+      file: db/changelog/changes/016-create-vektor-truck.yaml
+  - include:
+      file: db/changelog/changes/017-create-vektor-trailer.yaml

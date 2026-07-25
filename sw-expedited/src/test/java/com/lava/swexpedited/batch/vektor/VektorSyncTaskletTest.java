@@ -7,11 +7,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import com.lava.swexpedited.boot.autoconfigure.app.VektorProperties;
-import com.lava.swexpedited.repository.SamsaraDriverRepository;
+import com.lava.swexpedited.repository.VektorDriverRepository;
 import com.lava.swexpedited.repository.VektorManifestRepository;
 import com.lava.swexpedited.repository.VektorTimeOffRepository;
-import com.lava.swexpedited.samsara.SamsaraDriverRow;
-import com.lava.swexpedited.vektor.VektorDriverMatchStrategy;
+import com.lava.swexpedited.repository.VektorTruckRepository;
 import com.lava.swexpedited.vektor.VektorGrpcWeb;
 import com.lava.swexpedited.vektor.VektorManifestMapper;
 import com.lava.swexpedited.vektor.VektorManifestRow;
@@ -22,7 +21,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -53,16 +51,16 @@ class VektorSyncTaskletTest {
     private VektorTimeOffMapper vektorTimeOffMapper;
 
     @Mock
-    private VektorDriverMatchStrategy vektorDriverMatchStrategy;
-
-    @Mock
-    private SamsaraDriverRepository samsaraDriverRepository;
-
-    @Mock
     private VektorManifestRepository vektorManifestRepository;
 
     @Mock
     private VektorTimeOffRepository vektorTimeOffRepository;
+
+    @Mock
+    private VektorTruckRepository vektorTruckRepository;
+
+    @Mock
+    private VektorDriverRepository vektorDriverRepository;
 
     private final VektorProperties vektorProperties = new VektorProperties(
             "user@example.com",
@@ -91,11 +89,8 @@ class VektorSyncTaskletTest {
                 .thenReturn(driverNamesById);
         VektorManifestRow mappedRow = row(1000589L, null);
         when(this.vektorManifestMapper.toRow(rawManifest, driverNamesById)).thenReturn(mappedRow);
-        SamsaraDriverRow samsaraDriver = new SamsaraDriverRow(
-                "samsara-1", "Warren Ruawhare", null, null, null, null, null, "active", null, null, null, "{}", null);
-        when(this.samsaraDriverRepository.findAll()).thenReturn(List.of(samsaraDriver));
-        when(this.vektorDriverMatchStrategy.match("Warren Ruawhare", List.of(samsaraDriver)))
-                .thenReturn(Optional.of("samsara-1"));
+        when(this.vektorDriverRepository.findMatchedSamsaraDriverIdById())
+                .thenReturn(Map.of("driver-uuid", "samsara-1"));
 
         VektorSyncTasklet tasklet = tasklet();
 
@@ -110,7 +105,7 @@ class VektorSyncTaskletTest {
     }
 
     @Test
-    void execute_noDriverMatch_leavesMatchedSamsaraDriverIdNull() {
+    void execute_manifestDriverIdNotInMatchedMap_leavesMatchedSamsaraDriverIdNull() {
         when(this.vektorAuthenticator.authenticate()).thenReturn("test-jwt");
         VektorGrpcWeb.Message rawManifest = VektorGrpcWeb.decodeUnaryResponse(
                 VektorGrpcWeb.encodeUnaryResponse(new VektorGrpcWeb.Writer().writeVarint(2, 1000589L)));
@@ -121,9 +116,7 @@ class VektorSyncTaskletTest {
                 .thenReturn(Map.of());
         VektorManifestRow mappedRow = row(1000589L, null);
         when(this.vektorManifestMapper.toRow(eq(rawManifest), Mockito.anyMap())).thenReturn(mappedRow);
-        when(this.samsaraDriverRepository.findAll()).thenReturn(List.of());
-        when(this.vektorDriverMatchStrategy.match(eq("Warren Ruawhare"), Mockito.anyList()))
-                .thenReturn(Optional.empty());
+        when(this.vektorDriverRepository.findMatchedSamsaraDriverIdById()).thenReturn(Map.of());
 
         VektorSyncTasklet tasklet = tasklet();
 
@@ -148,13 +141,9 @@ class VektorSyncTaskletTest {
                 .thenReturn(List.of(rawTimeOff));
         VektorTimeOffRow mappedTimeOff = timeOffRow("time-off-uuid", "truck-uuid", null);
         when(this.vektorTimeOffMapper.toRow(rawTimeOff)).thenReturn(mappedTimeOff);
-        when(this.vektorManifestRepository.findLatestDriverIdByTruckId())
-                .thenReturn(Map.of("truck-uuid", "driver-uuid"));
-        SamsaraDriverRow samsaraDriver = new SamsaraDriverRow(
-                "samsara-1", "Warren Ruawhare", null, null, null, null, null, "active", null, null, null, "{}", null);
-        when(this.samsaraDriverRepository.findAll()).thenReturn(List.of(samsaraDriver));
-        when(this.vektorDriverMatchStrategy.match("Warren Ruawhare", List.of(samsaraDriver)))
-                .thenReturn(Optional.of("samsara-1"));
+        when(this.vektorTruckRepository.findCurrentDriverIdByTruckId()).thenReturn(Map.of("truck-uuid", "driver-uuid"));
+        when(this.vektorDriverRepository.findMatchedSamsaraDriverIdById())
+                .thenReturn(Map.of("driver-uuid", "samsara-1"));
 
         VektorSyncTasklet tasklet = tasklet();
 
@@ -181,8 +170,33 @@ class VektorSyncTaskletTest {
                 .thenReturn(List.of(rawTimeOff));
         VektorTimeOffRow mappedTimeOff = timeOffRow("time-off-uuid", "truck-uuid", null);
         when(this.vektorTimeOffMapper.toRow(rawTimeOff)).thenReturn(mappedTimeOff);
-        when(this.vektorManifestRepository.findLatestDriverIdByTruckId()).thenReturn(Map.of());
-        when(this.samsaraDriverRepository.findAll()).thenReturn(List.of());
+        when(this.vektorTruckRepository.findCurrentDriverIdByTruckId()).thenReturn(Map.of());
+
+        VektorSyncTasklet tasklet = tasklet();
+
+        tasklet.execute(null, null);
+
+        ArgumentCaptor<List<VektorTimeOffRow>> rowsCaptor = ArgumentCaptor.captor();
+        Mockito.verify(this.vektorTimeOffRepository).upsertAll(rowsCaptor.capture());
+        assertThat(rowsCaptor.getValue().getFirst().matchedSamsaraDriverId()).isNull();
+    }
+
+    @Test
+    void execute_timeOffTruckKnownButDriverNotMatched_leavesMatchedSamsaraDriverIdNull() {
+        when(this.vektorAuthenticator.authenticate()).thenReturn("test-jwt");
+        when(this.vektorManifestClient.fetchManifests(
+                        eq("test-jwt"), eq("test-company-id"), anyList(), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(List.of());
+        when(this.vektorDriverClient.fetchDriverNamesById("test-jwt", "test-company-id"))
+                .thenReturn(Map.of());
+        VektorGrpcWeb.Message rawTimeOff = VektorGrpcWeb.decodeUnaryResponse(
+                VektorGrpcWeb.encodeUnaryResponse(new VektorGrpcWeb.Writer().writeString(2, "time-off-uuid")));
+        when(this.vektorTimeOffClient.fetchTimeOff(eq("test-jwt"), eq("test-company-id"), any(LocalDate.class)))
+                .thenReturn(List.of(rawTimeOff));
+        VektorTimeOffRow mappedTimeOff = timeOffRow("time-off-uuid", "truck-uuid", null);
+        when(this.vektorTimeOffMapper.toRow(rawTimeOff)).thenReturn(mappedTimeOff);
+        when(this.vektorTruckRepository.findCurrentDriverIdByTruckId()).thenReturn(Map.of("truck-uuid", "driver-uuid"));
+        when(this.vektorDriverRepository.findMatchedSamsaraDriverIdById()).thenReturn(Map.of());
 
         VektorSyncTasklet tasklet = tasklet();
 
@@ -201,10 +215,10 @@ class VektorSyncTaskletTest {
                 this.vektorTimeOffClient,
                 this.vektorManifestMapper,
                 this.vektorTimeOffMapper,
-                this.vektorDriverMatchStrategy,
-                this.samsaraDriverRepository,
                 this.vektorManifestRepository,
                 this.vektorTimeOffRepository,
+                this.vektorTruckRepository,
+                this.vektorDriverRepository,
                 this.vektorProperties);
     }
 

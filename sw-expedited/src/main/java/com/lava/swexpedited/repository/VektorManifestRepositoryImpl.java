@@ -17,7 +17,6 @@ import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.jooq.DSLContext;
 import org.jooq.InsertValuesStep18;
@@ -174,20 +173,6 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
                 .stream()
                 .map(this::toRow)
                 .toList();
-    }
-
-    @Override
-    public Map<String, String> findLatestDriverIdByTruckId() {
-        return this.dsl
-                .selectDistinct(VEKTOR_MANIFEST.TRUCK_ID, VEKTOR_MANIFEST.DRIVER_ID)
-                .on(VEKTOR_MANIFEST.TRUCK_ID)
-                .from(VEKTOR_MANIFEST)
-                .where(VEKTOR_MANIFEST.TRUCK_ID.isNotNull())
-                .and(VEKTOR_MANIFEST.DRIVER_ID.isNotNull())
-                .orderBy(
-                        VEKTOR_MANIFEST.TRUCK_ID,
-                        VEKTOR_MANIFEST.PICKUP_APPOINTMENT_START.desc().nullsLast())
-                .fetchMap(VEKTOR_MANIFEST.TRUCK_ID, VEKTOR_MANIFEST.DRIVER_ID);
     }
 
     private VektorManifestRow toRow(VektorManifest row) {

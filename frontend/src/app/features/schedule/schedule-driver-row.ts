@@ -79,7 +79,7 @@ const NARROW_SEGMENT_THRESHOLD_PERCENT = 12;
   imports: [HlmBadgeImports, DatePipe, RouterLink],
   template: `
     <div
-      class="grid grid-cols-[250px_1fr] pb-4"
+      class="grid grid-cols-[250px_1fr] pb-1"
       [style.min-width.px]="NAME_COLUMN_PX + rangeDays() * MIN_DAY_COLUMN_PX">
       <div class="sticky left-0 z-10 flex h-full min-w-0 items-center justify-between self-stretch bg-background pr-2">
         <a class="truncate text-sm font-medium hover:underline" [routerLink]="['/drivers', driver().driverId]">
@@ -92,7 +92,7 @@ const NARROW_SEGMENT_THRESHOLD_PERCENT = 12;
         }
       </div>
 
-      <div class="relative h-12 overflow-hidden rounded bg-muted pl-2" [attr.aria-label]="ariaLabel()">
+      <div class="relative h-20 overflow-hidden rounded bg-muted pl-2" [attr.aria-label]="ariaLabel()">
         @for (tick of dayTicks(); track tick.dayIndex) {
           <span class="absolute inset-y-0 w-px bg-neutral-400 dark:bg-neutral-600" [style.left.%]="tick.percent"></span>
         }

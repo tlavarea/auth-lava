@@ -84,7 +84,7 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     password: ${SPRING_DATASOURCE_PASSWORD:}
-    url: jdbc:postgresql://${SPRING_DATASOURCE_HOST:localhost}:${SPRING_DATASOURCE_PORT:5432}/${SPRING_DATASOURCE_DB:sw_expedited_db}
+    url: jdbc:postgresql://${SPRING_DATASOURCE_HOST:localhost}:${SPRING_DATASOURCE_PORT:5432}/${SPRING_DATASOURCE_DB_SWE:}
     username: ${SPRING_DATASOURCE_USERNAME:}
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
@@ -99,6 +99,13 @@ vektor:
   synced-statuses: ${VEKTOR_SYNCED_STATUSES:manifest_planning,manifest_assigned,manifest_dispatched,manifest_in_progress,manifest_delivered,manifest_tonu}
   sync-window-days-back: ${VEKTOR_SYNC_WINDOW_DAYS_BACK:14}
   sync-window-days-ahead: ${VEKTOR_SYNC_WINDOW_DAYS_AHEAD:60}
+
+vektor-fleet-sync:
+  # Offset 10 minutes from vektor-sync's own */20 tick (0,20,40) - the shared batchTaskExecutor pool
+  # (ShipmentSyncJobConfig#batchTaskExecutor) is only 2 threads wide across every scheduled job in this app, so
+  # staggering avoids contention rather than racing correctness - there's no ordering requirement between this job
+  # and vektor-sync's own tick, VektorSyncTasklet's matching just uses whatever this job last synced.
+  cron: ${VEKTOR_FLEET_SYNC_CRON:0 10,30,50 * ? * *}
 
 vektor-sync:
   cron: ${VEKTOR_SYNC_CRON:0 */20 * ? * *}

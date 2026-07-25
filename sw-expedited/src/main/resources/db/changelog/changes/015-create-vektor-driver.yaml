@@ -1,0 +1,57 @@
+databaseChangeLog:
+  - changeSet:
+      id: "15"
+      author: tlavarea
+      comment: >
+        VEKTOR_DRIVER - Vektor's full driver roster synced periodically from app.vektortms.com's gRPC-Web
+        Drivers/Get endpoint (see VektorFleetSyncTasklet). Unlike vektor_manifest/vektor_time_off's
+        history-retaining upsert (see 011-add-vektor-manifest-appointment-window-index.yaml), this table is
+        fully replaced (delete+reinsert) every sync - same convention as samsara_driver (see
+        003-create-samsara-driver.yaml) - since there's no "show past weeks" consumer for the fleet roster,
+        only "who's on the roster right now". matched_samsara_driver_id is resolved once per driver at sync
+        time via NameNormalizingDriverMatchStrategy against full_name, replacing the old approach of
+        VektorSyncTasklet re-running that same match live against every individual manifest/time-off row -
+        deliberately no FK constraint, same reasoning as vektor_manifest.matched_samsara_driver_id. Only
+        driver_number, full_name (already relied on by VektorDriverClient#fetchDriverNamesById), email, and
+        phone are confirmed field numbers as of this migration (fields 2, 35, 7, 8 respectively); many other
+        fields observed in a real captured Drivers/Get response are not yet confidently understood and remain
+        available only via raw_response until a future migration confirms and surfaces them.
+      changes:
+        - createTable:
+            tableName: vektor_driver
+            columns:
+              - column:
+                  name: id
+                  type: VARCHAR
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: driver_number
+                  type: VARCHAR
+              - column:
+                  name: full_name
+                  type: VARCHAR
+              - column:
+                  name: email
+                  type: VARCHAR
+              - column:
+                  name: phone
+                  type: VARCHAR
+              - column:
+                  name: matched_samsara_driver_id
+                  type: VARCHAR
+              - column:
+                  name: raw_response
+                  type: JSON
+                  constraints:
+                    nullable: false
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS vektor_driver CASCADE;
