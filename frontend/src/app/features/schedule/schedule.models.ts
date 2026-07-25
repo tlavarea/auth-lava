@@ -55,11 +55,13 @@ export type ManifestStartingPosition = {
 
 // Mirrors the backend's GET /api/manifests/{manifestNumber}/route response shape (ManifestRouteResponse):
 // every stop on the manifest plus the driving route (geometry, not just distance/duration) that visits them in
-// order. encodedPolyline is Google's polyline-encoded route geometry, decoded client-side via decode-polyline.ts.
+// order. encodedPolyline is Google's polyline-encoded route geometry, decoded client-side via decode-polyline.ts -
+// it's null (independently of stops/startingPosition, which are always populated) when Google couldn't find a
+// drivable route through this manifest's waypoints.
 export type ManifestRoute = {
   stops: ManifestStop[];
   startingPosition: ManifestStartingPosition | null;
-  encodedPolyline: string;
+  encodedPolyline: string | null;
   distanceMeters: number | null;
   duration: string | null;
 };
