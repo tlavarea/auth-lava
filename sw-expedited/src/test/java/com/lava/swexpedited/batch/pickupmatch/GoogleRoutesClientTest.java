@@ -14,6 +14,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.lava.swexpedited.batch.pickupmatch.GoogleRoutesClient.ComputedRoute;
+import com.lava.swexpedited.batch.pickupmatch.GoogleRoutesClient.RouteWaypoint;
 import com.lava.swexpedited.batch.pickupmatch.RouteMatrixClient.LatLng;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -44,7 +45,8 @@ class GoogleRoutesClientTest {
         GoogleRoutesClient client =
                 new GoogleRoutesClient(computeRoutesRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
 
-        Optional<ComputedRoute> result = client.computeRoute(List.of(ORIGIN, DESTINATION));
+        Optional<ComputedRoute> result =
+                client.computeRoute(List.of(RouteWaypoint.ofLocation(ORIGIN), RouteWaypoint.ofLocation(DESTINATION)));
 
         assertThat(result).isPresent();
         ComputedRoute route = result.get();
@@ -75,7 +77,10 @@ class GoogleRoutesClientTest {
         GoogleRoutesClient client =
                 new GoogleRoutesClient(computeRoutesRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
 
-        client.computeRoute(List.of(ORIGIN, INTERMEDIATE, DESTINATION));
+        client.computeRoute(List.of(
+                RouteWaypoint.ofLocation(ORIGIN),
+                RouteWaypoint.ofLocation(INTERMEDIATE),
+                RouteWaypoint.ofLocation(DESTINATION)));
 
         verify(postRequestedFor(urlPathEqualTo(COMPUTE_ROUTES_PATH)).withRequestBody(equalToJson("""
                         {
@@ -88,11 +93,40 @@ class GoogleRoutesClientTest {
     }
 
     @Test
+    void computeRoute_addressWaypoint_sendsAddressInsteadOfLocation(WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(post(urlPathEqualTo(COMPUTE_ROUTES_PATH))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("""
+                                {"routes":[{"distanceMeters":127923,"duration":"5019s","polyline":{"encodedPolyline":"abc123"}}]}
+                                """)));
+
+        GoogleRoutesClient client =
+                new GoogleRoutesClient(computeRoutesRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        Optional<ComputedRoute> result = client.computeRoute(
+                List.of(RouteWaypoint.ofLocation(ORIGIN), RouteWaypoint.ofAddress("Fort Hunter Liggett, CA")));
+
+        assertThat(result).isPresent();
+
+        verify(postRequestedFor(urlPathEqualTo(COMPUTE_ROUTES_PATH)).withRequestBody(equalToJson("""
+                        {
+                          "origin": {"location": {"latLng": {"latitude": 33.393, "longitude": -86.930}}},
+                          "destination": {"address": "Fort Hunter Liggett, CA"},
+                          "intermediates": [],
+                          "travelMode": "DRIVE"
+                        }
+                        """)));
+    }
+
+    @Test
     void computeRoute_fewerThanTwoWaypoints_throws(WireMockRuntimeInfo wireMockRuntimeInfo) {
         GoogleRoutesClient client =
                 new GoogleRoutesClient(computeRoutesRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
 
-        assertThatThrownBy(() -> client.computeRoute(List.of(ORIGIN))).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> client.computeRoute(List.of(RouteWaypoint.ofLocation(ORIGIN))))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -108,7 +142,8 @@ class GoogleRoutesClientTest {
         GoogleRoutesClient client =
                 new GoogleRoutesClient(computeRoutesRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
 
-        Optional<ComputedRoute> result = client.computeRoute(List.of(ORIGIN, DESTINATION));
+        Optional<ComputedRoute> result =
+                client.computeRoute(List.of(RouteWaypoint.ofLocation(ORIGIN), RouteWaypoint.ofLocation(DESTINATION)));
 
         assertThat(result).isEmpty();
     }
@@ -133,7 +168,8 @@ class GoogleRoutesClientTest {
         GoogleRoutesClient client =
                 new GoogleRoutesClient(computeRoutesRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
 
-        Optional<ComputedRoute> result = client.computeRoute(List.of(ORIGIN, DESTINATION));
+        Optional<ComputedRoute> result =
+                client.computeRoute(List.of(RouteWaypoint.ofLocation(ORIGIN), RouteWaypoint.ofLocation(DESTINATION)));
 
         assertThat(result).isEmpty();
         verify(2, postRequestedFor(urlPathEqualTo(COMPUTE_ROUTES_PATH)));

@@ -117,6 +117,44 @@ class ManifestControllerTest {
                 .andExpect(jsonPath("$.distanceMeters").value(160934));
     }
 
+    // Regression test: a manifest whose stops Google couldn't route between (see ManifestRouteServiceImpl's javadoc)
+    // still returns its stops/starting position with a 200, just with null route geometry fields, rather than 404ing
+    // the whole response.
+    @Test
+    void route_found_withoutGoogleRoute_returnsStopsWithNullRouteGeometry() throws Exception {
+        Jwt jwt = authenticatedJwt();
+        when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
+        ManifestStopResponse stop = new ManifestStopResponse(
+                "stop-uuid-1",
+                1,
+                StopType.PICKUP,
+                "Dealer Warehouse",
+                "4251 Turin Dr, Bessemer, AL 35020",
+                new BigDecimal("32.735"),
+                new BigDecimal("-97.108"),
+                "EDT",
+                LocalDateTime.of(2026, 7, 17, 9, 30),
+                LocalDateTime.of(2026, 7, 17, 10, 0),
+                null,
+                null,
+                null,
+                "CO 01660967",
+                null,
+                null,
+                new BigDecimal("83.00"),
+                new BigDecimal("13.00"),
+                new BigDecimal("406717"));
+        ManifestRouteResponse response = new ManifestRouteResponse(List.of(stop), null, null, null, null);
+        when(this.manifestRouteService.findRoute(1000589L)).thenReturn(Optional.of(response));
+
+        this.mockMvc
+                .perform(get("/api/manifests/1000589/route").cookie(new Cookie("ACCESS_TOKEN", "token-value")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stops[0].sequenceNumber").value(1))
+                .andExpect(jsonPath("$.encodedPolyline").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.distanceMeters").value(org.hamcrest.Matchers.nullValue()));
+    }
+
     @Test
     void driverLocation_notFound_returns404() throws Exception {
         Jwt jwt = authenticatedJwt();

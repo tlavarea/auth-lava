@@ -267,6 +267,29 @@ describe('ScheduleManifestMap', () => {
     );
   });
 
+  // Regression test: encodedPolyline is null when Google couldn't find a drivable route through the manifest's
+  // waypoints (an expected state, see ManifestRouteServiceImpl's javadoc) - the stop markers should still render
+  // from the rest of the route response even though there's no line connecting them.
+  it('renders stop markers without a polyline when the route has no encoded polyline', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ScheduleManifestMap],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+
+    httpMock = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(ScheduleManifestMap);
+    fixture.componentRef.setInput('manifest', manifest);
+    fixture.componentRef.setInput('route', { ...route, encodedPolyline: null, distanceMeters: null, duration: null });
+    fixture.detectChanges();
+    await flushLiveLocation();
+
+    expect(polylineConstructor).not.toHaveBeenCalled();
+    expect(markerConstructor).toHaveBeenCalledWith(expect.objectContaining({ position: { lat: 33.101, lng: -87.99 } }));
+    expect(markerConstructor).toHaveBeenCalledWith(
+      expect.objectContaining({ position: { lat: 33.489, lng: -112.361 } })
+    );
+  });
+
   it('renders a heading-rotated driver marker at the fetched location once loaded', async () => {
     await render();
     await flushLiveLocation();
