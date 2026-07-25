@@ -1,0 +1,68 @@
+databaseChangeLog:
+  - changeSet:
+      id: "16"
+      author: tlavarea
+      comment: >
+        VEKTOR_TRUCK - Vektor's full truck roster synced periodically from app.vektortms.com's gRPC-Web
+        Trucks/Get endpoint (see VektorFleetSyncTasklet), giving VektorSyncTasklet a direct truck->driver
+        lookup for the first time - replacing the old heuristic of inferring "who's driving this truck" from
+        vektor_manifest's retained pickup-appointment history (the now-removed
+        VektorManifestRepository#findLatestDriverIdByTruckId). Fully replaced (delete+reinsert) every sync,
+        same reasoning as 015-create-vektor-driver.yaml. current_trailer_id and current_driver_id are both
+        Vektor's own UUIDs from other Vektor entities (vektor_trailer.id, vektor_driver.id respectively) -
+        deliberately no FK constraint, same best-effort convention as matched_samsara_driver_id elsewhere,
+        since this is derived from Vektor's own (undocumented, reverse-engineered) data rather than
+        referential integrity this app controls. status_code is the raw field-3 integer as observed in a real
+        capture - only one non-1 value (3) has been seen, on a truck whose own audit log ended "Status: active
+        -> terminated" with no current driver/trailer assigned, so 3 likely means inactive/terminated, but
+        this isn't fully confirmed, so it's stored as-is rather than mapped to an enum. Other captured-but-
+        unconfirmed fields (color, toll transponder number, unloaded/gross weight, registration country/state)
+        are intentionally not surfaced as columns and remain available only via raw_response.
+      changes:
+        - createTable:
+            tableName: vektor_truck
+            columns:
+              - column:
+                  name: id
+                  type: VARCHAR
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: truck_number
+                  type: VARCHAR
+              - column:
+                  name: status_code
+                  type: INT
+              - column:
+                  name: vin
+                  type: VARCHAR
+              - column:
+                  name: make
+                  type: VARCHAR
+              - column:
+                  name: model
+                  type: VARCHAR
+              - column:
+                  name: year
+                  type: INT
+              - column:
+                  name: current_trailer_id
+                  type: VARCHAR
+              - column:
+                  name: current_driver_id
+                  type: VARCHAR
+              - column:
+                  name: raw_response
+                  type: JSON
+                  constraints:
+                    nullable: false
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS vektor_truck CASCADE;

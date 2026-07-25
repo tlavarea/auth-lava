@@ -7,13 +7,17 @@ import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
+import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.lava.swexpedited.vektor.VektorGrpcWeb;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestClient;
@@ -81,6 +85,84 @@ class VektorDriverClientTest {
         verify(postRequestedFor(urlEqualTo(DRIVERS_GET_PATH))
                 .withHeader("company_id", equalTo("test-company-id"))
                 .withRequestBody(binaryEqualTo(expectedBody)));
+    }
+
+    @Test
+    void fetchDrivers_returnsRawDecodedMessages(WireMockRuntimeInfo wireMockRuntimeInfo) {
+        VektorGrpcWeb.Writer response = new VektorGrpcWeb.Writer()
+                .writeMessage(1, new VektorGrpcWeb.Writer().writeString(1, "driver-uuid-1"))
+                .writeMessage(1, new VektorGrpcWeb.Writer().writeString(1, "driver-uuid-2"));
+        stubFor(post(urlEqualTo(DRIVERS_GET_PATH))
+                .willReturn(aResponse().withStatus(200).withBody(VektorGrpcWeb.encodeUnaryResponse(response))));
+
+        VektorDriverClient client =
+                new VektorDriverClient(vektorRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        List<VektorGrpcWeb.Message> drivers = client.fetchDrivers("test-jwt", "test-company-id");
+
+        assertThat(drivers)
+                .extracting(m -> m.getString(1).orElseThrow())
+                .containsExactly("driver-uuid-1", "driver-uuid-2");
+    }
+
+    @Test
+    void fetchDrivers_sendsTheConfirmedRequestBody(WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(post(urlEqualTo(DRIVERS_GET_PATH))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody(VektorGrpcWeb.encodeUnaryResponse(new VektorGrpcWeb.Writer()))));
+        VektorDriverClient client =
+                new VektorDriverClient(vektorRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        client.fetchDrivers("test-jwt", "test-company-id");
+
+        byte[] expectedBody = VektorGrpcWeb.encodeUnaryRequest(new VektorGrpcWeb.Writer().writeVarint(1, 1));
+        verify(postRequestedFor(urlEqualTo(DRIVERS_GET_PATH))
+                .withHeader("company_id", equalTo("test-company-id"))
+                .withRequestBody(binaryEqualTo(expectedBody)));
+    }
+
+    @Test
+    void fetchDrivers_emptyResponseBody_throwsWithStatusAndGrpcHeadersRatherThanNpe(
+            WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(post(urlEqualTo(DRIVERS_GET_PATH))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("grpc-status", "3")
+                        .withHeader("grpc-message", "invalid argument")));
+
+        VektorDriverClient client =
+                new VektorDriverClient(vektorRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        assertThatThrownBy(() -> client.fetchDrivers("test-jwt", "test-company-id"))
+                .isInstanceOf(VektorGrpcWeb.VektorGrpcWebException.class)
+                .hasMessageContaining("Drivers/Get")
+                .hasMessageContaining("200")
+                .hasMessageContaining("grpc-status=3")
+                .hasMessageContaining("grpc-message=invalid argument");
+    }
+
+    @Test
+    void fetchDrivers_retriesOn5xxThenSucceeds(WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(post(urlEqualTo(DRIVERS_GET_PATH))
+                .inScenario("drivers-retry")
+                .whenScenarioStateIs(Scenario.STARTED)
+                .willReturn(aResponse().withStatus(503))
+                .willSetStateTo("recovered"));
+        stubFor(post(urlEqualTo(DRIVERS_GET_PATH))
+                .inScenario("drivers-retry")
+                .whenScenarioStateIs("recovered")
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody(VektorGrpcWeb.encodeUnaryResponse(new VektorGrpcWeb.Writer()))));
+
+        VektorDriverClient client =
+                new VektorDriverClient(vektorRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        List<VektorGrpcWeb.Message> drivers = client.fetchDrivers("test-jwt", "test-company-id");
+
+        assertThat(drivers).isEmpty();
+        verify(2, postRequestedFor(urlPathEqualTo(DRIVERS_GET_PATH)));
     }
 
     private RestClient vektorRestClient(WireMockRuntimeInfo wireMockRuntimeInfo) {

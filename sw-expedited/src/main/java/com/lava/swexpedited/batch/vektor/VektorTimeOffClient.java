@@ -17,8 +17,8 @@ import org.springframework.web.client.RestClient;
  * response pair (see the Vektor manifest sync plan). Despite the name, results are grouped by <em>truck</em>, not
  * driver - a UUID space entirely distinct from Vektor's driver_id (see {@code VektorManifestMapper}'s javadoc) - so
  * this returns the flattened list of individual time-off entries (each still carrying its own truck_id), leaving
- * truck-&gt;driver attribution to {@code VektorSyncTasklet} (via {@code VektorManifestRepository
- * #findLatestDriverIdByTruckId}).
+ * truck-&gt;driver attribution to {@code VektorSyncTasklet} (via {@code VektorTruckRepository
+ * #findCurrentDriverIdByTruckId}).
  *
  * <p>The request carries a single lower-bound date; the one captured response returned entries for months beyond that
  * date, suggesting the endpoint has no upper bound and simply returns everything from that date forward - but whether
