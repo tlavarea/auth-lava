@@ -66,6 +66,52 @@ class VektorManifestRepositoryImplTest extends AbstractRepositoryIntegrationTest
     }
 
     @Test
+    void pruneSupersededManifests_nonTerminalManifestNotInCurrentSet_isDeleted() {
+        this.vektorManifestRepository.upsertAll(
+                List.of(row(1000587L, "Kelly Dunn", "manifest_assigned"), row(1000589L, "Warren Ruawhare")));
+
+        this.vektorManifestRepository.pruneSupersededManifests(List.of(1000589L));
+
+        assertThat(this.vektorManifestRepository.findAll())
+                .extracting(VektorManifestRow::manifestNumber)
+                .containsExactly(1000589L);
+    }
+
+    @Test
+    void pruneSupersededManifests_terminalManifestNotInCurrentSet_isKept() {
+        this.vektorManifestRepository.upsertAll(List.of(
+                row(1000587L, "Kelly Dunn", "manifest_delivered"), row(1000588L, "Kelly Dunn", "manifest_tonu")));
+
+        this.vektorManifestRepository.pruneSupersededManifests(List.of());
+
+        assertThat(this.vektorManifestRepository.findAll())
+                .extracting(VektorManifestRow::manifestNumber)
+                .containsExactlyInAnyOrder(1000587L, 1000588L);
+    }
+
+    @Test
+    void pruneSupersededManifests_nonTerminalManifestInCurrentSet_isKept() {
+        this.vektorManifestRepository.upsertAll(List.of(row(1000587L, "Kelly Dunn", "manifest_assigned")));
+
+        this.vektorManifestRepository.pruneSupersededManifests(List.of(1000587L));
+
+        assertThat(this.vektorManifestRepository.findAll())
+                .extracting(VektorManifestRow::manifestNumber)
+                .containsExactly(1000587L);
+    }
+
+    @Test
+    void pruneSupersededManifests_emptyCurrentSet_leavesNonTerminalManifestsUntouched() {
+        this.vektorManifestRepository.upsertAll(List.of(row(1000587L, "Kelly Dunn", "manifest_assigned")));
+
+        this.vektorManifestRepository.pruneSupersededManifests(List.of());
+
+        assertThat(this.vektorManifestRepository.findAll())
+                .extracting(VektorManifestRow::manifestNumber)
+                .containsExactly(1000587L);
+    }
+
+    @Test
     void findByManifestNumber_noRow_isEmpty() {
         assertThat(this.vektorManifestRepository.findByManifestNumber(1000589L)).isEmpty();
     }

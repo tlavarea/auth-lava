@@ -1,0 +1,33 @@
+databaseChangeLog:
+  - changeSet:
+      id: "18"
+      author: tlavarea
+      comment: >
+        Relaxes vektor_manifest.origin/destination to nullable. Both were derived assuming every synced manifest
+        resolves at least one pickup (stop type 1) and dropoff (stop type 4) stop (see 008-create-vektor-manifest.yaml),
+        but a freshly manifest_dispatched load can exist in Vektor with no stops assigned yet - VektorManifestMapper
+        already handles this gracefully (origin/destination come back null, see its javadoc). Because
+        VektorSyncTasklet upserts every synced manifest in one multi-row statement/transaction shared with the
+        time-off sync, a single such manifest violating this NOT NULL constraint silently aborted the whole batch -
+        and vektor_time_off along with it - on every run, for four days, until caught via the Vektor Schedule
+        staleness incident on 2026-07-25. DriverTimelineServiceImpl already excludes manifests with no derivable
+        pickup_appointment_start/eta from the Schedule view, so a null origin/destination here doesn't need separate
+        filtering.
+      changes:
+        - dropNotNullConstraint:
+            tableName: vektor_manifest
+            columnName: origin
+            columnDataType: VARCHAR
+        - dropNotNullConstraint:
+            tableName: vektor_manifest
+            columnName: destination
+            columnDataType: VARCHAR
+      rollback:
+        - addNotNullConstraint:
+            tableName: vektor_manifest
+            columnName: origin
+            columnDataType: VARCHAR
+        - addNotNullConstraint:
+            tableName: vektor_manifest
+            columnName: destination
+            columnDataType: VARCHAR

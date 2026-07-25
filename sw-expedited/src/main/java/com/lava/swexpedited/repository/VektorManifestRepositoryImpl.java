@@ -35,6 +35,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class VektorManifestRepositoryImpl implements VektorManifestRepository {
 
+    private static final List<String> TERMINAL_STATUSES = List.of("manifest_delivered", "manifest_tonu");
+
     private final DSLContext dsl;
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
@@ -134,6 +136,20 @@ public class VektorManifestRepositoryImpl implements VektorManifestRepository {
                 .set(VEKTOR_MANIFEST.STARTING_POSITION, excluded(VEKTOR_MANIFEST.STARTING_POSITION))
                 .set(VEKTOR_MANIFEST.RAW_RESPONSE, excluded(VEKTOR_MANIFEST.RAW_RESPONSE))
                 .set(VEKTOR_MANIFEST.SYNCED_AT, excluded(VEKTOR_MANIFEST.SYNCED_AT))
+                .execute();
+    }
+
+    @Override
+    @Transactional
+    public void pruneSupersededManifests(List<Long> currentManifestNumbers) {
+        if (currentManifestNumbers.isEmpty()) {
+            return;
+        }
+
+        this.dsl
+                .deleteFrom(VEKTOR_MANIFEST)
+                .where(VEKTOR_MANIFEST.STATUS.notIn(TERMINAL_STATUSES))
+                .and(VEKTOR_MANIFEST.MANIFEST_NUMBER.notIn(currentManifestNumbers))
                 .execute();
     }
 

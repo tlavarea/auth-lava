@@ -102,6 +102,7 @@ class VektorSyncTaskletTest {
         assertThat(rowsCaptor.getValue()).hasSize(1);
         assertThat(rowsCaptor.getValue().getFirst().matchedSamsaraDriverId()).isEqualTo("samsara-1");
         assertThat(rowsCaptor.getValue().getFirst().manifestNumber()).isEqualTo(1000589L);
+        Mockito.verify(this.vektorManifestRepository).pruneSupersededManifests(List.of(1000589L));
     }
 
     @Test

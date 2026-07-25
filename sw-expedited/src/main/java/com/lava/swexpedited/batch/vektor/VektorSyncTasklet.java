@@ -28,10 +28,13 @@ import org.springframework.stereotype.Component;
  * {@code vektor_driver.matched_samsara_driver_id} (see {@code VektorFleetSyncTasklet} - that's where the actual name
  * matching against the Samsara roster happens now, once per Vektor driver rather than live per manifest/time-off row),
  * then upserts vektor_manifest in one transaction. Unlike the other sync tasklets in this package (which fully replace
- * their tables every run), this deliberately never deletes rows - see {@link VektorManifestRepository#upsertAll}'s
- * javadoc - so completed manifests stick around as history for the Schedule view instead of disappearing once Vektor
- * stops returning them. A single tasklet, not chunked - same reasoning as {@code SamsaraDriverSyncJobConfig}: a handful
- * of bulk HTTP calls total per sync, not one per item, so there's no per-item retry/skip checkpointing to earn
+ * their tables every run), this doesn't blanket-delete rows - see {@link VektorManifestRepository#upsertAll}'s javadoc
+ * - so completed manifests stick around as history for the Schedule view instead of disappearing once Vektor stops
+ * returning them. It does prune the narrower case of a non-terminal manifest Vektor stops returning (reassigned/
+ * canceled rather than completed) via {@link VektorManifestRepository#pruneSupersededManifests} right after the upsert,
+ * so a driver's Schedule segments can't end up doubled up between a superseded manifest and whatever replaced it - see
+ * that method's javadoc. A single tasklet, not chunked - same reasoning as {@code SamsaraDriverSyncJobConfig}: a
+ * handful of bulk HTTP calls total per sync, not one per item, so there's no per-item retry/skip checkpointing to earn
  * chunk-oriented complexity.
  *
  * <p>Time-off entries are synced after manifests, in the same run: {@code TruckTimeOff/Get} groups entries by truck_id,
@@ -103,6 +106,8 @@ public class VektorSyncTasklet implements Tasklet {
                 .toList();
 
         this.vektorManifestRepository.upsertAll(manifestRows);
+        this.vektorManifestRepository.pruneSupersededManifests(
+                manifestRows.stream().map(VektorManifestRow::manifestNumber).toList());
         log.info("execute::stored {} vektor manifests", manifestRows.size());
 
         List<VektorGrpcWeb.Message> timeOffEntries = this.vektorTimeOffClient.fetchTimeOff(jwt, companyId, windowStart);
