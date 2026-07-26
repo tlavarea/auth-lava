@@ -29,6 +29,14 @@ export const routes: Routes = [
         loadChildren: () => import('./features/drivers/drivers.routes').then((m) => m.driversRoutes),
       },
       {
+        path: 'trucks',
+        loadChildren: () => import('./features/trucks/trucks.routes').then((m) => m.trucksRoutes),
+      },
+      {
+        path: 'trailers',
+        loadChildren: () => import('./features/trailers/trailers.routes').then((m) => m.trailersRoutes),
+      },
+      {
         path: 'schedule',
         loadChildren: () => import('./features/schedule/schedule.routes').then((m) => m.scheduleRoutes),
       },
