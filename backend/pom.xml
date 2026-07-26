@@ -34,7 +34,7 @@
     <jcommander.version>1.82</jcommander.version>
     <jjwt.version>0.13.0</jjwt.version>
     <nimbus-jose-jwt.version>10.9</nimbus-jose-jwt.version>
-    <loki-logback-appender.version>2.0.3</loki-logback-appender.version>
+    <otel-logback-appender.version>2.28.1-alpha</otel-logback-appender.version>
     <owasp-encoder.version>1.4.0</owasp-encoder.version>
     <palantir.version>2.91.0</palantir.version>
     <record-builder.version>53</record-builder.version>
@@ -64,7 +64,7 @@
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-zipkin</artifactId>
+      <artifactId>spring-boot-starter-opentelemetry</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -181,10 +181,12 @@
       <version>${owasp-encoder.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.github.loki4j</groupId>
-      <artifactId>loki-logback-appender</artifactId>
-      <version>${loki-logback-appender.version}</version>
-      <scope>runtime</scope>
+      <!-- spring-boot-starter-opentelemetry configures the OTLP log exporter/SdkLoggerProvider but does not bridge
+           Logback into it - this appender is what actually forwards log events, wired up by LoggingConfiguration
+           and logback-spring.xml. -->
+      <groupId>io.opentelemetry.instrumentation</groupId>
+      <artifactId>opentelemetry-logback-appender-1.0</artifactId>
+      <version>${otel-logback-appender.version}</version>
     </dependency>
     <!-- 3rd party dependencies end -->
 

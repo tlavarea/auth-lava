@@ -30,23 +30,52 @@ services:
       - pgdata:/var/lib/postgresql
       - ./docker/postgres-init:/docker-entrypoint-initdb.d
 
-  zipkin:
-    image: ghcr.io/openzipkin/zipkin-slim:${TAG:-latest}
-    container_name: zipkin
-    # Environment settings are defined here https://github.com/openzipkin/zipkin/blob/master/zipkin-server/README.md#environment-variables
-    environment:
-      - STORAGE_TYPE=mem
-      # Uncomment to enable self-tracing
-      # - SELF_TRACING_ENABLED=true
-      # Uncomment to increase heap size
-      # - JAVA_OPTS=-Xms128m -Xmx128m -XX:+ExitOnOutOfMemoryError
+  # Trace storage/query backend, fed OTLP directly by otel-collector below.
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    command: -config.file=/etc/tempo.yaml
     ports:
-      # Port used for the Zipkin UI and HTTP Api
-      - "9411:9411"
+      # Tempo's query API, for direct debugging. The OTLP receiver ports (4317/4318) are intentionally not
+      # published to the host - they're only reached by otel-collector over the compose network, and publishing
+      # them would clash with otel-collector's own host-published 4317/4318 below.
+      - "3200:3200"
     restart: unless-stopped
+    volumes:
+      - ./docker/tempo/tempo.yaml:/etc/tempo.yaml
+      - tempo_data:/var/tempo
 
-  # Log storage/query backend. backend/ and sw-expedited/ run outside Docker (via ./mvnw spring-boot:run), so logs
-  # are pushed here directly by a Logback appender (loki4j) rather than collected from container stdout.
+  # Log/trace/metric collection point. backend/ and sw-expedited/ run outside Docker (via ./mvnw spring-boot:run),
+  # so they push OTLP directly here over the host-published 4317/4318 ports rather than being collected from
+  # container stdout. Fans out to loki (logs), tempo (traces), and prometheus (metrics) - see
+  # docker/otel-collector/config.yaml.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    restart: unless-stopped
+    volumes:
+      - ./docker/otel-collector/config.yaml:/etc/otel-collector-config.yaml
+    depends_on:
+      - loki
+      - tempo
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    depends_on:
+      - otel-collector
+
+  # Log storage/query backend, fed OTLP directly by otel-collector above.
   loki:
     image: grafana/loki:latest
     container_name: loki
@@ -61,7 +90,7 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     environment:
-      # Local dev only - anonymous admin access, same low-friction posture as Mailpit/Zipkin above.
+      # Local dev only - anonymous admin access, same low-friction posture as the rest of this dev stack.
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_DISABLE_LOGIN_FORM=true
@@ -73,9 +102,13 @@ services:
       - grafana_data:/var/lib/grafana
     depends_on:
       - loki
+      - tempo
+      - prometheus
 
 volumes:
   mailpit_data:
   pgdata:
   loki_data:
   grafana_data:
+  tempo_data:
+  prometheus_data:
