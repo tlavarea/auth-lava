@@ -1,29 +1,16 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
   <include resource="org/springframework/boot/logging/logback/base.xml"/>
-
-  <!--
-    Pushes logs directly to Loki (docker-compose service, see root docker-compose.yaml) via HTTP, since this app
-    runs as a host process (./mvnw spring-boot:run), not a container - there's no container stdout for a log
-    driver/Promtail to collect. LOKI_URL lets this be disabled/redirected (e.g. in CI, where Loki isn't running) by
-    pointing at an address nothing listens on; Loki4j drops batches on connection failure rather than blocking.
-  -->
-  <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
-    <labels>
-      app = auth-lava
-      level = %level
-    </labels>
-    <!-- Mirrors application.yaml's logging.pattern.console field-for-field, minus the %clr(...) color wrapping -
-         ANSI escape codes have no meaning once stored as plain text in Loki. -->
-    <message>
-      <pattern>%d{yyyy-MM-dd} %d{HH:mm:ss.SSS} | %.-1p | %-30.30logger{30} | %X{traceId:-} %X{spanId:-} | %replace(%m){'[\n\r\t]', '_'}%n</pattern>
-    </message>
-    <http>
-      <url>${LOKI_URL:-http://localhost:3100/loki/api/v1/push}</url>
-    </http>
+  <!-- Forwards log events to the OpenTelemetry instance installed by LoggingConfiguration, which exports them via
+       OTLP per management.opentelemetry.logging.export.otlp.endpoint (application.yaml) - Spring Boot's
+       spring-boot-starter-opentelemetry configures that exporter but does not bridge Logback into it itself. -->
+  <appender name="OpenTelemetry" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
+    <captureMdcAttributes>*</captureMdcAttributes>
+    <!-- Buffers log events emitted before LoggingConfiguration's ApplicationReadyEvent listener calls
+         OpenTelemetryAppender.install() so they can still be exported once it does. Default (1000) is too small
+         here - this app's dev-profile debug logging (Liquibase + jOOQ) alone exceeds it before startup completes. -->
+    <numLogsCapturedBeforeOtelInstall>5000</numLogsCapturedBeforeOtelInstall>
   </appender>
-
   <root>
-    <appender-ref ref="LOKI"/>
+    <appender-ref ref="OpenTelemetry"/>
   </root>
 </configuration>

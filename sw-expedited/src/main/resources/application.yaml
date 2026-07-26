@@ -47,6 +47,22 @@ management:
   endpoint:
     health:
       show-details: never
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  opentelemetry:
+    logging:
+      export:
+        otlp:
+          endpoint: ${OTEL_COLLECTOR_ENDPOINT:http://localhost:4318}/v1/logs
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_COLLECTOR_ENDPOINT:http://localhost:4318}/v1/traces
+  otlp:
+    metrics:
+      export:
+        url: ${OTEL_COLLECTOR_ENDPOINT:http://localhost:4318}/v1/metrics
 
 pickup-match:
   time-window: ${PICKUP_MATCH_TIME_WINDOW:48h}

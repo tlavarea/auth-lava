@@ -2,12 +2,37 @@ apiVersion: 1
 
 datasources:
   - name: Loki
+    uid: loki
     type: loki
     access: proxy
     url: http://loki:3100
     isDefault: true
+    jsonData:
+      derivedFields:
+        # Links a log line's trace ID to its Tempo trace. The OTel logging bridge attaches trace context as a
+        # structured attribute rather than the old plain-text "%X{traceId}" pattern - verify this regex against
+        # a real log line once the pipeline is running and adjust if Loki surfaces the field differently.
+        - datasourceUid: tempo
+          matcherRegex: 'trace_id=(\w+)'
+          name: TraceID
+          url: "$${__value.raw}"
 
-  - name: Zipkin
-    type: zipkin
+  - name: Tempo
+    uid: tempo
+    type: tempo
     access: proxy
-    url: http://zipkin:9411
+    url: http://tempo:3200
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: loki
+        tags:
+          - key: service.name
+            value: service_name
+        filterByTraceID: true
+        filterBySpanID: false
+
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
