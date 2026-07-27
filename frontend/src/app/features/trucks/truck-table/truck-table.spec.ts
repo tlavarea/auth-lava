@@ -11,14 +11,16 @@ describe('TruckTable', () => {
     {
       id: 'truck-1',
       truckNumber: 'T2000',
-      statusCode: 1,
+      engineState: 'On',
+      ecuSpeedMph: 62.5,
       currentDriverName: 'Zoe Adams',
       currentTrailerLabel: "T231 - 53' SDL",
     },
     {
       id: 'truck-2',
       truckNumber: 'T1000',
-      statusCode: null,
+      engineState: null,
+      ecuSpeedMph: null,
       currentDriverName: null,
       currentTrailerLabel: null,
     },
@@ -62,13 +64,13 @@ describe('TruckTable', () => {
     expect(secondCard.textContent).toContain('T2000');
   });
 
-  it('shows current driver/trailer or a fallback, and a raw status badge', () => {
+  it('shows current driver/trailer or a fallback, and the derived status badge', () => {
     const [firstCard, secondCard] = cards();
     expect(firstCard.textContent).toContain('—');
     expect(firstCard.textContent).toContain('Unknown');
     expect(secondCard.textContent).toContain('Zoe Adams');
     expect(secondCard.textContent).toContain("T231 - 53' SDL");
-    expect(secondCard.textContent).toContain('Status 1');
+    expect(secondCard.textContent).toContain('Moving');
   });
 
   it('narrows results by search text and shows a removable filter chip', () => {

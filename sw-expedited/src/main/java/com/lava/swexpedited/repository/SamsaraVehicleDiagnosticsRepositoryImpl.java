@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
-import org.jooq.InsertValuesStep12;
+import org.jooq.InsertValuesStep13;
 import org.jooq.JSON;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +34,7 @@ public class SamsaraVehicleDiagnosticsRepositoryImpl implements SamsaraVehicleDi
         }
 
         LocalDateTime syncedAt = LocalDateTime.now();
-        InsertValuesStep12<
+        InsertValuesStep13<
                         SamsaraVehicleDiagnosticsRecord,
                         String,
                         Integer,
@@ -42,6 +42,7 @@ public class SamsaraVehicleDiagnosticsRepositoryImpl implements SamsaraVehicleDi
                         Long,
                         JSON,
                         String,
+                        Double,
                         Integer,
                         Integer,
                         Integer,
@@ -56,6 +57,7 @@ public class SamsaraVehicleDiagnosticsRepositoryImpl implements SamsaraVehicleDi
                         SAMSARA_VEHICLE_DIAGNOSTICS.ENGINE_SECONDS,
                         SAMSARA_VEHICLE_DIAGNOSTICS.FAULT_CODES,
                         SAMSARA_VEHICLE_DIAGNOSTICS.ENGINE_STATE,
+                        SAMSARA_VEHICLE_DIAGNOSTICS.ECU_SPEED_MPH,
                         SAMSARA_VEHICLE_DIAGNOSTICS.DEF_LEVEL_MILLI_PERCENT,
                         SAMSARA_VEHICLE_DIAGNOSTICS.BATTERY_MILLI_VOLTS,
                         SAMSARA_VEHICLE_DIAGNOSTICS.COOLANT_TEMP_MILLI_C,
@@ -71,6 +73,7 @@ public class SamsaraVehicleDiagnosticsRepositoryImpl implements SamsaraVehicleDi
                     row.engineSeconds(),
                     row.faultCodes() != null ? JSON.valueOf(row.faultCodes()) : null,
                     row.engineState(),
+                    row.ecuSpeedMph(),
                     row.defLevelMilliPercent(),
                     row.batteryMilliVolts(),
                     row.coolantTempMilliC(),
@@ -106,6 +109,7 @@ public class SamsaraVehicleDiagnosticsRepositoryImpl implements SamsaraVehicleDi
                 row.engineSeconds(),
                 row.faultCodes() != null ? row.faultCodes().data() : null,
                 row.engineState(),
+                row.ecuSpeedMph(),
                 row.defLevelMilliPercent(),
                 row.batteryMilliVolts(),
                 row.coolantTempMilliC(),

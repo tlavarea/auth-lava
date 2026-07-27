@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
 import { HlmItemImports } from '@spartan-ng/helm/item';
 
-import { normalizedStatusCode, statusCodeLabel } from '../truck-table/truck-table.filters';
+import { truckStatusBadge } from '../truck-status';
 import { TruckListingRow } from '../trucks.models';
 
 @Component({
@@ -31,7 +31,8 @@ import { TruckListingRow } from '../trucks.models';
           <div hlmItemContent>
             <div hlmItemTitle class="flex flex-nowrap items-center gap-2">
               <span class="truncate">{{ truck.truckNumber }}</span>
-              <span hlmBadge variant="outline">{{ statusCodeLabel(normalizedStatusCode(truck.statusCode)) }}</span>
+              @let badge = truckStatusBadge(truck.engineState, truck.ecuSpeedMph);
+              <span hlmBadge [variant]="badge.variant" [class]="badge.class">{{ badge.label }}</span>
             </div>
             <div hlmItemDescription class="truncate">
               {{ truck.currentDriverName ?? 'No driver assigned' }}
@@ -46,6 +47,5 @@ export class TruckItem {
   readonly trucks: InputSignal<TruckListingRow[]> = input.required<TruckListingRow[]>();
   readonly selectedId: InputSignal<string | null> = input<string | null>(null);
 
-  protected readonly normalizedStatusCode = normalizedStatusCode;
-  protected readonly statusCodeLabel = statusCodeLabel;
+  protected readonly truckStatusBadge = truckStatusBadge;
 }

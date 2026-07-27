@@ -65,15 +65,17 @@ public class SamsaraFleetClient extends RetryingHttpClient {
     private static final int MAX_TYPES_PER_STATS_CALL = 4;
 
     /**
-     * The 10 diagnostic stat types shown on the truck detail page, grouped into batches of at most
+     * The 11 diagnostic stat types shown on the truck list/detail pages, grouped into batches of at most
      * {@link #MAX_TYPES_PER_STATS_CALL}. Query type names here are Samsara's {@code types} enum values, which for two
      * of these (fuelPercents/engineStates) differ from the singular response property names
-     * ({@code fuelPercent}/{@code engineState}) used in {@link VehicleStatsResponseData}'s getters.
+     * ({@code fuelPercent}/{@code engineState}) used in {@link VehicleStatsResponseData}'s getters. {@code ecuSpeedMph}
+     * is combined with {@code engineState} to derive the truck list's "Moving" status (engine on and nonzero ECU speed)
+     * - see {@code TruckServiceImpl}.
      */
     private static final List<List<String>> DIAGNOSTIC_STAT_TYPE_BATCHES = List.of(
             List.of("fuelPercents", "obdOdometerMeters", "obdEngineSeconds", "faultCodes"),
             List.of("engineStates", "defLevelMilliPercent", "batteryMilliVolts", "engineCoolantTemperatureMilliC"),
-            List.of("engineRpm", "engineLoadPercent"));
+            List.of("engineRpm", "engineLoadPercent", "ecuSpeedMph"));
 
     private final RestClient samsaraRestClient;
     private final ObjectMapper objectMapper = new ObjectMapper()
@@ -241,9 +243,9 @@ public class SamsaraFleetClient extends RetryingHttpClient {
     }
 
     /**
-     * Fetches the truck detail page's diagnostic fields (fuel, odometer, engine hours, fault codes, engine state, DEF
-     * level, battery voltage, coolant temp, RPM, engine load) via {@link #DIAGNOSTIC_STAT_TYPE_BATCHES} - one
-     * cursor-paginated {@code /fleet/vehicles/stats} call per batch, since {@code types} only accepts
+     * Fetches the truck list/detail pages' diagnostic fields (fuel, odometer, engine hours, fault codes, engine state,
+     * ECU speed, DEF level, battery voltage, coolant temp, RPM, engine load) via {@link #DIAGNOSTIC_STAT_TYPE_BATCHES}
+     * - one cursor-paginated {@code /fleet/vehicles/stats} call per batch, since {@code types} only accepts
      * {@link #MAX_TYPES_PER_STATS_CALL} values at a time. Each call returns a snapshot of only the types it requested
      * for every vehicle, so results are merged per vehicle id across all batches before being returned - unlike
      * {@link #fetchVehicleLocations()}, this isn't a single pass over one page sequence.
@@ -286,6 +288,9 @@ public class SamsaraFleetClient extends RetryingHttpClient {
         }
         if (source.getEngineState() != null) {
             target.engineState(source.getEngineState());
+        }
+        if (source.getEcuSpeedMph() != null) {
+            target.ecuSpeedMph(source.getEcuSpeedMph());
         }
         if (source.getDefLevelMilliPercent() != null) {
             target.defLevelMilliPercent(source.getDefLevelMilliPercent());

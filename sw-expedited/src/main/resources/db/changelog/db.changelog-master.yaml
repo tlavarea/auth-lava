@@ -41,3 +41,5 @@ databaseChangeLog:
       file: db/changelog/changes/020-create-samsara-vehicle-diagnostics.yaml
   - include:
       file: db/changelog/changes/021-add-matched-samsara-vehicle-id-to-vektor-truck.yaml
+  - include:
+      file: db/changelog/changes/022-add-ecu-speed-to-samsara-vehicle-diagnostics.yaml

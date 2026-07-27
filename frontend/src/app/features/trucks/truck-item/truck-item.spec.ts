@@ -11,7 +11,8 @@ describe('TruckItem', () => {
     {
       id: 'truck-1',
       truckNumber: 'T1000',
-      statusCode: 1,
+      engineState: 'On',
+      ecuSpeedMph: null,
       currentDriverName: 'Jane Trucker',
       currentTrailerLabel: "T231 - 53' SDL",
     },

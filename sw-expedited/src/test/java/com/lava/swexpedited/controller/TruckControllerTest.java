@@ -49,14 +49,16 @@ class TruckControllerTest {
         Jwt jwt = authenticatedJwt();
         when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
         when(this.truckService.findAll())
-                .thenReturn(List.of(new TruckListingRow("truck-1", "T1000", 1, "Jane Trucker", "T231 - 53' SDL")));
+                .thenReturn(
+                        List.of(new TruckListingRow("truck-1", "T1000", "On", 62.5, "Jane Trucker", "T231 - 53' SDL")));
 
         this.mockMvc
                 .perform(get("/api/trucks").cookie(new Cookie("ACCESS_TOKEN", "token-value")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value("truck-1"))
                 .andExpect(jsonPath("$[0].truckNumber").value("T1000"))
-                .andExpect(jsonPath("$[0].statusCode").value(1))
+                .andExpect(jsonPath("$[0].engineState").value("On"))
+                .andExpect(jsonPath("$[0].ecuSpeedMph").value(62.5))
                 .andExpect(jsonPath("$[0].currentDriverName").value("Jane Trucker"))
                 .andExpect(jsonPath("$[0].currentTrailerLabel").value("T231 - 53' SDL"));
     }
@@ -86,12 +88,14 @@ class TruckControllerTest {
                 "T1000",
                 1,
                 "1FUJA6CV12LM12345",
+                "6YA522",
                 "Freightliner",
                 "Cascadia",
                 2023,
                 "Jane Trucker",
                 "T231 - 53' SDL",
                 LocalDateTime.now(),
+                null,
                 null,
                 null,
                 null,
@@ -113,6 +117,7 @@ class TruckControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value("truck-1"))
                 .andExpect(jsonPath("$.vin").value("1FUJA6CV12LM12345"))
+                .andExpect(jsonPath("$.licensePlate").value("6YA522"))
                 .andExpect(jsonPath("$.currentDriverName").value("Jane Trucker"))
                 .andExpect(jsonPath("$.currentTrailerLabel").value("T231 - 53' SDL"));
     }

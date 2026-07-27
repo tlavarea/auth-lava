@@ -175,6 +175,98 @@ class VektorFleetSyncTaskletTest {
     }
 
     @Test
+    void execute_vektorReturnsSameVinTwiceSparseFirst_keepsTheRowWithAnActiveAssignment() {
+        when(this.vektorAuthenticator.authenticate()).thenReturn("test-jwt");
+        when(this.vektorDriverClient.fetchDrivers("test-jwt", "test-company-id"))
+                .thenReturn(List.of());
+        when(this.samsaraDriverRepository.findAll()).thenReturn(List.of());
+
+        VektorGrpcWeb.Message rawSparseTruck = VektorGrpcWeb.decodeUnaryResponse(
+                VektorGrpcWeb.encodeUnaryResponse(new VektorGrpcWeb.Writer().writeString(1, "truck-sparse")));
+        VektorGrpcWeb.Message rawAssignedTruck = VektorGrpcWeb.decodeUnaryResponse(
+                VektorGrpcWeb.encodeUnaryResponse(new VektorGrpcWeb.Writer().writeString(1, "truck-assigned")));
+        when(this.vektorTruckClient.fetchTrucks("test-jwt", "test-company-id"))
+                .thenReturn(List.of(rawSparseTruck, rawAssignedTruck));
+        VektorTruckRow sparseTruck = new VektorTruckRow(
+                "truck-sparse", "2201", 1, "1XK1D49X0NJ123612", "KENWORTH", "K100", 1992, null, null, "{}", null, null);
+        VektorTruckRow assignedTruck = new VektorTruckRow(
+                "truck-assigned",
+                "2201",
+                1,
+                "1XK1D49X0NJ123612",
+                "KENWORTH",
+                "W990",
+                2022,
+                "trailer-1",
+                "driver-1",
+                "{}",
+                null,
+                null);
+        when(this.vektorTruckMapper.toRow(rawSparseTruck)).thenReturn(sparseTruck);
+        when(this.vektorTruckMapper.toRow(rawAssignedTruck)).thenReturn(assignedTruck);
+        when(this.samsaraVehicleRepository.findAll()).thenReturn(List.of());
+        when(this.vektorTruckMatchStrategy.match("1XK1D49X0NJ123612", List.of()))
+                .thenReturn(Optional.empty());
+
+        when(this.vektorTrailerClient.fetchTrailers("test-jwt", "test-company-id"))
+                .thenReturn(List.of());
+
+        VektorFleetSyncTasklet tasklet = tasklet();
+
+        tasklet.execute(null, null);
+
+        ArgumentCaptor<List<VektorTruckRow>> truckRowsCaptor = ArgumentCaptor.captor();
+        Mockito.verify(this.vektorTruckRepository).replaceAll(truckRowsCaptor.capture());
+        assertThat(truckRowsCaptor.getValue()).extracting(VektorTruckRow::id).containsExactly("truck-assigned");
+    }
+
+    @Test
+    void execute_vektorReturnsSameVinTwiceAssignedFirst_stillKeepsTheAssignedRow() {
+        when(this.vektorAuthenticator.authenticate()).thenReturn("test-jwt");
+        when(this.vektorDriverClient.fetchDrivers("test-jwt", "test-company-id"))
+                .thenReturn(List.of());
+        when(this.samsaraDriverRepository.findAll()).thenReturn(List.of());
+
+        VektorGrpcWeb.Message rawAssignedTruck = VektorGrpcWeb.decodeUnaryResponse(
+                VektorGrpcWeb.encodeUnaryResponse(new VektorGrpcWeb.Writer().writeString(1, "truck-assigned")));
+        VektorGrpcWeb.Message rawSparseTruck = VektorGrpcWeb.decodeUnaryResponse(
+                VektorGrpcWeb.encodeUnaryResponse(new VektorGrpcWeb.Writer().writeString(1, "truck-sparse")));
+        when(this.vektorTruckClient.fetchTrucks("test-jwt", "test-company-id"))
+                .thenReturn(List.of(rawAssignedTruck, rawSparseTruck));
+        VektorTruckRow assignedTruck = new VektorTruckRow(
+                "truck-assigned",
+                "2201",
+                1,
+                "1XK1D49X0NJ123612",
+                "KENWORTH",
+                "W990",
+                2022,
+                "trailer-1",
+                "driver-1",
+                "{}",
+                null,
+                null);
+        VektorTruckRow sparseTruck = new VektorTruckRow(
+                "truck-sparse", "2201", 1, "1XK1D49X0NJ123612", "KENWORTH", "K100", 1992, null, null, "{}", null, null);
+        when(this.vektorTruckMapper.toRow(rawAssignedTruck)).thenReturn(assignedTruck);
+        when(this.vektorTruckMapper.toRow(rawSparseTruck)).thenReturn(sparseTruck);
+        when(this.samsaraVehicleRepository.findAll()).thenReturn(List.of());
+        when(this.vektorTruckMatchStrategy.match("1XK1D49X0NJ123612", List.of()))
+                .thenReturn(Optional.empty());
+
+        when(this.vektorTrailerClient.fetchTrailers("test-jwt", "test-company-id"))
+                .thenReturn(List.of());
+
+        VektorFleetSyncTasklet tasklet = tasklet();
+
+        tasklet.execute(null, null);
+
+        ArgumentCaptor<List<VektorTruckRow>> truckRowsCaptor = ArgumentCaptor.captor();
+        Mockito.verify(this.vektorTruckRepository).replaceAll(truckRowsCaptor.capture());
+        assertThat(truckRowsCaptor.getValue()).extracting(VektorTruckRow::id).containsExactly("truck-assigned");
+    }
+
+    @Test
     void execute_emptyResponses_replacesAllThreeTablesWithEmptyLists() {
         when(this.vektorAuthenticator.authenticate()).thenReturn("test-jwt");
         when(this.vektorDriverClient.fetchDrivers("test-jwt", "test-company-id"))

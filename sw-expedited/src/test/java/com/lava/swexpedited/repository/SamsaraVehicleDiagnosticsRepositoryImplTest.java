@@ -37,6 +37,7 @@ class SamsaraVehicleDiagnosticsRepositoryImplTest extends AbstractRepositoryInte
             assertThat(diagnostics.engineSeconds()).isEqualTo(19483200L);
             assertThat(diagnostics.faultCodes()).isEqualTo("{\"canBusType\":\"CANBUS_J1939_500\"}");
             assertThat(diagnostics.engineState()).isEqualTo("On");
+            assertThat(diagnostics.ecuSpeedMph()).isEqualTo(62.5);
             assertThat(diagnostics.defLevelMilliPercent()).isEqualTo(41000);
             assertThat(diagnostics.batteryMilliVolts()).isEqualTo(13200);
             assertThat(diagnostics.coolantTempMilliC()).isEqualTo(92220);
@@ -48,7 +49,7 @@ class SamsaraVehicleDiagnosticsRepositoryImplTest extends AbstractRepositoryInte
     @Test
     void replaceAll_rowWithNullValueColumns_populatesTableWithNulls() {
         SamsaraVehicleDiagnosticsRow sparse = new SamsaraVehicleDiagnosticsRow(
-                "281474", null, null, null, null, null, null, null, null, null, null, null);
+                "281474", null, null, null, null, null, null, null, null, null, null, null, null);
 
         this.samsaraVehicleDiagnosticsRepository.replaceAll(List.of(sparse));
 
@@ -105,6 +106,7 @@ class SamsaraVehicleDiagnosticsRepositoryImplTest extends AbstractRepositoryInte
                 19483200L,
                 "{\"canBusType\":\"CANBUS_J1939_500\"}",
                 "On",
+                62.5,
                 41000,
                 13200,
                 92220,

@@ -465,7 +465,7 @@ class SamsaraFleetClientTest {
                                 }
                                 """)));
         stubFor(get(urlPathEqualTo("/fleet/vehicles/stats"))
-                .withQueryParam("types", equalTo("engineRpm,engineLoadPercent"))
+                .withQueryParam("types", equalTo("engineRpm,engineLoadPercent,ecuSpeedMph"))
                 .willReturn(aResponse().withStatus(200).withBody("""
                                 {
                                   "data": [
@@ -473,7 +473,8 @@ class SamsaraFleetClientTest {
                                       "id": "281474",
                                       "name": "Truck 12",
                                       "engineRpm": {"time": "2026-07-16T12:00:00Z", "value": 1200},
-                                      "engineLoadPercent": {"time": "2026-07-16T12:00:00Z", "value": 54}
+                                      "engineLoadPercent": {"time": "2026-07-16T12:00:00Z", "value": 54},
+                                      "ecuSpeedMph": {"time": "2026-07-16T12:00:00Z", "value": 62.5}
                                     }
                                   ],
                                   "pagination": {"endCursor": null, "hasNextPage": false}
@@ -498,6 +499,7 @@ class SamsaraFleetClientTest {
         assertThat(merged.getEngineCoolantTemperatureMilliC().getValue()).isEqualTo(92220L);
         assertThat(merged.getEngineRpm().getValue()).isEqualTo(1200L);
         assertThat(merged.getEngineLoadPercent().getValue()).isEqualTo(54L);
+        assertThat(merged.getEcuSpeedMph().getValue()).isEqualTo(62.5);
 
         verify(
                 1,
@@ -514,7 +516,7 @@ class SamsaraFleetClientTest {
         verify(
                 1,
                 getRequestedFor(urlPathEqualTo("/fleet/vehicles/stats"))
-                        .withQueryParam("types", equalTo("engineRpm,engineLoadPercent")));
+                        .withQueryParam("types", equalTo("engineRpm,engineLoadPercent,ecuSpeedMph")));
     }
 
     private RestClient samsaraRestClient(WireMockRuntimeInfo wireMockRuntimeInfo) {
