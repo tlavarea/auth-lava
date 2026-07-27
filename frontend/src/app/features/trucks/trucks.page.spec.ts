@@ -88,6 +88,20 @@ describe('TrucksPage', () => {
       currentDriverName: 'Jane Trucker',
       currentTrailerLabel: "T231 - 53' SDL",
       syncedAt: '2026-07-14T00:00:00',
+      fuelPercent: null,
+      odometerMiles: null,
+      engineHours: null,
+      faultCodes: null,
+      engineState: null,
+      defLevelPercent: null,
+      batteryVolts: null,
+      coolantTempF: null,
+      engineRpm: null,
+      engineLoadPercent: null,
+      latitude: null,
+      longitude: null,
+      formattedLocation: null,
+      locationTime: null,
     };
 
     await TestBed.configureTestingModule({

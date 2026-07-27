@@ -91,7 +91,21 @@ class TruckControllerTest {
                 2023,
                 "Jane Trucker",
                 "T231 - 53' SDL",
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
         when(this.truckService.findDetail("truck-1")).thenReturn(Optional.of(detail));
 
         this.mockMvc

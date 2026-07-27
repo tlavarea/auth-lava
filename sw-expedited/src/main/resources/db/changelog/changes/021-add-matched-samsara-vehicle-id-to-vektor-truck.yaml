@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: "21"
+      author: tlavarea
+      comment: >
+        Adds matched_samsara_vehicle_id to vektor_truck, resolved once per truck at sync time via
+        VinMatchingTruckMatchStrategy against vektor_truck.vin/samsara_vehicle.vin - same convention as
+        vektor_driver.matched_samsara_driver_id (see 015-create-vektor-driver.yaml): deliberately no FK
+        constraint, recomputed fresh on every VektorFleetSyncTasklet run rather than preserved/merged,
+        ambiguous (0 or >1) matches resolve to no match rather than guessing.
+      changes:
+        - addColumn:
+            tableName: vektor_truck
+            columns:
+              - column:
+                  name: matched_samsara_vehicle_id
+                  type: VARCHAR
+      rollback:
+        - dropColumn:
+            tableName: vektor_truck
+            columnName: matched_samsara_vehicle_id

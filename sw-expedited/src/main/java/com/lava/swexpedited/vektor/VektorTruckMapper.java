@@ -43,6 +43,7 @@ public class VektorTruckMapper {
                 currentTrailerId,
                 currentDriverId,
                 writeAsJson(truck),
+                null,
                 null);
     }
 

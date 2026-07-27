@@ -93,6 +93,7 @@ class TrailerServiceImplTest {
                 currentTrailerId,
                 null,
                 "{}",
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                null);
     }
 }

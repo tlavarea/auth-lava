@@ -891,6 +891,21 @@
         },
         "type": "object"
       },
+      "ListVehiclesResponse": {
+        "description": "A list of vehicles.",
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/Vehicle"
+            },
+            "type": "array"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/paginationResponse"
+          }
+        },
+        "type": "object"
+      },
       "UsDriverRulesetOverride": {
         "description": "US Driver Ruleset override for a given driver. If the driver is operating under a ruleset different from the organization default, the override is used. Updating this value only updates the override setting for this driver. Explicitly setting this field to `null` will delete driver's ruleset override. If the driver does not have an override ruleset set, the response will not include any usDriverRulesetOverride information.",
         "properties": {
@@ -979,9 +994,44 @@
         ],
         "type": "object"
       },
+      "Vehicle": {
+        "description": "A vehicle object (trimmed to id/vin/name/make/model/year/licensePlate - this app only needs vehicle roster/VIN data to match Vektor trucks to Samsara vehicles, see this file's top-level description).",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/VehicleId"
+          },
+          "licensePlate": {
+            "$ref": "#/components/schemas/VehicleLicensePlate"
+          },
+          "make": {
+            "$ref": "#/components/schemas/VehicleMake"
+          },
+          "model": {
+            "$ref": "#/components/schemas/VehicleModel"
+          },
+          "name": {
+            "$ref": "#/components/schemas/VehicleName"
+          },
+          "vin": {
+            "$ref": "#/components/schemas/VehicleVin"
+          },
+          "year": {
+            "$ref": "#/components/schemas/VehicleYear"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
       "VehicleId": {
         "description": "The unique Samsara ID of the Vehicle. This is automatically generated when the Vehicle object is created. It cannot be changed.",
         "example": "112",
+        "type": "string"
+      },
+      "VehicleLicensePlate": {
+        "description": "The license plate of the vehicle.",
+        "example": "6SAM123",
         "type": "string"
       },
       "VehicleLocationAddress": {
@@ -1029,10 +1079,164 @@
         "format": "double",
         "type": "number"
       },
+      "VehicleMake": {
+        "description": "The Vehicle\u2019s manufacturing make.",
+        "example": "Ford",
+        "type": "string"
+      },
+      "VehicleModel": {
+        "description": "The Vehicle\u2019s manufacturing model.",
+        "example": "F150",
+        "type": "string"
+      },
       "VehicleName": {
         "description": "The human-readable name of the Vehicle. This is set by a fleet administrator and will appear in both Samsara\u2019s cloud dashboard as well as the Samsara Driver mobile app. **By default**, this name is the serial number of the Samsara Vehicle Gateway. It can be set or updated through the Samsara Dashboard or through the API at any time.",
         "example": "Truck A7",
         "type": "string"
+      },
+      "VehicleStatsBatteryVoltage": {
+        "description": "The vehicle battery voltage reading in millivolts.",
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/time"
+          },
+          "value": {
+            "description": "The vehicle battery voltage reading in millivolts.",
+            "example": 7991,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "time",
+          "value"
+        ],
+        "type": "object"
+      },
+      "VehicleStatsDefLevelMilliPercent": {
+        "description": "The Diesel Exhaust Fluid (DEF) level in milli percentage points (e.g. 99001, 49999, etc).",
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/time"
+          },
+          "value": {
+            "description": "The Diesel Exhaust Fluid (DEF) level in milli percentage points (e.g. 99001, 49999, etc).",
+            "example": 54200,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "time",
+          "value"
+        ],
+        "type": "object"
+      },
+      "VehicleStatsEngineCoolantTempMilliC": {
+        "description": "The engine coolant temperature reading in millidegree Celsius.",
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/time"
+          },
+          "value": {
+            "description": "The engine coolant temperature reading in millidegree Celsius.",
+            "example": 31110,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "time",
+          "value"
+        ],
+        "type": "object"
+      },
+      "VehicleStatsEngineLoadPercent": {
+        "description": "The engine load in percentage points (e.g. 99, 50, etc).",
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/time"
+          },
+          "value": {
+            "description": "The engine load in percentage points (e.g. 99, 50, etc).",
+            "example": 54,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "time",
+          "value"
+        ],
+        "type": "object"
+      },
+      "VehicleStatsEngineRpm": {
+        "description": "The revolutions per minute of the engine.",
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/time"
+          },
+          "value": {
+            "description": "The revolutions per minute of the engine.",
+            "example": 1000,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "time",
+          "value"
+        ],
+        "type": "object"
+      },
+      "VehicleStatsEngineState": {
+        "description": "Vehicle engine state event.",
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/time"
+          },
+          "value": {
+            "$ref": "#/components/schemas/VehicleStatsEngineStateSetting"
+          }
+        },
+        "required": [
+          "time",
+          "value"
+        ],
+        "type": "object"
+      },
+      "VehicleStatsEngineStateSetting": {
+        "description": "The state of the engine.",
+        "enum": [
+          "Off",
+          "On",
+          "Idle"
+        ],
+        "example": "On",
+        "type": "string"
+      },
+      "VehicleStatsFaultCodes": {
+        "description": "Engine fault codes read from J1939, OBDII, and OEM vehicles (hand-narrowed to an opaque object - the real schema has deeply nested per-CAN-bus-type trouble-code detail (canBusType/j1939/obdii/oem, each with its own trouble-code list shape) this app doesn't need typed access to; captured as raw JSON and stored as-is in the samsara_vehicle_diagnostics.fault_codes column for display, see this file's top-level description).",
+        "type": "object"
+      },
+      "VehicleStatsFuelPercent": {
+        "description": "The engine fuel level in percentage points (e.g. 99, 50, etc).",
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/time"
+          },
+          "value": {
+            "description": "The engine fuel level in percentage points (e.g. 99, 50, etc).",
+            "example": 54,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "time",
+          "value"
+        ],
+        "type": "object"
       },
       "VehicleStatsGps": {
         "description": "GPS location data for the vehicle.",
@@ -1069,6 +1273,44 @@
         ],
         "type": "object"
       },
+      "VehicleStatsObdEngineSeconds": {
+        "description": "Number of seconds the vehicle's engine has been on according to the on-board diagnostics.",
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/time"
+          },
+          "value": {
+            "description": "Number of seconds the vehicle's engine has been on according to the on-board diagnostics.",
+            "example": 9723103,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "time",
+          "value"
+        ],
+        "type": "object"
+      },
+      "VehicleStatsObdOdometerMeters": {
+        "description": "Number of meters the vehicle has traveled according to the on-board diagnostics.",
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/time"
+          },
+          "value": {
+            "description": "Number of meters the vehicle has traveled according to the on-board diagnostics.",
+            "example": 14010293,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "time",
+          "value"
+        ],
+        "type": "object"
+      },
       "VehicleStatsResponse": {
         "description": "Vehicle stats snapshot and pagination info.",
         "properties": {
@@ -1090,8 +1332,32 @@
         "type": "object"
       },
       "VehicleStatsResponse_data": {
-        "description": "A vehicle and a snapshot of its requested stats (trimmed to just the gps stat type this app requests - see this file's top-level description).",
+        "description": "A vehicle and a snapshot of its requested stats (trimmed to the gps stat type plus the 10 diagnostic types this app requests for the truck detail page - fuelPercent, obdOdometerMeters, obdEngineSeconds, faultCodes, engineState, defLevelMilliPercent, batteryMilliVolts, engineCoolantTemperatureMilliC, engineRpm, engineLoadPercent - see this file's top-level description).",
         "properties": {
+          "batteryMilliVolts": {
+            "$ref": "#/components/schemas/VehicleStatsBatteryVoltage"
+          },
+          "defLevelMilliPercent": {
+            "$ref": "#/components/schemas/VehicleStatsDefLevelMilliPercent"
+          },
+          "engineCoolantTemperatureMilliC": {
+            "$ref": "#/components/schemas/VehicleStatsEngineCoolantTempMilliC"
+          },
+          "engineLoadPercent": {
+            "$ref": "#/components/schemas/VehicleStatsEngineLoadPercent"
+          },
+          "engineRpm": {
+            "$ref": "#/components/schemas/VehicleStatsEngineRpm"
+          },
+          "engineState": {
+            "$ref": "#/components/schemas/VehicleStatsEngineState"
+          },
+          "faultCodes": {
+            "$ref": "#/components/schemas/VehicleStatsFaultCodes"
+          },
+          "fuelPercent": {
+            "$ref": "#/components/schemas/VehicleStatsFuelPercent"
+          },
           "gps": {
             "$ref": "#/components/schemas/VehicleStatsGps"
           },
@@ -1100,6 +1366,12 @@
           },
           "name": {
             "$ref": "#/components/schemas/VehicleName"
+          },
+          "obdEngineSeconds": {
+            "$ref": "#/components/schemas/VehicleStatsObdEngineSeconds"
+          },
+          "obdOdometerMeters": {
+            "$ref": "#/components/schemas/VehicleStatsObdOdometerMeters"
           }
         },
         "required": [
@@ -1107,6 +1379,16 @@
           "name"
         ],
         "type": "object"
+      },
+      "VehicleVin": {
+        "description": "The VIN of the vehicle.",
+        "example": "1GBJ6P1B2HV112765",
+        "type": "string"
+      },
+      "VehicleYear": {
+        "description": "Year of the vehicle.",
+        "example": "2008",
+        "type": "string"
       },
       "attributeTiny": {
         "description": "A minified attribute.",
@@ -1239,7 +1521,7 @@
     }
   },
   "info": {
-    "description": "Vendored, trimmed subset of https://developers.samsara.com/openapi/samsara-api.json - only /fleet/drivers, /fleet/driver-vehicle-assignments, /fleet/vehicles/stats (queried with types=gps; the older /fleet/vehicles/locations endpoint was replaced per Samsara's own deprecation note pointing at Vehicle Stats), /fleet/hos/clocks (current driver duty status plus remaining-time clocks), and /fleet/hos/logs (HOS log/duty-status-change history for the driver detail screen's activity feed) plus their transitive schema closure. VehicleStatsResponse_data is hand-narrowed to id/name/gps only - the real schema has one optional property per stat type (63 total), since /fleet/vehicles/stats is a general-purpose endpoint and this app only ever requests the gps type. HosClocksForDriver is hand-narrowed to driver/currentDutyStatus/clocks only - this app has no use for the currentVehicle/violations fields Samsara's real schema also has. HosLogEntry is hand-narrowed to drop codrivers, unused by this app. Regenerate by re-downloading the full spec and re-running the trim script if these fields ever change. CurrentDutyStatus.hosStatusType is vendored as a plain string rather than Samsara's real enum type, since the documented disconnected-app empty-string value falls outside the enum and openapi-generator's generated enum throws on unrecognized values at deserialize time.",
+    "description": "Vendored, trimmed subset of https://developers.samsara.com/openapi/samsara-api.json - only /fleet/drivers, /fleet/driver-vehicle-assignments, /fleet/vehicles (roster, trimmed to id/vin/name/make/model/year/licensePlate - used to match Vektor trucks to Samsara vehicles by VIN), /fleet/vehicles/stats (queried with types=gps for vehicle location, and separately with types=fuelPercent,obdOdometerMeters,obdEngineSeconds,faultCodes / engineState,defLevelMilliPercent,batteryMilliVolts,engineCoolantTemperatureMilliC / engineRpm,engineLoadPercent for the truck detail page's diagnostics - the older /fleet/vehicles/locations endpoint was replaced per Samsara's own deprecation note pointing at Vehicle Stats), /fleet/hos/clocks (current driver duty status plus remaining-time clocks), and /fleet/hos/logs (HOS log/duty-status-change history for the driver detail screen's activity feed) plus their transitive schema closure. VehicleStatsResponse_data is hand-narrowed to id/name/gps plus the 10 diagnostic stat types listed above - the real schema has one optional property per stat type (63 total), since /fleet/vehicles/stats is a general-purpose endpoint and this app only ever requests those 11 types. VehicleStatsFaultCodes is further hand-narrowed to an opaque object - see that schema's own description. HosClocksForDriver is hand-narrowed to driver/currentDutyStatus/clocks only - this app has no use for the currentVehicle/violations fields Samsara's real schema also has. HosLogEntry is hand-narrowed to drop codrivers, unused by this app. Vehicle (roster) is hand-narrowed to id/vin/name/make/model/year/licensePlate - this app has no use for the gateway/camera/aux-input/tag fields Samsara's real schema also has. Regenerate by re-downloading the full spec and re-running the trim script if these fields ever change. CurrentDutyStatus.hosStatusType is vendored as a plain string rather than Samsara's real enum type, since the documented disconnected-app empty-string value falls outside the enum and openapi-generator's generated enum throws on unrecognized values at deserialize time.",
     "title": "Samsara Fleet API (trimmed)",
     "version": "2025-10-23"
   },
@@ -1634,6 +1916,49 @@
         "summary": "Get HOS logs",
         "tags": [
           "Hours of Service"
+        ]
+      }
+    },
+    "/fleet/vehicles": {
+      "get": {
+        "description": "Returns a list of all vehicles (trimmed here to id/vin/name/make/model/year/licensePlate - see this file's top-level description). To use this endpoint, select **Read Vehicles** under the Vehicles category when creating or editing an API token.",
+        "operationId": "listVehicles",
+        "parameters": [
+          {
+            "description": "The limit for how many objects will be in the response. Default and max for this value is 512 objects.",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 512,
+              "maximum": 512,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "If specified, this should be the endCursor value from the previous page of results. When present, this request will return the next page of results that occur immediately after the previous page of results.",
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListVehiclesResponse"
+                }
+              }
+            },
+            "description": "List of all vehicle objects."
+          }
+        },
+        "summary": "List all vehicles",
+        "tags": [
+          "Vehicles"
         ]
       }
     },

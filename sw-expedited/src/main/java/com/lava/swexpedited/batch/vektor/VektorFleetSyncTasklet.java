@@ -2,16 +2,19 @@ package com.lava.swexpedited.batch.vektor;
 
 import com.lava.swexpedited.boot.autoconfigure.app.VektorProperties;
 import com.lava.swexpedited.repository.SamsaraDriverRepository;
+import com.lava.swexpedited.repository.SamsaraVehicleRepository;
 import com.lava.swexpedited.repository.VektorDriverRepository;
 import com.lava.swexpedited.repository.VektorTrailerRepository;
 import com.lava.swexpedited.repository.VektorTruckRepository;
 import com.lava.swexpedited.samsara.SamsaraDriverRow;
+import com.lava.swexpedited.samsara.SamsaraVehicleRow;
 import com.lava.swexpedited.vektor.VektorDriverMapper;
 import com.lava.swexpedited.vektor.VektorDriverMatchStrategy;
 import com.lava.swexpedited.vektor.VektorDriverRow;
 import com.lava.swexpedited.vektor.VektorTrailerMapper;
 import com.lava.swexpedited.vektor.VektorTrailerRow;
 import com.lava.swexpedited.vektor.VektorTruckMapper;
+import com.lava.swexpedited.vektor.VektorTruckMatchStrategy;
 import com.lava.swexpedited.vektor.VektorTruckRow;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +34,8 @@ import org.springframework.stereotype.Component;
  * elsewhere in this app (see {@code DriverTimelineServiceImpl}). Drivers are matched against the Samsara roster here,
  * once per driver, via {@link VektorDriverMatchStrategy} - this replaces the old approach of {@code VektorSyncTasklet}
  * re-running that same match live against every individual manifest/time-off row. A single tasklet, not chunked - same
- * reasoning as {@code VektorSyncTasklet}: a handful of bulk HTTP calls total per sync, not one per item.
+ * reasoning as {@code VektorSyncTasklet}: a handful of bulk HTTP calls total per sync, not one per item. Trucks are
+ * matched against the Samsara vehicle roster the same way, once per truck, via {@link VektorTruckMatchStrategy}.
  */
 @Component
 @Slf4j
@@ -45,7 +49,9 @@ public class VektorFleetSyncTasklet implements Tasklet {
     private final VektorTruckMapper vektorTruckMapper;
     private final VektorTrailerMapper vektorTrailerMapper;
     private final VektorDriverMatchStrategy vektorDriverMatchStrategy;
+    private final VektorTruckMatchStrategy vektorTruckMatchStrategy;
     private final SamsaraDriverRepository samsaraDriverRepository;
+    private final SamsaraVehicleRepository samsaraVehicleRepository;
     private final VektorDriverRepository vektorDriverRepository;
     private final VektorTruckRepository vektorTruckRepository;
     private final VektorTrailerRepository vektorTrailerRepository;
@@ -60,7 +66,9 @@ public class VektorFleetSyncTasklet implements Tasklet {
             VektorTruckMapper vektorTruckMapper,
             VektorTrailerMapper vektorTrailerMapper,
             VektorDriverMatchStrategy vektorDriverMatchStrategy,
+            VektorTruckMatchStrategy vektorTruckMatchStrategy,
             SamsaraDriverRepository samsaraDriverRepository,
+            SamsaraVehicleRepository samsaraVehicleRepository,
             VektorDriverRepository vektorDriverRepository,
             VektorTruckRepository vektorTruckRepository,
             VektorTrailerRepository vektorTrailerRepository,
@@ -73,7 +81,9 @@ public class VektorFleetSyncTasklet implements Tasklet {
         this.vektorTruckMapper = vektorTruckMapper;
         this.vektorTrailerMapper = vektorTrailerMapper;
         this.vektorDriverMatchStrategy = vektorDriverMatchStrategy;
+        this.vektorTruckMatchStrategy = vektorTruckMatchStrategy;
         this.samsaraDriverRepository = samsaraDriverRepository;
+        this.samsaraVehicleRepository = samsaraVehicleRepository;
         this.vektorDriverRepository = vektorDriverRepository;
         this.vektorTruckRepository = vektorTruckRepository;
         this.vektorTrailerRepository = vektorTrailerRepository;
@@ -97,8 +107,13 @@ public class VektorFleetSyncTasklet implements Tasklet {
         this.vektorDriverRepository.replaceAll(driverRows);
         log.info("execute::stored {} vektor drivers", driverRows.size());
 
+        List<SamsaraVehicleRow> samsaraVehicles = this.samsaraVehicleRepository.findAll();
         List<VektorTruckRow> truckRows = this.vektorTruckClient.fetchTrucks(jwt, companyId).stream()
                 .map(this.vektorTruckMapper::toRow)
+                .map(row -> this.vektorTruckMatchStrategy
+                        .match(row.vin(), samsaraVehicles)
+                        .map(row::withMatchedSamsaraVehicleId)
+                        .orElse(row))
                 .toList();
         this.vektorTruckRepository.replaceAll(truckRows);
         log.info("execute::stored {} vektor trucks", truckRows.size());

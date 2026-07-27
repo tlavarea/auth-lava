@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: "20"
+      author: tlavarea
+      comment: >
+        SAMSARA_VEHICLE_DIAGNOSTICS - a snapshot of each vehicle's engine/fuel/fault diagnostics, synced
+        periodically from Samsara's /fleet/vehicles/stats endpoint (queried in 3 grouped calls, since
+        `types` accepts at most a handful of values per call - see SamsaraFleetClient#fetchVehicleDiagnostics
+        and MAX_TYPES_PER_STATS_CALL). Keyed on Samsara's vehicle id, deliberately with no FK to
+        samsara_vehicle - same reasoning as samsara_vehicle_location (see
+        005-create-samsara-vehicle-location.yaml): this table is replaced on its own cadence, independent of
+        the vehicle roster sync, so the two are joined only at read time. fault_codes stores Samsara's raw
+        per-CAN-bus-type fault code payload as-is (see VehicleStatsFaultCodes in samsara-api.json) rather
+        than being decomposed into columns, since the shape differs by bus type (J1939/OBDII/OEM) and this
+        app only needs to display it, not query into it.
+      changes:
+        - createTable:
+            tableName: samsara_vehicle_diagnostics
+            columns:
+              - column:
+                  name: vehicle_id
+                  type: VARCHAR
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: fuel_percent
+                  type: INT
+              - column:
+                  name: odometer_meters
+                  type: BIGINT
+              - column:
+                  name: engine_seconds
+                  type: BIGINT
+              - column:
+                  name: fault_codes
+                  type: JSON
+              - column:
+                  name: engine_state
+                  type: VARCHAR
+              - column:
+                  name: def_level_milli_percent
+                  type: INT
+              - column:
+                  name: battery_milli_volts
+                  type: INT
+              - column:
+                  name: coolant_temp_milli_c
+                  type: INT
+              - column:
+                  name: engine_rpm
+                  type: INT
+              - column:
+                  name: engine_load_percent
+                  type: INT
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS samsara_vehicle_diagnostics CASCADE;

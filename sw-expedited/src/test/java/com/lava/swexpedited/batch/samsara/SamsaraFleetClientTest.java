@@ -14,6 +14,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.lava.swexpedited.samsara.SamsaraDriverWithRaw;
+import com.lava.swexpedited.samsara.SamsaraVehicleWithRaw;
 import com.lava.swexpedited.samsara.model.DriverActivationStatus;
 import com.lava.swexpedited.samsara.model.DriverVehicleAssignmentV2ObjectResponseBody;
 import com.lava.swexpedited.samsara.model.HosClocksForDriver;
@@ -354,6 +355,166 @@ class SamsaraFleetClientTest {
         assertThat(hosLogs.getFirst().getHosStatusType()).isEqualTo("driving");
         assertThat(hosLogs.getFirst().getLogStartTime()).isEqualTo("2026-07-16T11:04:00Z");
         assertThat(hosLogs.getFirst().getLogRecordedLocation().getLatitude()).isEqualTo(27.9);
+    }
+
+    @Test
+    void fetchVehicles_singlePage_parsesTypedFieldsAndCapturesRawJson(WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/fleet/vehicles"))
+                .withQueryParam("limit", equalTo("512"))
+                .withQueryParam("after", absent())
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [
+                                    {
+                                      "id": "281474",
+                                      "vin": "1XPBD49X7ND764317",
+                                      "name": "2203",
+                                      "make": "PETERBILT",
+                                      "model": "579",
+                                      "year": "2022",
+                                      "licensePlate": "AN02697",
+                                      "unmodeledExtraField": "should still show up in rawJson"
+                                    }
+                                  ],
+                                  "pagination": {"endCursor": null, "hasNextPage": false}
+                                }
+                                """)));
+
+        SamsaraFleetClient client =
+                new SamsaraFleetClient(samsaraRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        List<SamsaraVehicleWithRaw> vehicles = client.fetchVehicles();
+
+        assertThat(vehicles).hasSize(1);
+        SamsaraVehicleWithRaw vehicle = vehicles.getFirst();
+        assertThat(vehicle.payload().getId()).isEqualTo("281474");
+        assertThat(vehicle.payload().getVin()).isEqualTo("1XPBD49X7ND764317");
+        assertThat(vehicle.payload().getName()).isEqualTo("2203");
+        assertThat(vehicle.payload().getMake()).isEqualTo("PETERBILT");
+        assertThat(vehicle.payload().getModel()).isEqualTo("579");
+        assertThat(vehicle.payload().getYear()).isEqualTo("2022");
+        assertThat(vehicle.payload().getLicensePlate()).isEqualTo("AN02697");
+        assertThat(vehicle.rawJson()).contains("\"unmodeledExtraField\":\"should still show up in rawJson\"");
+    }
+
+    @Test
+    void fetchVehicles_twoPages_passesEndCursorAsAfterParamOnSecondRequest(WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/fleet/vehicles"))
+                .withQueryParam("after", absent())
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [{"id": "1", "vin": "VIN1", "name": "Truck One"}],
+                                  "pagination": {"endCursor": "cursor-abc", "hasNextPage": true}
+                                }
+                                """)));
+        stubFor(get(urlPathEqualTo("/fleet/vehicles"))
+                .withQueryParam("after", equalTo("cursor-abc"))
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [{"id": "2", "vin": "VIN2", "name": "Truck Two"}],
+                                  "pagination": {"endCursor": null, "hasNextPage": false}
+                                }
+                                """)));
+
+        SamsaraFleetClient client =
+                new SamsaraFleetClient(samsaraRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        List<SamsaraVehicleWithRaw> vehicles = client.fetchVehicles();
+
+        assertThat(vehicles).extracting(v -> v.payload().getId()).containsExactly("1", "2");
+        verify(1, getRequestedFor(urlPathEqualTo("/fleet/vehicles")).withQueryParam("after", equalTo("cursor-abc")));
+    }
+
+    @Test
+    void fetchVehicleDiagnostics_mergesResultsFromEachGroupedTypesCallByVehicleId(
+            WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/fleet/vehicles/stats"))
+                .withQueryParam("types", equalTo("fuelPercents,obdOdometerMeters,obdEngineSeconds,faultCodes"))
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [
+                                    {
+                                      "id": "281474",
+                                      "name": "Truck 12",
+                                      "fuelPercent": {"time": "2026-07-16T12:00:00Z", "value": 62},
+                                      "obdOdometerMeters": {"time": "2026-07-16T12:00:00Z", "value": 296451840},
+                                      "obdEngineSeconds": {"time": "2026-07-16T12:00:00Z", "value": 19483200},
+                                      "faultCodes": {"canBusType": "CANBUS_J1939_500"}
+                                    }
+                                  ],
+                                  "pagination": {"endCursor": null, "hasNextPage": false}
+                                }
+                                """)));
+        stubFor(get(urlPathEqualTo("/fleet/vehicles/stats"))
+                .withQueryParam(
+                        "types",
+                        equalTo("engineStates,defLevelMilliPercent,batteryMilliVolts,engineCoolantTemperatureMilliC"))
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [
+                                    {
+                                      "id": "281474",
+                                      "name": "Truck 12",
+                                      "engineState": {"time": "2026-07-16T12:00:00Z", "value": "On"},
+                                      "defLevelMilliPercent": {"time": "2026-07-16T12:00:00Z", "value": 41000},
+                                      "batteryMilliVolts": {"time": "2026-07-16T12:00:00Z", "value": 13200},
+                                      "engineCoolantTemperatureMilliC": {"time": "2026-07-16T12:00:00Z", "value": 92220}
+                                    }
+                                  ],
+                                  "pagination": {"endCursor": null, "hasNextPage": false}
+                                }
+                                """)));
+        stubFor(get(urlPathEqualTo("/fleet/vehicles/stats"))
+                .withQueryParam("types", equalTo("engineRpm,engineLoadPercent"))
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [
+                                    {
+                                      "id": "281474",
+                                      "name": "Truck 12",
+                                      "engineRpm": {"time": "2026-07-16T12:00:00Z", "value": 1200},
+                                      "engineLoadPercent": {"time": "2026-07-16T12:00:00Z", "value": 54}
+                                    }
+                                  ],
+                                  "pagination": {"endCursor": null, "hasNextPage": false}
+                                }
+                                """)));
+
+        SamsaraFleetClient client =
+                new SamsaraFleetClient(samsaraRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        List<VehicleStatsResponseData> diagnostics = client.fetchVehicleDiagnostics();
+
+        assertThat(diagnostics).hasSize(1);
+        VehicleStatsResponseData merged = diagnostics.getFirst();
+        assertThat(merged.getId()).isEqualTo("281474");
+        assertThat(merged.getFuelPercent().getValue()).isEqualTo(62L);
+        assertThat(merged.getObdOdometerMeters().getValue()).isEqualTo(296451840L);
+        assertThat(merged.getObdEngineSeconds().getValue()).isEqualTo(19483200L);
+        assertThat(merged.getFaultCodes()).isNotNull();
+        assertThat(merged.getEngineState().getValue().getValue()).isEqualTo("On");
+        assertThat(merged.getDefLevelMilliPercent().getValue()).isEqualTo(41000L);
+        assertThat(merged.getBatteryMilliVolts().getValue()).isEqualTo(13200L);
+        assertThat(merged.getEngineCoolantTemperatureMilliC().getValue()).isEqualTo(92220L);
+        assertThat(merged.getEngineRpm().getValue()).isEqualTo(1200L);
+        assertThat(merged.getEngineLoadPercent().getValue()).isEqualTo(54L);
+
+        verify(
+                1,
+                getRequestedFor(urlPathEqualTo("/fleet/vehicles/stats"))
+                        .withQueryParam(
+                                "types", equalTo("fuelPercents,obdOdometerMeters,obdEngineSeconds,faultCodes")));
+        verify(
+                1,
+                getRequestedFor(urlPathEqualTo("/fleet/vehicles/stats"))
+                        .withQueryParam(
+                                "types",
+                                equalTo(
+                                        "engineStates,defLevelMilliPercent,batteryMilliVolts,engineCoolantTemperatureMilliC")));
+        verify(
+                1,
+                getRequestedFor(urlPathEqualTo("/fleet/vehicles/stats"))
+                        .withQueryParam("types", equalTo("engineRpm,engineLoadPercent")));
     }
 
     private RestClient samsaraRestClient(WireMockRuntimeInfo wireMockRuntimeInfo) {
