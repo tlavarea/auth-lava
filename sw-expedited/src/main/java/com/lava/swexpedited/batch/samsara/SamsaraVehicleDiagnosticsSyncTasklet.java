@@ -16,11 +16,11 @@ import org.springframework.batch.infrastructure.repeat.RepeatStatus;
 import org.springframework.stereotype.Component;
 
 /**
- * Fetches every vehicle's diagnostic snapshot (fuel, odometer, engine hours, fault codes, engine state, DEF level,
- * battery voltage, coolant temp, RPM, engine load) and replaces samsara_vehicle_diagnostics - independent of
+ * Fetches every vehicle's diagnostic snapshot (fuel, odometer, engine hours, fault codes, engine state, ECU speed, DEF
+ * level, battery voltage, coolant temp, RPM, engine load) and replaces samsara_vehicle_diagnostics - independent of
  * {@link SamsaraVehicleSyncTasklet}/{@link SamsaraLocationSyncTasklet}'s tables (no FK either direction), refreshed on
  * its own cadence. Unlike {@link SamsaraLocationSyncTasklet}, no vehicle is filtered out here - every column is
- * individually nullable, so a vehicle reporting only some of the 10 stat types still gets a row.
+ * individually nullable, so a vehicle reporting only some of the 11 stat types still gets a row.
  */
 @Component
 @Slf4j
@@ -71,6 +71,7 @@ public class SamsaraVehicleDiagnosticsSyncTasklet extends SamsaraTasklet impleme
                 payload.getEngineState() != null && payload.getEngineState().getValue() != null
                         ? payload.getEngineState().getValue().getValue()
                         : null,
+                payload.getEcuSpeedMph() != null ? payload.getEcuSpeedMph().getValue() : null,
                 payload.getDefLevelMilliPercent() != null
                         ? payload.getDefLevelMilliPercent().getValue().intValue()
                         : null,

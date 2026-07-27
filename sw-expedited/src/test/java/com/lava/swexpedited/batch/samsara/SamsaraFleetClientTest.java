@@ -14,11 +14,13 @@ import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.lava.swexpedited.samsara.SamsaraDriverWithRaw;
+import com.lava.swexpedited.samsara.SamsaraSafetyEvent;
 import com.lava.swexpedited.samsara.SamsaraVehicleWithRaw;
 import com.lava.swexpedited.samsara.model.DriverActivationStatus;
 import com.lava.swexpedited.samsara.model.DriverVehicleAssignmentV2ObjectResponseBody;
 import com.lava.swexpedited.samsara.model.HosClocksForDriver;
 import com.lava.swexpedited.samsara.model.HosLogEntry;
+import com.lava.swexpedited.samsara.model.VehicleStatsGps;
 import com.lava.swexpedited.samsara.model.VehicleStatsResponseData;
 import java.time.Duration;
 import java.time.Instant;
@@ -465,7 +467,7 @@ class SamsaraFleetClientTest {
                                 }
                                 """)));
         stubFor(get(urlPathEqualTo("/fleet/vehicles/stats"))
-                .withQueryParam("types", equalTo("engineRpm,engineLoadPercent"))
+                .withQueryParam("types", equalTo("engineRpm,engineLoadPercent,ecuSpeedMph"))
                 .willReturn(aResponse().withStatus(200).withBody("""
                                 {
                                   "data": [
@@ -473,7 +475,8 @@ class SamsaraFleetClientTest {
                                       "id": "281474",
                                       "name": "Truck 12",
                                       "engineRpm": {"time": "2026-07-16T12:00:00Z", "value": 1200},
-                                      "engineLoadPercent": {"time": "2026-07-16T12:00:00Z", "value": 54}
+                                      "engineLoadPercent": {"time": "2026-07-16T12:00:00Z", "value": 54},
+                                      "ecuSpeedMph": {"time": "2026-07-16T12:00:00Z", "value": 62.5}
                                     }
                                   ],
                                   "pagination": {"endCursor": null, "hasNextPage": false}
@@ -498,6 +501,7 @@ class SamsaraFleetClientTest {
         assertThat(merged.getEngineCoolantTemperatureMilliC().getValue()).isEqualTo(92220L);
         assertThat(merged.getEngineRpm().getValue()).isEqualTo(1200L);
         assertThat(merged.getEngineLoadPercent().getValue()).isEqualTo(54L);
+        assertThat(merged.getEcuSpeedMph().getValue()).isEqualTo(62.5);
 
         verify(
                 1,
@@ -514,7 +518,170 @@ class SamsaraFleetClientTest {
         verify(
                 1,
                 getRequestedFor(urlPathEqualTo("/fleet/vehicles/stats"))
-                        .withQueryParam("types", equalTo("engineRpm,engineLoadPercent")));
+                        .withQueryParam("types", equalTo("engineRpm,engineLoadPercent,ecuSpeedMph")));
+    }
+
+    @Test
+    void fetchVehicleGpsHistory_singlePage_parsesFlattenedGpsPoints(WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/fleet/vehicles/stats/history"))
+                .withQueryParam("startTime", equalTo("2026-07-27T00:00:00Z"))
+                .withQueryParam("endTime", equalTo("2026-07-28T00:00:00Z"))
+                .withQueryParam("vehicleIds", equalTo("281474"))
+                .withQueryParam("types", equalTo("gps"))
+                .withQueryParam("limit", equalTo("512"))
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [
+                                    {
+                                      "id": "281474",
+                                      "name": "Truck 12",
+                                      "externalIds": {"samsara.vin": "1XPBD49X7ND764317"},
+                                      "gps": [
+                                        {
+                                          "time": "2026-07-27T12:00:00Z",
+                                          "latitude": 32.735,
+                                          "longitude": -97.108,
+                                          "headingDegrees": 180.5,
+                                          "speedMilesPerHour": 62.3,
+                                          "isEcuSpeed": true,
+                                          "reverseGeo": {"formattedLocation": "Fort Worth, TX"}
+                                        },
+                                        {
+                                          "time": "2026-07-27T12:01:00Z",
+                                          "latitude": 32.736,
+                                          "longitude": -97.109,
+                                          "headingDegrees": 181.0,
+                                          "speedMilesPerHour": 0.0,
+                                          "isEcuSpeed": true,
+                                          "reverseGeo": {"formattedLocation": "Fort Worth, TX"}
+                                        }
+                                      ]
+                                    }
+                                  ],
+                                  "pagination": {"endCursor": null, "hasNextPage": false}
+                                }
+                                """)));
+
+        SamsaraFleetClient client =
+                new SamsaraFleetClient(samsaraRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        List<VehicleStatsGps> points = client.fetchVehicleGpsHistory(
+                "281474", Instant.parse("2026-07-27T00:00:00Z"), Instant.parse("2026-07-28T00:00:00Z"));
+
+        assertThat(points).hasSize(2);
+        assertThat(points.getFirst().getLatitude()).isEqualTo(32.735);
+        assertThat(points.getFirst().getReverseGeo().getFormattedLocation()).isEqualTo("Fort Worth, TX");
+        assertThat(points.getFirst().getIsEcuSpeed()).isTrue();
+        assertThat(points.getLast().getSpeedMilesPerHour()).isEqualTo(0.0);
+    }
+
+    @Test
+    void fetchVehicleGpsHistory_twoPages_passesEndCursorAsAfterParamOnSecondRequest(
+            WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/fleet/vehicles/stats/history"))
+                .withQueryParam("after", absent())
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [{"id": "281474", "name": "Truck 12", "gps": [
+                                    {"time": "2026-07-27T12:00:00Z", "latitude": 32.735, "longitude": -97.108}
+                                  ]}],
+                                  "pagination": {"endCursor": "cursor-abc", "hasNextPage": true}
+                                }
+                                """)));
+        stubFor(get(urlPathEqualTo("/fleet/vehicles/stats/history"))
+                .withQueryParam("after", equalTo("cursor-abc"))
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [{"id": "281474", "name": "Truck 12", "gps": [
+                                    {"time": "2026-07-27T12:01:00Z", "latitude": 32.736, "longitude": -97.109}
+                                  ]}],
+                                  "pagination": {"endCursor": null, "hasNextPage": false}
+                                }
+                                """)));
+
+        SamsaraFleetClient client =
+                new SamsaraFleetClient(samsaraRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        List<VehicleStatsGps> points = client.fetchVehicleGpsHistory(
+                "281474", Instant.parse("2026-07-27T00:00:00Z"), Instant.parse("2026-07-28T00:00:00Z"));
+
+        assertThat(points).extracting(VehicleStatsGps::getLatitude).containsExactly(32.735, 32.736);
+        verify(
+                1,
+                getRequestedFor(urlPathEqualTo("/fleet/vehicles/stats/history"))
+                        .withQueryParam("after", equalTo("cursor-abc")));
+    }
+
+    @Test
+    void fetchSafetyEvents_singlePage_parsesNestedBehaviorLabelsLocationDriverAndMedia(
+            WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/safety-events/stream"))
+                .withQueryParam("startTime", equalTo("2026-07-27T00:00:00Z"))
+                .withQueryParam("assetIds", equalTo("281474"))
+                .withQueryParam("includeDriver", equalTo("true"))
+                .withQueryParam("limit", equalTo("512"))
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [
+                                    {
+                                      "id": "evt-1",
+                                      "startMs": 1785312000000,
+                                      "behaviorLabels": [{"label": "Harsh Brake", "source": "Camera"}],
+                                      "location": {
+                                        "latitude": 32.735,
+                                        "longitude": -97.108,
+                                        "headingDegrees": 180.5,
+                                        "accuracyMeters": 5.0,
+                                        "address": {
+                                          "street": "100 Main St",
+                                          "city": "Fort Worth",
+                                          "state": "TX",
+                                          "postalCode": "76102"
+                                        }
+                                      },
+                                      "driver": {"id": "41000123", "name": "Jane Trucker"},
+                                      "media": [{"input": "dashcamRoadFacing", "url": "https://example.com/clip.mp4"}],
+                                      "incidentReportUrl": "https://cloud.samsara.com/report/evt-1"
+                                    }
+                                  ],
+                                  "pagination": {"endCursor": null, "hasNextPage": false}
+                                }
+                                """)));
+
+        SamsaraFleetClient client =
+                new SamsaraFleetClient(samsaraRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        List<SamsaraSafetyEvent> events = client.fetchSafetyEvents("281474", Instant.parse("2026-07-27T00:00:00Z"));
+
+        assertThat(events).hasSize(1);
+        SamsaraSafetyEvent event = events.getFirst();
+        assertThat(event.id()).isEqualTo("evt-1");
+        assertThat(event.startMs()).isEqualTo(1785312000000L);
+        assertThat(event.behaviorLabels()).hasSize(1);
+        assertThat(event.behaviorLabels().getFirst().label()).isEqualTo("Harsh Brake");
+        assertThat(event.location().latitude()).isEqualTo(32.735);
+        assertThat(event.location().address().city()).isEqualTo("Fort Worth");
+        assertThat(event.driver().name()).isEqualTo("Jane Trucker");
+        assertThat(event.media().getFirst().url()).isEqualTo("https://example.com/clip.mp4");
+        assertThat(event.incidentReportUrl()).isEqualTo("https://cloud.samsara.com/report/evt-1");
+    }
+
+    @Test
+    void fetchSafetyEvents_omitsEndTimeParam(WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/safety-events/stream"))
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [],
+                                  "pagination": {"endCursor": null, "hasNextPage": false}
+                                }
+                                """)));
+
+        SamsaraFleetClient client =
+                new SamsaraFleetClient(samsaraRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        client.fetchSafetyEvents("281474", Instant.parse("2026-07-27T00:00:00Z"));
+
+        verify(getRequestedFor(urlPathEqualTo("/safety-events/stream")).withQueryParam("endTime", absent()));
     }
 
     private RestClient samsaraRestClient(WireMockRuntimeInfo wireMockRuntimeInfo) {

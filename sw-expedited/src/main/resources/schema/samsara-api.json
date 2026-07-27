@@ -1132,6 +1132,25 @@
         ],
         "type": "object"
       },
+      "VehicleStatsEcuSpeedMph": {
+        "description": "The speed of the engine in miles per hour according to the ECU.",
+        "properties": {
+          "time": {
+            "$ref": "#/components/schemas/time"
+          },
+          "value": {
+            "description": "The speed of the engine in miles per hour according to the ECU.",
+            "example": 62.5,
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "time",
+          "value"
+        ],
+        "type": "object"
+      },
       "VehicleStatsEngineCoolantTempMilliC": {
         "description": "The engine coolant temperature reading in millidegree Celsius.",
         "properties": {
@@ -1332,13 +1351,16 @@
         "type": "object"
       },
       "VehicleStatsResponse_data": {
-        "description": "A vehicle and a snapshot of its requested stats (trimmed to the gps stat type plus the 10 diagnostic types this app requests for the truck detail page - fuelPercent, obdOdometerMeters, obdEngineSeconds, faultCodes, engineState, defLevelMilliPercent, batteryMilliVolts, engineCoolantTemperatureMilliC, engineRpm, engineLoadPercent - see this file's top-level description).",
+        "description": "A vehicle and a snapshot of its requested stats (trimmed to the gps stat type plus the 11 diagnostic types this app requests for the truck list/detail pages - fuelPercent, obdOdometerMeters, obdEngineSeconds, faultCodes, engineState, ecuSpeedMph, defLevelMilliPercent, batteryMilliVolts, engineCoolantTemperatureMilliC, engineRpm, engineLoadPercent - see this file's top-level description).",
         "properties": {
           "batteryMilliVolts": {
             "$ref": "#/components/schemas/VehicleStatsBatteryVoltage"
           },
           "defLevelMilliPercent": {
             "$ref": "#/components/schemas/VehicleStatsDefLevelMilliPercent"
+          },
+          "ecuSpeedMph": {
+            "$ref": "#/components/schemas/VehicleStatsEcuSpeedMph"
           },
           "engineCoolantTemperatureMilliC": {
             "$ref": "#/components/schemas/VehicleStatsEngineCoolantTempMilliC"

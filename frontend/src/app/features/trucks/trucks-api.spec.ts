@@ -37,4 +37,18 @@ describe('TrucksApi', () => {
 
     httpMock.expectOne('/api/sw-expedited/trucks/truck-1').flush(null);
   });
+
+  it('routeHistory() GETs /api/sw-expedited/trucks/:truckId/route-history', () => {
+    const routeHistoryPromise = service.routeHistory('truck-1');
+    routeHistoryPromise.subscribe();
+
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1/route-history').flush({ points: [], stops: [] });
+  });
+
+  it('safetyEvents() GETs /api/sw-expedited/trucks/:truckId/safety-events', () => {
+    const safetyEventsPromise = service.safetyEvents('truck-1');
+    safetyEventsPromise.subscribe();
+
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1/safety-events').flush([]);
+  });
 });

@@ -17,6 +17,7 @@ public record SamsaraVehicleDiagnosticsRow(
         Long engineSeconds,
         String faultCodes,
         String engineState,
+        Double ecuSpeedMph,
         Integer defLevelMilliPercent,
         Integer batteryMilliVolts,
         Integer coolantTempMilliC,

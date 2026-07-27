@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: "22"
+      author: tlavarea
+      comment: >
+        Adds ecu_speed_mph to samsara_vehicle_diagnostics - Samsara's ecuSpeedMph stat type, combined with
+        engine_state in TruckServiceImpl to derive the truck list/detail pages' "Moving" status (engine on
+        and a nonzero ECU speed), matching Samsara's own dashboard convention.
+      changes:
+        - addColumn:
+            tableName: samsara_vehicle_diagnostics
+            columns:
+              - column:
+                  name: ecu_speed_mph
+                  type: DOUBLE
+      rollback:
+        - dropColumn:
+            tableName: samsara_vehicle_diagnostics
+            columnName: ecu_speed_mph

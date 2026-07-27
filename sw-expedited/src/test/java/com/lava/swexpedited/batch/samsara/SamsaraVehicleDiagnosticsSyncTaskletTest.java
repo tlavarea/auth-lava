@@ -7,6 +7,7 @@ import com.lava.swexpedited.repository.SamsaraVehicleDiagnosticsRepository;
 import com.lava.swexpedited.samsara.SamsaraVehicleDiagnosticsRow;
 import com.lava.swexpedited.samsara.model.VehicleStatsBatteryVoltage;
 import com.lava.swexpedited.samsara.model.VehicleStatsDefLevelMilliPercent;
+import com.lava.swexpedited.samsara.model.VehicleStatsEcuSpeedMph;
 import com.lava.swexpedited.samsara.model.VehicleStatsEngineCoolantTempMilliC;
 import com.lava.swexpedited.samsara.model.VehicleStatsEngineLoadPercent;
 import com.lava.swexpedited.samsara.model.VehicleStatsEngineRpm;
@@ -53,6 +54,9 @@ class SamsaraVehicleDiagnosticsSyncTaskletTest {
                 .engineState(new VehicleStatsEngineState()
                         .time("2026-07-16T12:00:00Z")
                         .value(VehicleStatsEngineStateSetting.ON))
+                .ecuSpeedMph(new VehicleStatsEcuSpeedMph()
+                        .time("2026-07-16T12:00:00Z")
+                        .value(62.5))
                 .defLevelMilliPercent(new VehicleStatsDefLevelMilliPercent()
                         .time("2026-07-16T12:00:00Z")
                         .value(41000L))
@@ -86,6 +90,7 @@ class SamsaraVehicleDiagnosticsSyncTaskletTest {
         assertThat(row.engineSeconds()).isEqualTo(19483200L);
         assertThat(row.faultCodes()).contains("\"canBusType\":\"CANBUS_J1939_500\"");
         assertThat(row.engineState()).isEqualTo("On");
+        assertThat(row.ecuSpeedMph()).isEqualTo(62.5);
         assertThat(row.defLevelMilliPercent()).isEqualTo(41000);
         assertThat(row.batteryMilliVolts()).isEqualTo(13200);
         assertThat(row.coolantTempMilliC()).isEqualTo(92220);
@@ -114,6 +119,7 @@ class SamsaraVehicleDiagnosticsSyncTaskletTest {
         assertThat(row.engineSeconds()).isNull();
         assertThat(row.faultCodes()).isNull();
         assertThat(row.engineState()).isNull();
+        assertThat(row.ecuSpeedMph()).isNull();
         assertThat(row.defLevelMilliPercent()).isNull();
         assertThat(row.batteryMilliVolts()).isNull();
         assertThat(row.coolantTempMilliC()).isNull();

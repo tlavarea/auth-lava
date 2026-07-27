@@ -3,7 +3,12 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 
 import { TrucksApi } from './trucks-api';
-import { TruckDetailResponse, TruckListingRow } from './trucks.models';
+import {
+  TruckDetailResponse,
+  TruckListingRow,
+  TruckRouteHistoryResponse,
+  TruckSafetyEventEntry,
+} from './trucks.models';
 
 export type TrucksRequestStatus = 'idle' | 'loading' | 'error';
 
@@ -12,6 +17,10 @@ type TrucksState = {
   listStatus: TrucksRequestStatus;
   selectedDetail: TruckDetailResponse | null;
   detailStatus: TrucksRequestStatus;
+  routeHistory: TruckRouteHistoryResponse | null;
+  routeHistoryStatus: TrucksRequestStatus;
+  safetyEvents: TruckSafetyEventEntry[] | null;
+  safetyEventsStatus: TrucksRequestStatus;
 };
 
 const initialState: TrucksState = {
@@ -19,6 +28,10 @@ const initialState: TrucksState = {
   listStatus: 'idle',
   selectedDetail: null,
   detailStatus: 'idle',
+  routeHistory: null,
+  routeHistoryStatus: 'idle',
+  safetyEvents: null,
+  safetyEventsStatus: 'idle',
 };
 
 // Route-scoped (provided by TrucksPage, not `root`) so list + selected-detail state resets per visit to
@@ -63,6 +76,41 @@ export const TrucksStore = signalStore(
 
       clearSelectedDetail(): void {
         patchState(store, { selectedDetail: null, detailStatus: 'idle' });
+      },
+
+      // Fetched once per truck detail visit (not on the 60s diagnostics-refresh timer, unlike refreshTruckDetail) -
+      // a full day of GPS history/safety events doesn't meaningfully change every 60s. The two requests are
+      // independent (one failing shouldn't block the other), so each gets its own status/try-catch rather than
+      // failing both on a single rejected Promise.all.
+      async loadTruckMapData(truckId: string): Promise<void> {
+        patchState(store, { routeHistoryStatus: 'loading', safetyEventsStatus: 'loading' });
+        await Promise.all([
+          (async (): Promise<void> => {
+            try {
+              const routeHistory = await firstValueFrom(trucksApi.routeHistory(truckId));
+              patchState(store, { routeHistory, routeHistoryStatus: 'idle' });
+            } catch {
+              patchState(store, { routeHistoryStatus: 'error' });
+            }
+          })(),
+          (async (): Promise<void> => {
+            try {
+              const safetyEvents = await firstValueFrom(trucksApi.safetyEvents(truckId));
+              patchState(store, { safetyEvents, safetyEventsStatus: 'idle' });
+            } catch {
+              patchState(store, { safetyEventsStatus: 'error' });
+            }
+          })(),
+        ]);
+      },
+
+      clearMapData(): void {
+        patchState(store, {
+          routeHistory: null,
+          routeHistoryStatus: 'idle',
+          safetyEvents: null,
+          safetyEventsStatus: 'idle',
+        });
       },
     };
   })

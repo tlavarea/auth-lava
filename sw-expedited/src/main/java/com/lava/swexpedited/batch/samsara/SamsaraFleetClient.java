@@ -7,6 +7,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.lava.swexpedited.batch.RetryingHttpClient;
 import com.lava.swexpedited.samsara.SamsaraDriverWithRaw;
+import com.lava.swexpedited.samsara.SamsaraSafetyEvent;
+import com.lava.swexpedited.samsara.SamsaraSafetyEventsResponse;
+import com.lava.swexpedited.samsara.SamsaraVehicleGpsHistoryResponse;
+import com.lava.swexpedited.samsara.SamsaraVehicleGpsHistoryResponseData;
 import com.lava.swexpedited.samsara.SamsaraVehicleWithRaw;
 import com.lava.swexpedited.samsara.model.Driver;
 import com.lava.swexpedited.samsara.model.DriverVehicleAssignmentV2ObjectResponseBody;
@@ -17,6 +21,7 @@ import com.lava.swexpedited.samsara.model.HosLogEntry;
 import com.lava.swexpedited.samsara.model.HosLogsForDriver;
 import com.lava.swexpedited.samsara.model.HosLogsResponse;
 import com.lava.swexpedited.samsara.model.Vehicle;
+import com.lava.swexpedited.samsara.model.VehicleStatsGps;
 import com.lava.swexpedited.samsara.model.VehicleStatsResponse;
 import com.lava.swexpedited.samsara.model.VehicleStatsResponseData;
 import java.io.UncheckedIOException;
@@ -65,15 +70,17 @@ public class SamsaraFleetClient extends RetryingHttpClient {
     private static final int MAX_TYPES_PER_STATS_CALL = 4;
 
     /**
-     * The 10 diagnostic stat types shown on the truck detail page, grouped into batches of at most
+     * The 11 diagnostic stat types shown on the truck list/detail pages, grouped into batches of at most
      * {@link #MAX_TYPES_PER_STATS_CALL}. Query type names here are Samsara's {@code types} enum values, which for two
      * of these (fuelPercents/engineStates) differ from the singular response property names
-     * ({@code fuelPercent}/{@code engineState}) used in {@link VehicleStatsResponseData}'s getters.
+     * ({@code fuelPercent}/{@code engineState}) used in {@link VehicleStatsResponseData}'s getters. {@code ecuSpeedMph}
+     * is combined with {@code engineState} to derive the truck list's "Moving" status (engine on and nonzero ECU speed)
+     * - see {@code TruckServiceImpl}.
      */
     private static final List<List<String>> DIAGNOSTIC_STAT_TYPE_BATCHES = List.of(
             List.of("fuelPercents", "obdOdometerMeters", "obdEngineSeconds", "faultCodes"),
             List.of("engineStates", "defLevelMilliPercent", "batteryMilliVolts", "engineCoolantTemperatureMilliC"),
-            List.of("engineRpm", "engineLoadPercent"));
+            List.of("engineRpm", "engineLoadPercent", "ecuSpeedMph"));
 
     private final RestClient samsaraRestClient;
     private final ObjectMapper objectMapper = new ObjectMapper()
@@ -241,9 +248,9 @@ public class SamsaraFleetClient extends RetryingHttpClient {
     }
 
     /**
-     * Fetches the truck detail page's diagnostic fields (fuel, odometer, engine hours, fault codes, engine state, DEF
-     * level, battery voltage, coolant temp, RPM, engine load) via {@link #DIAGNOSTIC_STAT_TYPE_BATCHES} - one
-     * cursor-paginated {@code /fleet/vehicles/stats} call per batch, since {@code types} only accepts
+     * Fetches the truck list/detail pages' diagnostic fields (fuel, odometer, engine hours, fault codes, engine state,
+     * ECU speed, DEF level, battery voltage, coolant temp, RPM, engine load) via {@link #DIAGNOSTIC_STAT_TYPE_BATCHES}
+     * - one cursor-paginated {@code /fleet/vehicles/stats} call per batch, since {@code types} only accepts
      * {@link #MAX_TYPES_PER_STATS_CALL} values at a time. Each call returns a snapshot of only the types it requested
      * for every vehicle, so results are merged per vehicle id across all batches before being returned - unlike
      * {@link #fetchVehicleLocations()}, this isn't a single pass over one page sequence.
@@ -286,6 +293,9 @@ public class SamsaraFleetClient extends RetryingHttpClient {
         }
         if (source.getEngineState() != null) {
             target.engineState(source.getEngineState());
+        }
+        if (source.getEcuSpeedMph() != null) {
+            target.ecuSpeedMph(source.getEcuSpeedMph());
         }
         if (source.getDefLevelMilliPercent() != null) {
             target.defLevelMilliPercent(source.getDefLevelMilliPercent());
@@ -335,6 +345,74 @@ public class SamsaraFleetClient extends RetryingHttpClient {
             cursor = page.getPagination().getEndCursor();
         }
         return hosLogs;
+    }
+
+    /**
+     * A single vehicle's GPS breadcrumb trail (position/heading/speed samples) within {@code [startTime, endTime]}, via
+     * {@code /fleet/vehicles/stats/history?types=gps} - called on-demand by {@code TruckRouteHistoryService} for the
+     * truck detail page's route map, not persisted. Unlike {@link #fetchVehicleLocations()}/
+     * {@link #fetchVehicleLocation(String)} (single-snapshot queries against {@code /fleet/vehicles/stats}), this hits
+     * the {@code stats/history} variant of that same family of endpoints, which returns every sample in the window
+     * rather than just the latest one. Not in the vendored {@code schema/samsara-api.json}, so
+     * {@link SamsaraVehicleGpsHistoryResponse}/{@link SamsaraVehicleGpsHistoryResponseData} are hand-written - see
+     * their javadoc for why no separate GPS-point type was needed.
+     */
+    public List<VehicleStatsGps> fetchVehicleGpsHistory(String vehicleId, Instant startTime, Instant endTime) {
+        List<VehicleStatsGps> points = new ArrayList<>();
+        String cursor = null;
+        boolean hasNextPage = true;
+        while (hasNextPage) {
+            String body = fetchPageBody(
+                    "/fleet/vehicles/stats/history",
+                    cursor,
+                    "startTime",
+                    startTime.toString(),
+                    "endTime",
+                    endTime.toString(),
+                    "vehicleIds",
+                    vehicleId,
+                    "types",
+                    "gps");
+            SamsaraVehicleGpsHistoryResponse page =
+                    readValue(body, SamsaraVehicleGpsHistoryResponse.class, "/fleet/vehicles/stats/history");
+            for (SamsaraVehicleGpsHistoryResponseData vehicleHistory : page.data()) {
+                points.addAll(vehicleHistory.gps());
+            }
+            hasNextPage = Boolean.TRUE.equals(page.pagination().getHasNextPage());
+            cursor = page.pagination().getEndCursor();
+        }
+        return points;
+    }
+
+    /**
+     * Samsara-flagged safety events (harsh braking, following distance, etc.) for a single vehicle since
+     * {@code startTime}, via {@code /safety-events/stream} - called on-demand by {@code TruckSafetyEventsService} for
+     * the truck detail page's route map, not persisted. {@code includeDriver=true} is always sent so
+     * {@link SamsaraSafetyEvent#driver()} is populated. Unlike every other method on this client, this is a
+     * stream-style endpoint with no {@code endTime} parameter. Not in the vendored {@code schema/samsara-api.json}, so
+     * {@link SamsaraSafetyEventsResponse}/{@link SamsaraSafetyEvent} are hand-written.
+     */
+    public List<SamsaraSafetyEvent> fetchSafetyEvents(String assetId, Instant startTime) {
+        List<SamsaraSafetyEvent> events = new ArrayList<>();
+        String cursor = null;
+        boolean hasNextPage = true;
+        while (hasNextPage) {
+            String body = fetchPageBody(
+                    "/safety-events/stream",
+                    cursor,
+                    "startTime",
+                    startTime.toString(),
+                    "assetIds",
+                    assetId,
+                    "includeDriver",
+                    "true");
+            SamsaraSafetyEventsResponse page =
+                    readValue(body, SamsaraSafetyEventsResponse.class, "/safety-events/stream");
+            events.addAll(page.data());
+            hasNextPage = Boolean.TRUE.equals(page.pagination().getHasNextPage());
+            cursor = page.pagination().getEndCursor();
+        }
+        return events;
     }
 
     private String fetchPageBody(String path, String cursor, String... extraParams) {

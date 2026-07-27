@@ -30,7 +30,8 @@ describe('TrucksPage', () => {
     {
       id: 'truck-1',
       truckNumber: 'T1000',
-      statusCode: 1,
+      engineState: 'On',
+      ecuSpeedMph: null,
       currentDriverName: 'Jane Trucker',
       currentTrailerLabel: "T231 - 53' SDL",
     },
@@ -82,6 +83,7 @@ describe('TrucksPage', () => {
       truckNumber: 'T1000',
       statusCode: 1,
       vin: '1FUJA6CV12LM12345',
+      licensePlate: '6YA522',
       make: 'Freightliner',
       model: 'Cascadia',
       year: 2023,
@@ -93,6 +95,7 @@ describe('TrucksPage', () => {
       engineHours: null,
       faultCodes: null,
       engineState: null,
+      ecuSpeedMph: null,
       defLevelPercent: null,
       batteryVolts: null,
       coolantTempF: null,
@@ -121,6 +124,8 @@ describe('TrucksPage', () => {
 
     httpMock.expectOne('/api/sw-expedited/trucks').flush(trucks);
     httpMock.expectOne('/api/sw-expedited/trucks/truck-1').flush(detail);
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1/route-history').flush({ points: [], stops: [] });
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1/safety-events').flush([]);
     await harness.fixture.whenStable();
     harness.detectChanges();
     await harness.fixture.whenStable();
