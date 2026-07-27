@@ -47,3 +47,45 @@ export type TruckDetailResponse = {
   formattedLocation: string | null;
   locationTime: string | null;
 };
+
+// The truck detail page's route map data for a single day (defaults to "today" - see TrucksApi.routeHistory).
+// points/stops are always present (never null), but may be empty when the truck isn't matched to a Samsara vehicle
+// or has no GPS history for the window - see the backend's TruckRouteHistoryService javadoc.
+export type TruckRouteHistoryResponse = {
+  points: TruckRoutePoint[];
+  stops: TruckRouteStop[];
+};
+
+// One raw GPS sample making up the route map's polyline, time-ordered.
+export type TruckRoutePoint = {
+  time: string;
+  latitude: number;
+  longitude: number;
+  headingDegrees: number | null;
+  speedMph: number | null;
+};
+
+// One place the truck stopped for at least 5 minutes - see the backend's TruckRouteHistoryService javadoc for how
+// contiguous stopped GPS samples are clustered into these. latitude/longitude/formattedLocation are the cluster's
+// centroid/most representative address, not necessarily any single sample's exact values.
+export type TruckRouteStop = {
+  latitude: number;
+  longitude: number;
+  formattedLocation: string | null;
+  arrivalTime: string;
+  departureTime: string;
+  stoppedMinutes: number;
+};
+
+// One Samsara-flagged safety event for the truck's matched vehicle. address/mediaUrl are pre-formatted/pre-selected
+// by the backend's TruckSafetyEventsService - mediaUrl is null when the event has no media attached.
+export type TruckSafetyEventEntry = {
+  id: string;
+  occurredAt: string;
+  behaviorLabels: string[];
+  latitude: number;
+  longitude: number;
+  address: string | null;
+  driverName: string | null;
+  mediaUrl: string | null;
+};

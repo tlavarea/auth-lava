@@ -7,6 +7,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.lava.swexpedited.batch.RetryingHttpClient;
 import com.lava.swexpedited.samsara.SamsaraDriverWithRaw;
+import com.lava.swexpedited.samsara.SamsaraSafetyEvent;
+import com.lava.swexpedited.samsara.SamsaraSafetyEventsResponse;
+import com.lava.swexpedited.samsara.SamsaraVehicleGpsHistoryResponse;
+import com.lava.swexpedited.samsara.SamsaraVehicleGpsHistoryResponseData;
 import com.lava.swexpedited.samsara.SamsaraVehicleWithRaw;
 import com.lava.swexpedited.samsara.model.Driver;
 import com.lava.swexpedited.samsara.model.DriverVehicleAssignmentV2ObjectResponseBody;
@@ -17,6 +21,7 @@ import com.lava.swexpedited.samsara.model.HosLogEntry;
 import com.lava.swexpedited.samsara.model.HosLogsForDriver;
 import com.lava.swexpedited.samsara.model.HosLogsResponse;
 import com.lava.swexpedited.samsara.model.Vehicle;
+import com.lava.swexpedited.samsara.model.VehicleStatsGps;
 import com.lava.swexpedited.samsara.model.VehicleStatsResponse;
 import com.lava.swexpedited.samsara.model.VehicleStatsResponseData;
 import java.io.UncheckedIOException;
@@ -340,6 +345,74 @@ public class SamsaraFleetClient extends RetryingHttpClient {
             cursor = page.getPagination().getEndCursor();
         }
         return hosLogs;
+    }
+
+    /**
+     * A single vehicle's GPS breadcrumb trail (position/heading/speed samples) within {@code [startTime, endTime]}, via
+     * {@code /fleet/vehicles/stats/history?types=gps} - called on-demand by {@code TruckRouteHistoryService} for the
+     * truck detail page's route map, not persisted. Unlike {@link #fetchVehicleLocations()}/
+     * {@link #fetchVehicleLocation(String)} (single-snapshot queries against {@code /fleet/vehicles/stats}), this hits
+     * the {@code stats/history} variant of that same family of endpoints, which returns every sample in the window
+     * rather than just the latest one. Not in the vendored {@code schema/samsara-api.json}, so
+     * {@link SamsaraVehicleGpsHistoryResponse}/{@link SamsaraVehicleGpsHistoryResponseData} are hand-written - see
+     * their javadoc for why no separate GPS-point type was needed.
+     */
+    public List<VehicleStatsGps> fetchVehicleGpsHistory(String vehicleId, Instant startTime, Instant endTime) {
+        List<VehicleStatsGps> points = new ArrayList<>();
+        String cursor = null;
+        boolean hasNextPage = true;
+        while (hasNextPage) {
+            String body = fetchPageBody(
+                    "/fleet/vehicles/stats/history",
+                    cursor,
+                    "startTime",
+                    startTime.toString(),
+                    "endTime",
+                    endTime.toString(),
+                    "vehicleIds",
+                    vehicleId,
+                    "types",
+                    "gps");
+            SamsaraVehicleGpsHistoryResponse page =
+                    readValue(body, SamsaraVehicleGpsHistoryResponse.class, "/fleet/vehicles/stats/history");
+            for (SamsaraVehicleGpsHistoryResponseData vehicleHistory : page.data()) {
+                points.addAll(vehicleHistory.gps());
+            }
+            hasNextPage = Boolean.TRUE.equals(page.pagination().getHasNextPage());
+            cursor = page.pagination().getEndCursor();
+        }
+        return points;
+    }
+
+    /**
+     * Samsara-flagged safety events (harsh braking, following distance, etc.) for a single vehicle since
+     * {@code startTime}, via {@code /safety-events/stream} - called on-demand by {@code TruckSafetyEventsService} for
+     * the truck detail page's route map, not persisted. {@code includeDriver=true} is always sent so
+     * {@link SamsaraSafetyEvent#driver()} is populated. Unlike every other method on this client, this is a
+     * stream-style endpoint with no {@code endTime} parameter. Not in the vendored {@code schema/samsara-api.json}, so
+     * {@link SamsaraSafetyEventsResponse}/{@link SamsaraSafetyEvent} are hand-written.
+     */
+    public List<SamsaraSafetyEvent> fetchSafetyEvents(String assetId, Instant startTime) {
+        List<SamsaraSafetyEvent> events = new ArrayList<>();
+        String cursor = null;
+        boolean hasNextPage = true;
+        while (hasNextPage) {
+            String body = fetchPageBody(
+                    "/safety-events/stream",
+                    cursor,
+                    "startTime",
+                    startTime.toString(),
+                    "assetIds",
+                    assetId,
+                    "includeDriver",
+                    "true");
+            SamsaraSafetyEventsResponse page =
+                    readValue(body, SamsaraSafetyEventsResponse.class, "/safety-events/stream");
+            events.addAll(page.data());
+            hasNextPage = Boolean.TRUE.equals(page.pagination().getHasNextPage());
+            cursor = page.pagination().getEndCursor();
+        }
+        return events;
     }
 
     private String fetchPageBody(String path, String cursor, String... extraParams) {

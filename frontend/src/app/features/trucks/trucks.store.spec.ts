@@ -2,7 +2,12 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 
-import { TruckDetailResponse, TruckListingRow } from './trucks.models';
+import {
+  TruckDetailResponse,
+  TruckListingRow,
+  TruckRouteHistoryResponse,
+  TruckSafetyEventEntry,
+} from './trucks.models';
 import { TrucksStore } from './trucks.store';
 
 describe('TrucksStore', () => {
@@ -47,6 +52,35 @@ describe('TrucksStore', () => {
     locationTime: null,
   };
 
+  const routeHistory: TruckRouteHistoryResponse = {
+    points: [
+      { time: '2026-07-27T12:00:00Z', latitude: 32.735, longitude: -97.108, headingDegrees: 180, speedMph: 62.3 },
+    ],
+    stops: [
+      {
+        latitude: 32.735,
+        longitude: -97.108,
+        formattedLocation: 'Fort Worth, TX',
+        arrivalTime: '2026-07-27T12:05:00Z',
+        departureTime: '2026-07-27T12:20:00Z',
+        stoppedMinutes: 15,
+      },
+    ],
+  };
+
+  const safetyEvents: TruckSafetyEventEntry[] = [
+    {
+      id: 'evt-1',
+      occurredAt: '2026-07-27T12:10:00Z',
+      behaviorLabels: ['Harsh Brake'],
+      latitude: 32.735,
+      longitude: -97.108,
+      address: '100 Main St, Fort Worth, TX',
+      driverName: 'Jane Trucker',
+      mediaUrl: 'https://example.com/clip.mp4',
+    },
+  ];
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting(), TrucksStore],
@@ -64,6 +98,10 @@ describe('TrucksStore', () => {
     expect(store.listStatus()).toBe('idle');
     expect(store.selectedDetail()).toBeNull();
     expect(store.detailStatus()).toBe('idle');
+    expect(store.routeHistory()).toBeNull();
+    expect(store.routeHistoryStatus()).toBe('idle');
+    expect(store.safetyEvents()).toBeNull();
+    expect(store.safetyEventsStatus()).toBe('idle');
   });
 
   it('loadTrucks() populates the list on success', async () => {
@@ -123,5 +161,44 @@ describe('TrucksStore', () => {
 
     expect(store.selectedDetail()).toBeNull();
     expect(store.detailStatus()).toBe('idle');
+  });
+
+  it('loadTruckMapData() populates route history and safety events in parallel on success', async () => {
+    const loadPromise = store.loadTruckMapData('truck-1');
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1/route-history').flush(routeHistory);
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1/safety-events').flush(safetyEvents);
+    await loadPromise;
+
+    expect(store.routeHistory()).toEqual(routeHistory);
+    expect(store.routeHistoryStatus()).toBe('idle');
+    expect(store.safetyEvents()).toEqual(safetyEvents);
+    expect(store.safetyEventsStatus()).toBe('idle');
+  });
+
+  it('loadTruckMapData() marks only the failing request as error, keeping the other independent', async () => {
+    const loadPromise = store.loadTruckMapData('truck-1');
+    httpMock
+      .expectOne('/api/sw-expedited/trucks/truck-1/route-history')
+      .flush(null, { status: 500, statusText: 'Server Error' });
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1/safety-events').flush(safetyEvents);
+    await loadPromise;
+
+    expect(store.routeHistoryStatus()).toBe('error');
+    expect(store.safetyEvents()).toEqual(safetyEvents);
+    expect(store.safetyEventsStatus()).toBe('idle');
+  });
+
+  it('clearMapData() resets route history and safety events', async () => {
+    const loadPromise = store.loadTruckMapData('truck-1');
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1/route-history').flush(routeHistory);
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1/safety-events').flush(safetyEvents);
+    await loadPromise;
+
+    store.clearMapData();
+
+    expect(store.routeHistory()).toBeNull();
+    expect(store.routeHistoryStatus()).toBe('idle');
+    expect(store.safetyEvents()).toBeNull();
+    expect(store.safetyEventsStatus()).toBe('idle');
   });
 });
