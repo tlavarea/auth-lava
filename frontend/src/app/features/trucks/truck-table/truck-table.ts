@@ -8,18 +8,21 @@ import { HlmItemImports } from '@spartan-ng/helm/item';
 import { HlmPaginationImports } from '@spartan-ng/helm/pagination';
 import { HlmSelectImports } from '@spartan-ng/helm/select';
 
+import { TRUCK_STATUS_LABELS, TruckStatus, truckStatus, truckStatusBadge } from '../truck-status';
 import { TruckListingRow } from '../trucks.models';
 import {
   ALL,
   filterTrucks,
-  normalizedStatusCode,
   paginateTrucks,
   SORT_OPTION_LABELS,
   SortOption,
   sortTrucks,
-  statusCodeLabel,
   TruckFilters,
 } from './truck-table.filters';
+
+// Fixed display order for the status filter dropdown - matches the order a fleet operator scans for (moving/running
+// trucks first), rather than alphabetical.
+const STATUS_ORDER: TruckStatus[] = ['moving', 'on', 'idle', 'off', 'unknown'];
 
 type AppliedFilter = { label: string; clear: () => void };
 
@@ -126,9 +129,8 @@ type AppliedFilter = { label: string; clear: () => void };
                   <div>
                     <dt class="text-xs text-muted-foreground">Status</dt>
                     <dd>
-                      <span hlmBadge variant="outline">{{
-                        statusCodeLabel(normalizedStatusCode(truck.statusCode))
-                      }}</span>
+                      @let badge = truckStatusBadge(truck.engineState, truck.ecuSpeedMph);
+                      <span hlmBadge [variant]="badge.variant" [class]="badge.class">{{ badge.label }}</span>
                     </dd>
                   </div>
                   <div>
@@ -160,30 +162,30 @@ type AppliedFilter = { label: string; clear: () => void };
 export class TruckTable {
   readonly trucks: InputSignal<TruckListingRow[]> = input.required<TruckListingRow[]>();
 
-  protected readonly normalizedStatusCode = normalizedStatusCode;
-  protected readonly statusCodeLabel = statusCodeLabel;
+  protected readonly truckStatusBadge = truckStatusBadge;
   protected readonly ALL = ALL;
   protected readonly sortOptions: { value: SortOption; label: string }[] = Object.entries(SORT_OPTION_LABELS).map(
     ([value, label]) => ({ value: value as SortOption, label })
   );
 
   protected readonly statusItemToString = (value: unknown): string =>
-    value === ALL ? 'All statuses' : statusCodeLabel(String(value));
+    value === ALL ? 'All statuses' : TRUCK_STATUS_LABELS[value as TruckStatus];
   protected readonly sortItemToString = (value: unknown): string =>
     SORT_OPTION_LABELS[value as SortOption] ?? String(value);
 
   protected readonly searchText: WritableSignal<string> = signal('');
-  protected readonly statusFilter: WritableSignal<string> = signal(ALL);
+  protected readonly statusFilter: WritableSignal<TruckStatus | typeof ALL> = signal(ALL);
   protected readonly sortOption: WritableSignal<SortOption> = signal('truckNumber-asc');
   protected readonly currentPage: WritableSignal<number> = signal(1);
   protected readonly itemsPerPage: WritableSignal<number> = signal(10);
 
-  protected readonly statusOptions: Signal<string[]> = computed(() =>
-    Array.from(new Set(this.trucks().map((truck) => normalizedStatusCode(truck.statusCode)))).sort()
-  );
+  protected readonly statusOptions: Signal<TruckStatus[]> = computed(() => {
+    const present = new Set(this.trucks().map((truck) => truckStatus(truck.engineState, truck.ecuSpeedMph)));
+    return STATUS_ORDER.filter((status) => present.has(status));
+  });
 
   protected readonly filteredTrucks: Signal<TruckListingRow[]> = computed(() => {
-    const filters: TruckFilters = { searchText: this.searchText(), statusCode: this.statusFilter() };
+    const filters: TruckFilters = { searchText: this.searchText(), status: this.statusFilter() };
     return filterTrucks(this.trucks(), filters);
   });
 

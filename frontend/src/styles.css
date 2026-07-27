@@ -138,3 +138,26 @@
 [data-slot='popover-trigger'][class*='h-9'] {
   @apply h-10 px-3;
 }
+
+/*
+ * Strips the Google Maps JS API's remaining default InfoWindow chrome (white background, drop shadow, rounded
+ * corners, padding, pointer-arrow triangle) so a <map-info-window>'s own projected content - e.g.
+ * truck-route-map.ts's hlm-hover-card-styled tooltip - is the only visible surface, rather than a styled card
+ * nested inside Google's own box. (The close button is handled separately, via the documented
+ * InfoWindowOptions.headerDisabled - see truck-route-map.ts's infoWindowOptions - not CSS.) .gm-style-iw* are
+ * undocumented, internal Google Maps class names (a long-standing, widely-relied-upon convention for this exact
+ * override, but not a guaranteed contract - could break on a future Maps JS API version). Unlayered so the
+ * !important overrides reliably beat Google's own inline styles (e.g. .gm-style-iw-d's inline max-height/overflow)
+ * regardless of cascade layer ordering.
+ */
+.gm-style-iw-c {
+  padding: 0 !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: none !important;
+}
+.gm-style-iw-d {
+  overflow: visible !important;
+}
+.gm-style-iw-t::after {
+  display: none !important;
+}
