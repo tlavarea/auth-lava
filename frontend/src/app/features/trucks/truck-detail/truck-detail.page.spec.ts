@@ -19,7 +19,7 @@ beforeEach(() => {
         return { setCenter: vi.fn(), setZoom: vi.fn(), fitBounds: vi.fn(), getZoom: vi.fn(), addListener: vi.fn() };
       }),
       Marker: vi.fn(function () {
-        return { setMap: vi.fn(), setPosition: vi.fn(), setIcon: vi.fn() };
+        return { setMap: vi.fn(), setPosition: vi.fn(), setIcon: vi.fn(), addListener: vi.fn() };
       }),
       Polyline: vi.fn(function () {
         return { setMap: vi.fn(), setPath: vi.fn(), setOptions: vi.fn() };
@@ -28,7 +28,14 @@ beforeEach(() => {
         return { extend: vi.fn() };
       }),
       InfoWindow: vi.fn(function () {
-        return { open: vi.fn(), close: vi.fn(), setContent: vi.fn(), get: vi.fn() };
+        return {
+          open: vi.fn(),
+          close: vi.fn(),
+          setContent: vi.fn(),
+          setOptions: vi.fn(),
+          get: vi.fn(),
+          addListener: vi.fn(),
+        };
       }),
       SymbolPath: { CIRCLE: 0, FORWARD_CLOSED_ARROW: 1 },
     },

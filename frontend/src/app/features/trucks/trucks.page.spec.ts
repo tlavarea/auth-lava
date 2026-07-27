@@ -124,6 +124,8 @@ describe('TrucksPage', () => {
 
     httpMock.expectOne('/api/sw-expedited/trucks').flush(trucks);
     httpMock.expectOne('/api/sw-expedited/trucks/truck-1').flush(detail);
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1/route-history').flush({ points: [], stops: [] });
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1/safety-events').flush([]);
     await harness.fixture.whenStable();
     harness.detectChanges();
     await harness.fixture.whenStable();

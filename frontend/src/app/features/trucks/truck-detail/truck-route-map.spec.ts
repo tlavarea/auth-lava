@@ -25,6 +25,7 @@ let fakeMarkerInstance: {
   setMap: ReturnType<typeof vi.fn>;
   setPosition: ReturnType<typeof vi.fn>;
   setIcon: ReturnType<typeof vi.fn>;
+  addListener: ReturnType<typeof vi.fn>;
 };
 let fakePolylineInstance: {
   setMap: ReturnType<typeof vi.fn>;
@@ -36,7 +37,9 @@ let fakeInfoWindowInstance: {
   open: ReturnType<typeof vi.fn>;
   close: ReturnType<typeof vi.fn>;
   setContent: ReturnType<typeof vi.fn>;
+  setOptions: ReturnType<typeof vi.fn>;
   get: ReturnType<typeof vi.fn>;
+  addListener: ReturnType<typeof vi.fn>;
 };
 let mapConstructor: ReturnType<typeof vi.fn>;
 let markerConstructor: ReturnType<typeof vi.fn>;
@@ -56,10 +59,22 @@ beforeEach(() => {
       return { remove: vi.fn() };
     }),
   };
-  fakeMarkerInstance = { setMap: vi.fn(), setPosition: vi.fn(), setIcon: vi.fn() };
+  fakeMarkerInstance = {
+    setMap: vi.fn(),
+    setPosition: vi.fn(),
+    setIcon: vi.fn(),
+    addListener: vi.fn(() => ({ remove: vi.fn() })),
+  };
   fakePolylineInstance = { setMap: vi.fn(), setPath: vi.fn(), setOptions: vi.fn() };
   fakeBoundsInstance = { extend: vi.fn() };
-  fakeInfoWindowInstance = { open: vi.fn(), close: vi.fn(), setContent: vi.fn(), get: vi.fn(() => undefined) };
+  fakeInfoWindowInstance = {
+    open: vi.fn(),
+    close: vi.fn(),
+    setContent: vi.fn(),
+    setOptions: vi.fn(),
+    get: vi.fn(() => undefined),
+    addListener: vi.fn(() => ({ remove: vi.fn() })),
+  };
   // Must be `function`, not an arrow function - Google Maps constructs these with `new`, which arrow functions
   // can't be used with.
   /* eslint-disable prefer-arrow-callback */
@@ -236,9 +251,10 @@ describe('TruckRouteMap', () => {
   it('opens the shared info window on marker hover and closes it after mouseout', async () => {
     vi.useFakeTimers();
     try {
-      await render();
-      // The template renders the stop's @for block before the safety events' @for block, so the first
-      // <map-marker> is always the (single) stop in this fixture's data.
+      // No points, so no current-location marker precedes the stop's in the DOM (the template renders it, then
+      // the stop's @for block, then the safety events' @for block) - leaves the first <map-marker> unambiguously
+      // the (single) stop in this fixture's data.
+      await render({ points: [] });
       const [stopMarkerDebugEl] = fixture.debugElement.queryAll(By.css('map-marker'));
       expect(stopMarkerDebugEl).toBeDefined();
 
