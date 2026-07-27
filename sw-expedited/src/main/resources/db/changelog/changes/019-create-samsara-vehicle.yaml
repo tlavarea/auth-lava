@@ -1,0 +1,54 @@
+databaseChangeLog:
+  - changeSet:
+      id: "19"
+      author: tlavarea
+      comment: >
+        SAMSARA_VEHICLE - the current vehicle roster, synced periodically from Samsara's /fleet/vehicles
+        endpoint. Keyed on Samsara's own vehicle id, same replace-all convention as samsara_driver (see
+        003-create-samsara-driver.yaml) - "who's on the roster right now", not a change log. Exists
+        specifically to give VektorFleetSyncTasklet a vin lookup to match against vektor_truck.vin (see
+        VinMatchingTruckMatchStrategy) - unlike samsara_driver, this table isn't otherwise read for display,
+        so only the fields needed for that match plus a handful of likely-useful identifiers are pulled out
+        as typed columns; raw_response holds the entire vehicle payload for anything else.
+      changes:
+        - createTable:
+            tableName: samsara_vehicle
+            columns:
+              - column:
+                  name: id
+                  type: VARCHAR
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: vin
+                  type: VARCHAR
+              - column:
+                  name: name
+                  type: VARCHAR
+              - column:
+                  name: make
+                  type: VARCHAR
+              - column:
+                  name: model
+                  type: VARCHAR
+              - column:
+                  name: year
+                  type: VARCHAR
+              - column:
+                  name: license_plate
+                  type: VARCHAR
+              - column:
+                  name: raw_response
+                  type: JSON
+                  constraints:
+                    nullable: false
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS samsara_vehicle CASCADE;

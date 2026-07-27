@@ -83,6 +83,12 @@ samsara-driver-sync:
 samsara-location-sync:
   cron: ${SAMSARA_LOCATION_SYNC_CRON:0 * * ? * *}
 
+samsara-vehicle-sync:
+  cron: ${SAMSARA_VEHICLE_SYNC_CRON:0 */10 * ? * *}
+
+samsara-vehicle-diagnostics-sync:
+  cron: ${SAMSARA_VEHICLE_DIAGNOSTICS_SYNC_CRON:0 */2 * ? * *}
+
 server:
   port: ${SERVER_PORT:8081}
 

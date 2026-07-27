@@ -49,6 +49,18 @@ export const TrucksStore = signalStore(
         }
       },
 
+      // Re-fetches the currently-selected truck's detail without resetting detailStatus/selectedDetail to
+      // loading/null first - used to silently refresh diagnostics/location while the detail pane stays open, since
+      // the backend re-syncs them roughly every 2 minutes (see SamsaraVehicleDiagnosticsSyncScheduler).
+      async refreshTruckDetail(truckId: string): Promise<void> {
+        try {
+          const selectedDetail = await firstValueFrom(trucksApi.detail(truckId));
+          patchState(store, { selectedDetail });
+        } catch {
+          // Silent: a transient refresh failure shouldn't disrupt an already-open detail view.
+        }
+      },
+
       clearSelectedDetail(): void {
         patchState(store, { selectedDetail: null, detailStatus: 'idle' });
       },

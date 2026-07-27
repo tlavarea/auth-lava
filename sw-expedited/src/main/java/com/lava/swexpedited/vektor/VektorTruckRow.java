@@ -11,6 +11,8 @@ import java.time.LocalDateTime;
  * rather than referential integrity this app controls. {@code currentDriverId} is what
  * {@code VektorTruckRepository#findCurrentDriverIdByTruckId} exposes for {@code VektorSyncTasklet}'s time-off
  * attribution, replacing the old {@code VektorManifestRepository#findLatestDriverIdByTruckId} heuristic.
+ * {@code matchedSamsaraVehicleId} is resolved once per truck at sync time via {@link VinMatchingTruckMatchStrategy}
+ * against {@code vin} - same best-effort convention as {@code matchedSamsaraDriverId} on {@link VektorDriverRow}.
  */
 public record VektorTruckRow(
         String id,
@@ -23,4 +25,22 @@ public record VektorTruckRow(
         String currentTrailerId,
         String currentDriverId,
         String rawResponse,
-        LocalDateTime syncedAt) {}
+        LocalDateTime syncedAt,
+        String matchedSamsaraVehicleId) {
+
+    public VektorTruckRow withMatchedSamsaraVehicleId(String matchedSamsaraVehicleId) {
+        return new VektorTruckRow(
+                id,
+                truckNumber,
+                statusCode,
+                vin,
+                make,
+                model,
+                year,
+                currentTrailerId,
+                currentDriverId,
+                rawResponse,
+                syncedAt,
+                matchedSamsaraVehicleId);
+    }
+}

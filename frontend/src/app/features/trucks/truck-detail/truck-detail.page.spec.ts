@@ -22,6 +22,20 @@ describe('TruckDetailPage', () => {
     currentDriverName: 'Jane Trucker',
     currentTrailerLabel: "T231 - 53' SDL",
     syncedAt: '2026-07-14T00:00:00',
+    fuelPercent: 62,
+    odometerMiles: 184203,
+    engineHours: 5412,
+    faultCodes: null,
+    engineState: 'On',
+    defLevelPercent: 41,
+    batteryVolts: 13.2,
+    coolantTempF: 198,
+    engineRpm: 1200,
+    engineLoadPercent: 54,
+    latitude: 35.221,
+    longitude: -101.831,
+    formattedLocation: 'I-40 near Amarillo, TX',
+    locationTime: '2026-07-14T00:00:00',
   };
 
   beforeEach(async () => {
@@ -49,7 +63,22 @@ describe('TruckDetailPage', () => {
     expect(fixture.nativeElement.textContent).toContain('1FUJA6CV12LM12345');
     expect(fixture.nativeElement.textContent).toContain('Jane Trucker');
     expect(fixture.nativeElement.textContent).toContain("T231 - 53' SDL");
-    expect(fixture.nativeElement.textContent).toContain('More details coming soon.');
+    expect(fixture.nativeElement.textContent).toContain('I-40 near Amarillo, TX');
+  });
+
+  it('shows a fallback message when no Samsara diagnostics are available', async () => {
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1').flush({
+      ...detail,
+      fuelPercent: null,
+      odometerMiles: null,
+      engineHours: null,
+      engineState: null,
+      formattedLocation: null,
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('No Samsara diagnostics available for this truck.');
   });
 
   it('renders null fields as an em dash', async () => {

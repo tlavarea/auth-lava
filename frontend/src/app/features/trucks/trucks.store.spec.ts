@@ -28,6 +28,20 @@ describe('TrucksStore', () => {
     currentDriverName: 'Jane Trucker',
     currentTrailerLabel: "T231 - 53' SDL",
     syncedAt: '2026-07-14T00:00:00',
+    fuelPercent: null,
+    odometerMiles: null,
+    engineHours: null,
+    faultCodes: null,
+    engineState: null,
+    defLevelPercent: null,
+    batteryVolts: null,
+    coolantTempF: null,
+    engineRpm: null,
+    engineLoadPercent: null,
+    latitude: null,
+    longitude: null,
+    formattedLocation: null,
+    locationTime: null,
   };
 
   beforeEach(() => {
@@ -81,6 +95,20 @@ describe('TrucksStore', () => {
     await loadPromise;
 
     expect(store.detailStatus()).toBe('error');
+  });
+
+  it('refreshTruckDetail() replaces the selected detail without touching detailStatus', async () => {
+    const loadPromise = store.loadTruckDetail('truck-1');
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1').flush(detail);
+    await loadPromise;
+
+    const refreshedDetail: TruckDetailResponse = { ...detail, fuelPercent: 61 };
+    const refreshPromise = store.refreshTruckDetail('truck-1');
+    httpMock.expectOne('/api/sw-expedited/trucks/truck-1').flush(refreshedDetail);
+    await refreshPromise;
+
+    expect(store.selectedDetail()).toEqual(refreshedDetail);
+    expect(store.detailStatus()).toBe('idle');
   });
 
   it('clearSelectedDetail() resets the selected detail', async () => {

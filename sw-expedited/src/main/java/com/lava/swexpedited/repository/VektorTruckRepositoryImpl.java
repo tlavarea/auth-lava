@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.jooq.DSLContext;
-import org.jooq.InsertValuesStep11;
+import org.jooq.InsertValuesStep12;
 import org.jooq.JSON;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,7 +35,7 @@ public class VektorTruckRepositoryImpl implements VektorTruckRepository {
         }
 
         LocalDateTime syncedAt = LocalDateTime.now();
-        InsertValuesStep11<
+        InsertValuesStep12<
                         VektorTruckRecord,
                         String,
                         String,
@@ -47,7 +47,8 @@ public class VektorTruckRepositoryImpl implements VektorTruckRepository {
                         String,
                         String,
                         JSON,
-                        LocalDateTime>
+                        LocalDateTime,
+                        String>
                 insert = this.dsl.insertInto(
                         VEKTOR_TRUCK,
                         VEKTOR_TRUCK.ID,
@@ -60,7 +61,8 @@ public class VektorTruckRepositoryImpl implements VektorTruckRepository {
                         VEKTOR_TRUCK.CURRENT_TRAILER_ID,
                         VEKTOR_TRUCK.CURRENT_DRIVER_ID,
                         VEKTOR_TRUCK.RAW_RESPONSE,
-                        VEKTOR_TRUCK.SYNCED_AT);
+                        VEKTOR_TRUCK.SYNCED_AT,
+                        VEKTOR_TRUCK.MATCHED_SAMSARA_VEHICLE_ID);
 
         for (VektorTruckRow row : rows) {
             insert.values(
@@ -74,7 +76,8 @@ public class VektorTruckRepositoryImpl implements VektorTruckRepository {
                     row.currentTrailerId(),
                     row.currentDriverId(),
                     JSON.valueOf(row.rawResponse()),
-                    syncedAt);
+                    syncedAt,
+                    row.matchedSamsaraVehicleId());
         }
 
         insert.execute();
@@ -117,6 +120,7 @@ public class VektorTruckRepositoryImpl implements VektorTruckRepository {
                 row.currentTrailerId(),
                 row.currentDriverId(),
                 row.rawResponse().data(),
-                row.syncedAt());
+                row.syncedAt(),
+                row.matchedSamsaraVehicleId());
     }
 }

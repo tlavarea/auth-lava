@@ -87,6 +87,17 @@ class VektorTruckRepositoryImplTest extends AbstractRepositoryIntegrationTest {
 
     private VektorTruckRow row(String id, String truckNumber, String currentDriverId) {
         return new VektorTruckRow(
-                id, truckNumber, null, null, null, null, null, null, currentDriverId, "{\"id\":\"" + id + "\"}", null);
+                id,
+                truckNumber,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                currentDriverId,
+                "{\"id\":\"" + id + "\"}",
+                null,
+                null);
     }
 }
