@@ -14,6 +14,7 @@ class VektorTrailerMapperTest {
         VektorGrpcWeb.Message trailer = decode(new VektorGrpcWeb.Writer()
                 .writeString(1, "trailer-uuid")
                 .writeString(4, "T231 - 53' SDL")
+                .writeString(6, "5MC125315H5165489")
                 .writeString(7, "FONTAINE TRAILER CO.")
                 .writeVarint(9, 2019));
 
@@ -21,10 +22,22 @@ class VektorTrailerMapperTest {
 
         assertThat(row.id()).isEqualTo("trailer-uuid");
         assertThat(row.label()).isEqualTo("T231 - 53' SDL");
+        assertThat(row.vin()).isEqualTo("5MC125315H5165489");
         assertThat(row.manufacturer()).isEqualTo("FONTAINE TRAILER CO.");
         assertThat(row.year()).isEqualTo(2019);
         assertThat(row.rawResponse()).isNotBlank().contains("FONTAINE");
         assertThat(row.syncedAt()).isNull();
+        assertThat(row.matchedSamsaraTrailerId()).isNull();
+    }
+
+    @Test
+    void toRow_noVin_vinIsNull() {
+        VektorGrpcWeb.Message trailer =
+                decode(new VektorGrpcWeb.Writer().writeString(1, "trailer-uuid").writeString(4, "U51620"));
+
+        VektorTrailerRow row = vektorTrailerMapper.toRow(trailer);
+
+        assertThat(row.vin()).isNull();
     }
 
     @Test

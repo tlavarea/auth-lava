@@ -2,16 +2,19 @@ package com.lava.swexpedited.batch.vektor;
 
 import com.lava.swexpedited.boot.autoconfigure.app.VektorProperties;
 import com.lava.swexpedited.repository.SamsaraDriverRepository;
+import com.lava.swexpedited.repository.SamsaraTrailerRepository;
 import com.lava.swexpedited.repository.SamsaraVehicleRepository;
 import com.lava.swexpedited.repository.VektorDriverRepository;
 import com.lava.swexpedited.repository.VektorTrailerRepository;
 import com.lava.swexpedited.repository.VektorTruckRepository;
 import com.lava.swexpedited.samsara.SamsaraDriverRow;
+import com.lava.swexpedited.samsara.SamsaraTrailerRow;
 import com.lava.swexpedited.samsara.SamsaraVehicleRow;
 import com.lava.swexpedited.vektor.VektorDriverMapper;
 import com.lava.swexpedited.vektor.VektorDriverMatchStrategy;
 import com.lava.swexpedited.vektor.VektorDriverRow;
 import com.lava.swexpedited.vektor.VektorTrailerMapper;
+import com.lava.swexpedited.vektor.VektorTrailerMatchStrategy;
 import com.lava.swexpedited.vektor.VektorTrailerRow;
 import com.lava.swexpedited.vektor.VektorTruckMapper;
 import com.lava.swexpedited.vektor.VektorTruckMatchStrategy;
@@ -39,7 +42,10 @@ import org.springframework.stereotype.Component;
  * reasoning as {@code VektorSyncTasklet}: a handful of bulk HTTP calls total per sync, not one per item. Trucks are
  * matched against the Samsara vehicle roster the same way, once per truck, via {@link VektorTruckMatchStrategy} - after
  * first being deduplicated by VIN (see {@link #dedupeByVin}), since {@code Trucks/Get} has been observed returning the
- * same physical truck under two different ids.
+ * same physical truck under two different ids. Trailers are matched against the Samsara trailer roster the same way,
+ * once per trailer, via {@link VektorTrailerMatchStrategy} - also deduplicated by VIN first (see
+ * {@link #dedupeTrailersByVin}), applying the same defensive treatment {@code Trucks/Get} needed since
+ * {@code Trailers/Get} hasn't been confirmed clean of the same artifact.
  */
 @Component
 @Slf4j
@@ -54,8 +60,10 @@ public class VektorFleetSyncTasklet implements Tasklet {
     private final VektorTrailerMapper vektorTrailerMapper;
     private final VektorDriverMatchStrategy vektorDriverMatchStrategy;
     private final VektorTruckMatchStrategy vektorTruckMatchStrategy;
+    private final VektorTrailerMatchStrategy vektorTrailerMatchStrategy;
     private final SamsaraDriverRepository samsaraDriverRepository;
     private final SamsaraVehicleRepository samsaraVehicleRepository;
+    private final SamsaraTrailerRepository samsaraTrailerRepository;
     private final VektorDriverRepository vektorDriverRepository;
     private final VektorTruckRepository vektorTruckRepository;
     private final VektorTrailerRepository vektorTrailerRepository;
@@ -71,8 +79,10 @@ public class VektorFleetSyncTasklet implements Tasklet {
             VektorTrailerMapper vektorTrailerMapper,
             VektorDriverMatchStrategy vektorDriverMatchStrategy,
             VektorTruckMatchStrategy vektorTruckMatchStrategy,
+            VektorTrailerMatchStrategy vektorTrailerMatchStrategy,
             SamsaraDriverRepository samsaraDriverRepository,
             SamsaraVehicleRepository samsaraVehicleRepository,
+            SamsaraTrailerRepository samsaraTrailerRepository,
             VektorDriverRepository vektorDriverRepository,
             VektorTruckRepository vektorTruckRepository,
             VektorTrailerRepository vektorTrailerRepository,
@@ -86,8 +96,10 @@ public class VektorFleetSyncTasklet implements Tasklet {
         this.vektorTrailerMapper = vektorTrailerMapper;
         this.vektorDriverMatchStrategy = vektorDriverMatchStrategy;
         this.vektorTruckMatchStrategy = vektorTruckMatchStrategy;
+        this.vektorTrailerMatchStrategy = vektorTrailerMatchStrategy;
         this.samsaraDriverRepository = samsaraDriverRepository;
         this.samsaraVehicleRepository = samsaraVehicleRepository;
+        this.samsaraTrailerRepository = samsaraTrailerRepository;
         this.vektorDriverRepository = vektorDriverRepository;
         this.vektorTruckRepository = vektorTruckRepository;
         this.vektorTrailerRepository = vektorTrailerRepository;
@@ -124,8 +136,16 @@ public class VektorFleetSyncTasklet implements Tasklet {
         this.vektorTruckRepository.replaceAll(truckRows);
         log.info("execute::stored {} vektor trucks", truckRows.size());
 
-        List<VektorTrailerRow> trailerRows = this.vektorTrailerClient.fetchTrailers(jwt, companyId).stream()
-                .map(this.vektorTrailerMapper::toRow)
+        List<SamsaraTrailerRow> samsaraTrailers = this.samsaraTrailerRepository.findAll();
+        List<VektorTrailerRow> trailerRows = dedupeTrailersByVin(
+                        this.vektorTrailerClient.fetchTrailers(jwt, companyId).stream()
+                                .map(this.vektorTrailerMapper::toRow)
+                                .toList())
+                .stream()
+                .map(row -> this.vektorTrailerMatchStrategy
+                        .match(row.vin(), samsaraTrailers)
+                        .map(row::withMatchedSamsaraTrailerId)
+                        .orElse(row))
                 .toList();
         this.vektorTrailerRepository.replaceAll(trailerRows);
         log.info("execute::stored {} vektor trailers", trailerRows.size());
@@ -157,5 +177,21 @@ public class VektorFleetSyncTasklet implements Tasklet {
 
     private boolean hasActiveAssignment(VektorTruckRow row) {
         return row.currentDriverId() != null || row.currentTrailerId() != null;
+    }
+
+    /**
+     * Collapses trailer rows that share a VIN into one, same defensive treatment as {@link #dedupeByVin} for the
+     * analogous truck-side artifact - applied here even though {@code Trailers/Get} hasn't been separately confirmed to
+     * exhibit it, since a trailer has no active-assignment signal of its own (unlike a truck's driver/trailer
+     * assignment) to prefer one duplicate over another, so ties are broken by first-encountered. Rows with a null VIN
+     * are keyed on their own trailer id instead, since there's no other safe key to group them on.
+     */
+    private List<VektorTrailerRow> dedupeTrailersByVin(List<VektorTrailerRow> rows) {
+        Map<String, VektorTrailerRow> canonicalByKey = new LinkedHashMap<>();
+        for (VektorTrailerRow row : rows) {
+            String key = row.vin() != null ? row.vin() : row.id();
+            canonicalByKey.putIfAbsent(key, row);
+        }
+        return List.copyOf(canonicalByKey.values());
     }
 }

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.jooq.DSLContext;
-import org.jooq.InsertValuesStep6;
+import org.jooq.InsertValuesStep8;
 import org.jooq.JSON;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,19 +34,28 @@ public class VektorTrailerRepositoryImpl implements VektorTrailerRepository {
         }
 
         LocalDateTime syncedAt = LocalDateTime.now();
-        InsertValuesStep6<VektorTrailerRecord, String, String, String, Integer, JSON, LocalDateTime> insert =
-                this.dsl.insertInto(
+        InsertValuesStep8<VektorTrailerRecord, String, String, String, Integer, String, JSON, LocalDateTime, String>
+                insert = this.dsl.insertInto(
                         VEKTOR_TRAILER,
                         VEKTOR_TRAILER.ID,
                         VEKTOR_TRAILER.LABEL,
                         VEKTOR_TRAILER.MANUFACTURER,
                         VEKTOR_TRAILER.YEAR,
+                        VEKTOR_TRAILER.VIN,
                         VEKTOR_TRAILER.RAW_RESPONSE,
-                        VEKTOR_TRAILER.SYNCED_AT);
+                        VEKTOR_TRAILER.SYNCED_AT,
+                        VEKTOR_TRAILER.MATCHED_SAMSARA_TRAILER_ID);
 
         for (VektorTrailerRow row : rows) {
             insert.values(
-                    row.id(), row.label(), row.manufacturer(), row.year(), JSON.valueOf(row.rawResponse()), syncedAt);
+                    row.id(),
+                    row.label(),
+                    row.manufacturer(),
+                    row.year(),
+                    row.vin(),
+                    JSON.valueOf(row.rawResponse()),
+                    syncedAt,
+                    row.matchedSamsaraTrailerId());
         }
 
         insert.execute();
@@ -74,7 +83,9 @@ public class VektorTrailerRepositoryImpl implements VektorTrailerRepository {
                 row.label(),
                 row.manufacturer(),
                 row.year(),
+                row.vin(),
                 row.rawResponse().data(),
-                row.syncedAt());
+                row.syncedAt(),
+                row.matchedSamsaraTrailerId());
     }
 }

@@ -86,6 +86,9 @@ samsara-location-sync:
 samsara-vehicle-sync:
   cron: ${SAMSARA_VEHICLE_SYNC_CRON:0 */10 * ? * *}
 
+samsara-trailer-sync:
+  cron: ${SAMSARA_TRAILER_SYNC_CRON:0 */10 * ? * *}
+
 samsara-vehicle-diagnostics-sync:
   cron: ${SAMSARA_VEHICLE_DIAGNOSTICS_SYNC_CRON:0 */2 * ? * *}
 
