@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: "24"
+      author: tlavarea
+      comment: >
+        Adds vin to vektor_trailer. Field 6 of the decoded Trailers/Get message - reverse-engineered from a
+        real capture the same way vektor_truck.vin was (see VektorTrailerMapper, field 4 on the truck side) -
+        not previously mapped since it hadn't been identified as a VIN. Exists to give
+        VektorFleetSyncTasklet a vin to match against samsara_trailer.trailer_serial_number (see
+        VinMatchingTrailerMatchStrategy) - Samsara's real Trailer schema has no vin field of its own.
+      changes:
+        - addColumn:
+            tableName: vektor_trailer
+            columns:
+              - column:
+                  name: vin
+                  type: VARCHAR
+      rollback:
+        - dropColumn:
+            tableName: vektor_trailer
+            columnName: vin

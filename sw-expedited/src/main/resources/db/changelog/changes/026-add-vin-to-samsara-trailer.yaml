@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: "26"
+      author: tlavarea
+      comment: >
+        Adds vin to samsara_trailer, read from the trailer's externalIds map under the "samsara.vin" key (see
+        Trailer/TrailerExternalIds in schema/samsara-api.json) - Samsara's real Trailer schema has no top-level
+        vin field. Replaces trailer_serial_number as VinMatchingTrailerMatchStrategy's match target against
+        vektor_trailer.vin: a live capture showed only 2 of 4 trailers had trailer_serial_number populated,
+        while externalIds.samsara.vin was populated for all 4 - trailer_serial_number is a separate,
+        physical-serial-number field that's often blank, kept only for display (see TrailerServiceImpl's
+        assetSerialNumber).
+      changes:
+        - addColumn:
+            tableName: samsara_trailer
+            columns:
+              - column:
+                  name: vin
+                  type: VARCHAR
+      rollback:
+        - dropColumn:
+            tableName: samsara_trailer
+            columnName: vin

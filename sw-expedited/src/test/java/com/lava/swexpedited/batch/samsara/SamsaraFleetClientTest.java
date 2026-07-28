@@ -15,6 +15,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.lava.swexpedited.samsara.SamsaraDriverWithRaw;
 import com.lava.swexpedited.samsara.SamsaraSafetyEvent;
+import com.lava.swexpedited.samsara.SamsaraTrailerWithRaw;
 import com.lava.swexpedited.samsara.SamsaraVehicleWithRaw;
 import com.lava.swexpedited.samsara.model.DriverActivationStatus;
 import com.lava.swexpedited.samsara.model.DriverVehicleAssignmentV2ObjectResponseBody;
@@ -425,6 +426,70 @@ class SamsaraFleetClientTest {
 
         assertThat(vehicles).extracting(v -> v.payload().getId()).containsExactly("1", "2");
         verify(1, getRequestedFor(urlPathEqualTo("/fleet/vehicles")).withQueryParam("after", equalTo("cursor-abc")));
+    }
+
+    @Test
+    void fetchTrailers_singlePage_parsesTypedFieldsAndCapturesRawJson(WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/fleet/trailers"))
+                .withQueryParam("limit", equalTo("512"))
+                .withQueryParam("after", absent())
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [
+                                    {
+                                      "id": "112",
+                                      "name": "1704",
+                                      "licensePlate": "34A1W4",
+                                      "trailerSerialNumber": "SN-112",
+                                      "externalIds": {"samsara.vin": "5MC125315H5165489"},
+                                      "unmodeledExtraField": "should still show up in rawJson"
+                                    }
+                                  ],
+                                  "pagination": {"endCursor": null, "hasNextPage": false}
+                                }
+                                """)));
+
+        SamsaraFleetClient client =
+                new SamsaraFleetClient(samsaraRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        List<SamsaraTrailerWithRaw> trailers = client.fetchTrailers();
+
+        assertThat(trailers).hasSize(1);
+        SamsaraTrailerWithRaw trailer = trailers.getFirst();
+        assertThat(trailer.payload().getId()).isEqualTo("112");
+        assertThat(trailer.payload().getName()).isEqualTo("1704");
+        assertThat(trailer.payload().getLicensePlate()).isEqualTo("34A1W4");
+        assertThat(trailer.payload().getTrailerSerialNumber()).isEqualTo("SN-112");
+        assertThat(trailer.payload().getExternalIds()).containsEntry("samsara.vin", "5MC125315H5165489");
+        assertThat(trailer.rawJson()).contains("\"unmodeledExtraField\":\"should still show up in rawJson\"");
+    }
+
+    @Test
+    void fetchTrailers_twoPages_passesEndCursorAsAfterParamOnSecondRequest(WireMockRuntimeInfo wireMockRuntimeInfo) {
+        stubFor(get(urlPathEqualTo("/fleet/trailers"))
+                .withQueryParam("after", absent())
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [{"id": "1", "name": "Trailer One"}],
+                                  "pagination": {"endCursor": "cursor-abc", "hasNextPage": true}
+                                }
+                                """)));
+        stubFor(get(urlPathEqualTo("/fleet/trailers"))
+                .withQueryParam("after", equalTo("cursor-abc"))
+                .willReturn(aResponse().withStatus(200).withBody("""
+                                {
+                                  "data": [{"id": "2", "name": "Trailer Two"}],
+                                  "pagination": {"endCursor": null, "hasNextPage": false}
+                                }
+                                """)));
+
+        SamsaraFleetClient client =
+                new SamsaraFleetClient(samsaraRestClient(wireMockRuntimeInfo), Duration.ofMillis(10));
+
+        List<SamsaraTrailerWithRaw> trailers = client.fetchTrailers();
+
+        assertThat(trailers).extracting(t -> t.payload().getId()).containsExactly("1", "2");
+        verify(1, getRequestedFor(urlPathEqualTo("/fleet/trailers")).withQueryParam("after", equalTo("cursor-abc")));
     }
 
     @Test

@@ -312,6 +312,6 @@ class TruckServiceImplTest {
     }
 
     private VektorTrailerRow trailerRow(String id, String label) {
-        return new VektorTrailerRow(id, label, "Great Dane", 2022, "{}", LocalDateTime.now());
+        return new VektorTrailerRow(id, label, "Great Dane", 2022, null, "{}", LocalDateTime.now(), null);
     }
 }

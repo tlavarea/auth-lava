@@ -1,7 +1,9 @@
 import { Component, DestroyRef, effect, inject, input, InputSignal, Signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideMoveLeft, lucideX } from '@ng-icons/lucide';
+import { lucideTruck, lucideUser, lucideX } from '@ng-icons/lucide';
+import { HlmAccordionImports } from '@spartan-ng/helm/accordion';
 import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
@@ -10,27 +12,15 @@ import { TrailersRequestStatus, TrailersStore, TrailersStoreType } from '../trai
 
 @Component({
   selector: 'app-trailer-detail',
-  imports: [HlmButtonImports, HlmSpinnerImports, NgIcon, RouterLink],
-  viewProviders: [provideIcons({ lucideMoveLeft, lucideX })],
+  imports: [HlmAccordionImports, HlmButtonImports, HlmSpinnerImports, NgIcon, RouterLink],
+  viewProviders: [provideIcons({ lucideTruck, lucideUser, lucideX })],
   template: `
     <div class="flex h-full flex-col gap-4 rounded-md bg-card p-6">
-      <header class="flex h-16 shrink-0 items-center justify-between border-b">
-        <a hlmBtn variant="ghost" size="sm" routerLink=".." class="lg:hidden">
-          <ng-icon name="lucideMoveLeft" />
-          Back to trailers
-        </a>
-
-        <h1 class="hidden font-medium lg:flex">{{ detail()?.label ?? 'Trailer ' + id() }}</h1>
-        <a
-          hlmBtn
-          variant="ghost"
-          size="icon"
-          routerLink=".."
-          class="hidden lg:inline-flex"
-          aria-label="Back to trailers">
+      <div class="flex shrink-0 justify-end">
+        <a hlmBtn variant="ghost" size="icon" routerLink=".." aria-label="Back to trailers">
           <ng-icon name="lucideX" />
         </a>
-      </header>
+      </div>
 
       @switch (status()) {
         @case ('loading') {
@@ -43,16 +33,48 @@ import { TrailersRequestStatus, TrailersStore, TrailersStoreType } from '../trai
         }
         @default {
           @if (detail(); as detail) {
-            <div class="flex flex-col gap-4">
-              <dl class="grid grid-cols-[150px_minmax(200px,1fr)] gap-y-2 text-sm">
-                <dt class="text-muted-foreground">Label</dt>
-                <dd>{{ detail.label }}</dd>
-                <dt class="text-muted-foreground">Manufacturer</dt>
-                <dd>{{ detail.manufacturer ?? '—' }}</dd>
-                <dt class="text-muted-foreground">Year</dt>
-                <dd>{{ detail.year ?? '—' }}</dd>
-              </dl>
-              <p class="text-sm text-muted-foreground">More details coming soon.</p>
+            <div class="flex flex-col gap-4 overflow-y-auto">
+              <div class="flex flex-col gap-8">
+                <div>
+                  <h1 class="pb-2 text-2xl font-semibold">{{ detail.label }}</h1>
+                  <p class="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                    Trailer • {{ detail.year }} {{ detail.manufacturer }}
+                  </p>
+                </div>
+
+                <div class="flex flex-col gap-1.5 text-sm">
+                  <div class="flex items-center gap-2">
+                    <ng-icon name="lucideUser" class="shrink-0 text-muted-foreground" />
+                    <span>{{ detail.currentDriverName ?? 'No driver assigned' }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <ng-icon name="lucideTruck" class="shrink-0 text-muted-foreground" />
+                    <span>{{ detail.currentTruckNumber ?? 'No truck assigned' }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <hlm-accordion>
+                <div hlmAccordionItem [isOpened]="true">
+                  <hlm-accordion-trigger>Details</hlm-accordion-trigger>
+                  <hlm-accordion-content>
+                    <dl class="grid grid-cols-[150px_minmax(200px,1fr)] gap-y-2 text-sm">
+                      <dt class="text-muted-foreground">Label</dt>
+                      <dd>{{ detail.label }}</dd>
+                      <dt class="text-muted-foreground">Manufacturer</dt>
+                      <dd>{{ detail.manufacturer ?? '—' }}</dd>
+                      <dt class="text-muted-foreground">Year</dt>
+                      <dd>{{ detail.year ?? '—' }}</dd>
+                      <dt class="text-muted-foreground">VIN</dt>
+                      <dd>{{ detail.vin ?? '—' }}</dd>
+                      <dt class="text-muted-foreground">License Plate</dt>
+                      <dd>{{ detail.licensePlate ?? '—' }}</dd>
+                      <dt class="text-muted-foreground">Asset Serial Number</dt>
+                      <dd>{{ detail.assetSerialNumber ?? '—' }}</dd>
+                    </dl>
+                  </hlm-accordion-content>
+                </div>
+              </hlm-accordion>
             </div>
           }
         }

@@ -9,6 +9,7 @@ import com.lava.swexpedited.batch.RetryingHttpClient;
 import com.lava.swexpedited.samsara.SamsaraDriverWithRaw;
 import com.lava.swexpedited.samsara.SamsaraSafetyEvent;
 import com.lava.swexpedited.samsara.SamsaraSafetyEventsResponse;
+import com.lava.swexpedited.samsara.SamsaraTrailerWithRaw;
 import com.lava.swexpedited.samsara.SamsaraVehicleGpsHistoryResponse;
 import com.lava.swexpedited.samsara.SamsaraVehicleGpsHistoryResponseData;
 import com.lava.swexpedited.samsara.SamsaraVehicleWithRaw;
@@ -20,6 +21,7 @@ import com.lava.swexpedited.samsara.model.HosClocksResponse;
 import com.lava.swexpedited.samsara.model.HosLogEntry;
 import com.lava.swexpedited.samsara.model.HosLogsForDriver;
 import com.lava.swexpedited.samsara.model.HosLogsResponse;
+import com.lava.swexpedited.samsara.model.Trailer;
 import com.lava.swexpedited.samsara.model.Vehicle;
 import com.lava.swexpedited.samsara.model.VehicleStatsGps;
 import com.lava.swexpedited.samsara.model.VehicleStatsResponse;
@@ -129,6 +131,24 @@ public class SamsaraFleetClient extends RetryingHttpClient {
             cursor = page.path("pagination").path("endCursor").asText(null);
         }
         return vehicles;
+    }
+
+    /** The full trailer roster - unlike {@link #fetchDrivers()}, there's no activation-status filter to apply. */
+    public List<SamsaraTrailerWithRaw> fetchTrailers() {
+        List<SamsaraTrailerWithRaw> trailers = new ArrayList<>();
+        String cursor = null;
+        boolean hasNextPage = true;
+        while (hasNextPage) {
+            String body = fetchPageBody("/fleet/trailers", cursor);
+            JsonNode page = readTree(body, "/fleet/trailers");
+            for (JsonNode trailerNode : page.path("data")) {
+                trailers.add(new SamsaraTrailerWithRaw(
+                        treeToValue(trailerNode, Trailer.class), writeValueAsString(trailerNode)));
+            }
+            hasNextPage = page.path("pagination").path("hasNextPage").asBoolean(false);
+            cursor = page.path("pagination").path("endCursor").asText(null);
+        }
+        return trailers;
     }
 
     /**

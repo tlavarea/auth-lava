@@ -891,6 +891,21 @@
         },
         "type": "object"
       },
+      "ListTrailersResponse": {
+        "description": "A list of trailers.",
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/Trailer"
+            },
+            "type": "array"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/paginationResponse"
+          }
+        },
+        "type": "object"
+      },
       "ListVehiclesResponse": {
         "description": "A list of vehicles.",
         "properties": {
@@ -905,6 +920,60 @@
           }
         },
         "type": "object"
+      },
+      "Trailer": {
+        "description": "A trailer asset object (trimmed to id/name/licensePlate/trailerSerialNumber/externalIds - this app only needs the trailer roster/VIN data to match Vektor trailers to Samsara trailers, see this file's top-level description). Samsara's real Trailer schema has no top-level vin field - the VIN lives in externalIds under the \"samsara.vin\" key, populated more consistently than trailerSerialNumber (a separate, physical-serial-number field that's often blank).",
+        "properties": {
+          "externalIds": {
+            "$ref": "#/components/schemas/TrailerExternalIds"
+          },
+          "id": {
+            "$ref": "#/components/schemas/TrailerId"
+          },
+          "licensePlate": {
+            "$ref": "#/components/schemas/TrailerLicensePlate"
+          },
+          "name": {
+            "$ref": "#/components/schemas/TrailerName"
+          },
+          "trailerSerialNumber": {
+            "$ref": "#/components/schemas/TrailerSerialNumber"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "TrailerExternalIds": {
+        "description": "A map of external ids for the Trailer - trimmed with an explicit string-valued additionalProperties (unlike DriverExternalIds) so this app can read the \"samsara.vin\" key as a typed Map<String, String> rather than an opaque Object.",
+        "example": {
+          "samsara.vin": "5MC125315H5165489"
+        },
+        "additionalProperties": {
+          "type": "string"
+        },
+        "type": "object"
+      },
+      "TrailerId": {
+        "description": "The unique Samsara ID of the Trailer. This is automatically generated when the Trailer object is created. It cannot be changed.",
+        "example": "112",
+        "type": "string"
+      },
+      "TrailerLicensePlate": {
+        "description": "The license plate of the Trailer. By default, empty. Can be set or updated through the Samsara Dashboard or the API at any time.",
+        "example": "6SAM123",
+        "type": "string"
+      },
+      "TrailerName": {
+        "description": "The human-readable name of the Trailer. This is set by a fleet administrator and will appear in both Samsara’s cloud dashboard as well as the Samsara Driver mobile app.",
+        "example": "Trailer A7",
+        "type": "string"
+      },
+      "TrailerSerialNumber": {
+        "description": "The serial number of the trailer.",
+        "example": "5MC125315H5165489",
+        "type": "string"
       },
       "UsDriverRulesetOverride": {
         "description": "US Driver Ruleset override for a given driver. If the driver is operating under a ruleset different from the organization default, the override is used. Updating this value only updates the override setting for this driver. Explicitly setting this field to `null` will delete driver's ruleset override. If the driver does not have an override ruleset set, the response will not include any usDriverRulesetOverride information.",
@@ -1543,7 +1612,7 @@
     }
   },
   "info": {
-    "description": "Vendored, trimmed subset of https://developers.samsara.com/openapi/samsara-api.json - only /fleet/drivers, /fleet/driver-vehicle-assignments, /fleet/vehicles (roster, trimmed to id/vin/name/make/model/year/licensePlate - used to match Vektor trucks to Samsara vehicles by VIN), /fleet/vehicles/stats (queried with types=gps for vehicle location, and separately with types=fuelPercent,obdOdometerMeters,obdEngineSeconds,faultCodes / engineState,defLevelMilliPercent,batteryMilliVolts,engineCoolantTemperatureMilliC / engineRpm,engineLoadPercent for the truck detail page's diagnostics - the older /fleet/vehicles/locations endpoint was replaced per Samsara's own deprecation note pointing at Vehicle Stats), /fleet/hos/clocks (current driver duty status plus remaining-time clocks), and /fleet/hos/logs (HOS log/duty-status-change history for the driver detail screen's activity feed) plus their transitive schema closure. VehicleStatsResponse_data is hand-narrowed to id/name/gps plus the 10 diagnostic stat types listed above - the real schema has one optional property per stat type (63 total), since /fleet/vehicles/stats is a general-purpose endpoint and this app only ever requests those 11 types. VehicleStatsFaultCodes is further hand-narrowed to an opaque object - see that schema's own description. HosClocksForDriver is hand-narrowed to driver/currentDutyStatus/clocks only - this app has no use for the currentVehicle/violations fields Samsara's real schema also has. HosLogEntry is hand-narrowed to drop codrivers, unused by this app. Vehicle (roster) is hand-narrowed to id/vin/name/make/model/year/licensePlate - this app has no use for the gateway/camera/aux-input/tag fields Samsara's real schema also has. Regenerate by re-downloading the full spec and re-running the trim script if these fields ever change. CurrentDutyStatus.hosStatusType is vendored as a plain string rather than Samsara's real enum type, since the documented disconnected-app empty-string value falls outside the enum and openapi-generator's generated enum throws on unrecognized values at deserialize time.",
+    "description": "Vendored, trimmed subset of https://developers.samsara.com/openapi/samsara-api.json - only /fleet/drivers, /fleet/driver-vehicle-assignments, /fleet/vehicles (roster, trimmed to id/vin/name/make/model/year/licensePlate - used to match Vektor trucks to Samsara vehicles by VIN), /fleet/vehicles/stats (queried with types=gps for vehicle location, and separately with types=fuelPercent,obdOdometerMeters,obdEngineSeconds,faultCodes / engineState,defLevelMilliPercent,batteryMilliVolts,engineCoolantTemperatureMilliC / engineRpm,engineLoadPercent for the truck detail page's diagnostics - the older /fleet/vehicles/locations endpoint was replaced per Samsara's own deprecation note pointing at Vehicle Stats), /fleet/trailers (roster, trimmed to id/name/licensePlate/trailerSerialNumber/externalIds - used to match Vektor trailers to Samsara trailers by VIN, read from externalIds's \"samsara.vin\" key since Samsara's real Trailer schema has no top-level vin field), /fleet/hos/clocks (current driver duty status plus remaining-time clocks), and /fleet/hos/logs (HOS log/duty-status-change history for the driver detail screen's activity feed) plus their transitive schema closure. VehicleStatsResponse_data is hand-narrowed to id/name/gps plus the 10 diagnostic stat types listed above - the real schema has one optional property per stat type (63 total), since /fleet/vehicles/stats is a general-purpose endpoint and this app only ever requests those 11 types. VehicleStatsFaultCodes is further hand-narrowed to an opaque object - see that schema's own description. HosClocksForDriver is hand-narrowed to driver/currentDutyStatus/clocks only - this app has no use for the currentVehicle/violations fields Samsara's real schema also has. HosLogEntry is hand-narrowed to drop codrivers, unused by this app. Vehicle (roster) is hand-narrowed to id/vin/name/make/model/year/licensePlate - this app has no use for the gateway/camera/aux-input/tag fields Samsara's real schema also has. Trailer (roster) is hand-narrowed to id/name/licensePlate/trailerSerialNumber/externalIds - this app has no use for the notes/tags/installedGateway/enabledForMobile fields Samsara's real schema also has; externalIds is further hand-narrowed with an explicit string-valued additionalProperties (TrailerExternalIds), unlike DriverExternalIds, since this app reads a specific key out of it (see VinMatchingTrailerMatchStrategy). Regenerate by re-downloading the full spec and re-running the trim script if these fields ever change. CurrentDutyStatus.hosStatusType is vendored as a plain string rather than Samsara's real enum type, since the documented disconnected-app empty-string value falls outside the enum and openapi-generator's generated enum throws on unrecognized values at deserialize time.",
     "title": "Samsara Fleet API (trimmed)",
     "version": "2025-10-23"
   },
@@ -1672,6 +1741,49 @@
         "summary": "Get all driver-vehicle assignments",
         "tags": [
           "Driver-Vehicle Assignments"
+        ]
+      }
+    },
+    "/fleet/trailers": {
+      "get": {
+        "description": "Returns a list of all trailers (trimmed here to id/name/licensePlate/trailerSerialNumber - see this file's top-level description). To use this endpoint, select **Read Trailers** under the Trailers category when creating or editing an API token.",
+        "operationId": "listTrailers",
+        "parameters": [
+          {
+            "description": "The limit for how many objects will be in the response. Default and max for this value is 512 objects.",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 512,
+              "maximum": 512,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "If specified, this should be the endCursor value from the previous page of results. When present, this request will return the next page of results that occur immediately after the previous page of results.",
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListTrailersResponse"
+                }
+              }
+            },
+            "description": "List of all trailer objects."
+          }
+        },
+        "summary": "List all trailers",
+        "tags": [
+          "Trailers"
         ]
       }
     },

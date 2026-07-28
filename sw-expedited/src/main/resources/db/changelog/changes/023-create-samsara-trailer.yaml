@@ -1,0 +1,46 @@
+databaseChangeLog:
+  - changeSet:
+      id: "23"
+      author: tlavarea
+      comment: >
+        SAMSARA_TRAILER - the current trailer roster, synced periodically from Samsara's /fleet/trailers
+        endpoint. Keyed on Samsara's own trailer id, same replace-all convention as samsara_vehicle (see
+        019-create-samsara-vehicle.yaml) - "who's on the roster right now", not a change log. Exists
+        specifically to give VektorFleetSyncTasklet a trailer_serial_number lookup to match against
+        vektor_trailer.vin (see VinMatchingTrailerMatchStrategy) - Samsara's real Trailer schema has no vin
+        field of its own; trailer_serial_number is the equivalent identifier trailers use in place of a VIN.
+        Only the fields needed for that match plus a handful of likely-useful identifiers are pulled out as
+        typed columns; raw_response holds the entire trailer payload for anything else.
+      changes:
+        - createTable:
+            tableName: samsara_trailer
+            columns:
+              - column:
+                  name: id
+                  type: VARCHAR
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR
+              - column:
+                  name: license_plate
+                  type: VARCHAR
+              - column:
+                  name: trailer_serial_number
+                  type: VARCHAR
+              - column:
+                  name: raw_response
+                  type: JSON
+                  constraints:
+                    nullable: false
+              - column:
+                  name: synced_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS samsara_trailer CASCADE;

@@ -16,6 +16,11 @@ describe('TrailerDetailPage', () => {
     label: "T231 - 53' SDL",
     manufacturer: 'Great Dane',
     year: 2022,
+    vin: '5MC125315H5165489',
+    licensePlate: '34A1W4',
+    assetSerialNumber: '5MC125315H5165489',
+    currentTruckNumber: 'T1000',
+    currentDriverName: 'Jane Trucker',
     syncedAt: '2026-07-14T00:00:00',
   };
 
@@ -43,11 +48,21 @@ describe('TrailerDetailPage', () => {
     expect(fixture.nativeElement.textContent).toContain("T231 - 53' SDL");
     expect(fixture.nativeElement.textContent).toContain('Great Dane');
     expect(fixture.nativeElement.textContent).toContain('2022');
-    expect(fixture.nativeElement.textContent).toContain('More details coming soon.');
+    expect(fixture.nativeElement.textContent).toContain('5MC125315H5165489');
+    expect(fixture.nativeElement.textContent).toContain('34A1W4');
+    expect(fixture.nativeElement.textContent).toContain('T1000');
+    expect(fixture.nativeElement.textContent).toContain('Jane Trucker');
   });
 
   it('renders null fields as an em dash', async () => {
-    httpMock.expectOne('/api/sw-expedited/trailers/trailer-1').flush({ ...detail, manufacturer: null, year: null });
+    httpMock.expectOne('/api/sw-expedited/trailers/trailer-1').flush({
+      ...detail,
+      manufacturer: null,
+      year: null,
+      vin: null,
+      licensePlate: null,
+      assetSerialNumber: null,
+    });
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -55,15 +70,53 @@ describe('TrailerDetailPage', () => {
     expect(dl).toContain('—');
   });
 
-  it('renders a labeled mobile back link and an icon-only desktop close link', async () => {
+  it('renders the header with the trailer label and subtitle', async () => {
     httpMock.expectOne('/api/sw-expedited/trailers/trailer-1').flush(detail);
     await fixture.whenStable();
+    fixture.detectChanges();
 
-    const backLink: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a.lg\\:hidden');
-    const closeLink: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a.hidden.lg\\:inline-flex');
+    expect(fixture.nativeElement.querySelector('h1').textContent).toContain("T231 - 53' SDL");
+    const subtitle: string = fixture.nativeElement.querySelector('p.uppercase').textContent.replace(/\s+/g, ' ').trim();
+    expect(subtitle).toBe('Trailer • 2022 Great Dane');
+  });
 
-    expect(backLink?.textContent).toContain('Back to trailers');
-    expect(closeLink?.getAttribute('aria-label')).toBe('Back to trailers');
+  it('shows a fallback message when no truck or driver is assigned', async () => {
+    httpMock
+      .expectOne('/api/sw-expedited/trailers/trailer-1')
+      .flush({ ...detail, currentTruckNumber: null, currentDriverName: null });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('No truck assigned');
+    expect(fixture.nativeElement.textContent).toContain('No driver assigned');
+  });
+
+  it('shows Details as an accordion section', async () => {
+    httpMock.expectOne('/api/sw-expedited/trailers/trailer-1').flush(detail);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const triggers: (string | undefined)[] = Array.from(
+      fixture.nativeElement.querySelectorAll('hlm-accordion-trigger')
+    ).map((el) => (el as Element).textContent?.trim());
+    expect(triggers).toEqual(['Details']);
+  });
+
+  it('renders a close button that routes back to the trailer list', async () => {
+    httpMock.expectOne('/api/sw-expedited/trailers/trailer-1').flush(detail);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const closeLink: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a[aria-label="Back to trailers"]');
+    expect(closeLink).not.toBeNull();
+  });
+
+  it('does not render a map', async () => {
+    httpMock.expectOne('/api/sw-expedited/trailers/trailer-1').flush(detail);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-truck-route-map')).toBeNull();
   });
 
   it('shows an error message when the load fails', async () => {

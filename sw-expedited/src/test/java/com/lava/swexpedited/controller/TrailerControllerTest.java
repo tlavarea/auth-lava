@@ -81,8 +81,17 @@ class TrailerControllerTest {
     void trailer_found_returnsDetail() throws Exception {
         Jwt jwt = authenticatedJwt();
         when(this.jwtDecoder.decode("token-value")).thenReturn(jwt);
-        TrailerDetailResponse detail =
-                new TrailerDetailResponse("trailer-1", "T231 - 53' SDL", "Great Dane", 2022, LocalDateTime.now());
+        TrailerDetailResponse detail = new TrailerDetailResponse(
+                "trailer-1",
+                "T231 - 53' SDL",
+                "Great Dane",
+                2022,
+                "5MC125315H5165489",
+                "34A1W4",
+                "5MC125315H5165489",
+                "T1000",
+                "Jane Trucker",
+                LocalDateTime.now());
         when(this.trailerService.findDetail("trailer-1")).thenReturn(Optional.of(detail));
 
         this.mockMvc
@@ -90,7 +99,12 @@ class TrailerControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value("trailer-1"))
                 .andExpect(jsonPath("$.label").value("T231 - 53' SDL"))
-                .andExpect(jsonPath("$.manufacturer").value("Great Dane"));
+                .andExpect(jsonPath("$.manufacturer").value("Great Dane"))
+                .andExpect(jsonPath("$.vin").value("5MC125315H5165489"))
+                .andExpect(jsonPath("$.licensePlate").value("34A1W4"))
+                .andExpect(jsonPath("$.assetSerialNumber").value("5MC125315H5165489"))
+                .andExpect(jsonPath("$.currentTruckNumber").value("T1000"))
+                .andExpect(jsonPath("$.currentDriverName").value("Jane Trucker"));
     }
 
     private Jwt authenticatedJwt() {

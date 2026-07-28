@@ -69,7 +69,28 @@ class VektorTrailerRepositoryImplTest extends AbstractRepositoryIntegrationTest 
                 });
     }
 
+    @Test
+    void findById_matchingRow_returnsVinAndMatchedSamsaraTrailerId() {
+        this.vektorTrailerRepository.replaceAll(List.of(new VektorTrailerRow(
+                "trailer-1",
+                "T231 - 53' SDL",
+                "Great Dane",
+                2022,
+                "5MC125315H5165489",
+                "{\"id\":\"trailer-1\"}",
+                null,
+                "samsara-trailer-1")));
+
+        assertThat(this.vektorTrailerRepository.findById("trailer-1"))
+                .isPresent()
+                .get()
+                .satisfies(trailer -> {
+                    assertThat(trailer.vin()).isEqualTo("5MC125315H5165489");
+                    assertThat(trailer.matchedSamsaraTrailerId()).isEqualTo("samsara-trailer-1");
+                });
+    }
+
     private VektorTrailerRow row(String id, String label) {
-        return new VektorTrailerRow(id, label, null, null, "{\"id\":\"" + id + "\"}", null);
+        return new VektorTrailerRow(id, label, null, null, null, "{\"id\":\"" + id + "\"}", null, null);
     }
 }

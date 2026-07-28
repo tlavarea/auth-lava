@@ -5,17 +5,20 @@ import static org.mockito.Mockito.when;
 
 import com.lava.swexpedited.boot.autoconfigure.app.VektorProperties;
 import com.lava.swexpedited.repository.SamsaraDriverRepository;
+import com.lava.swexpedited.repository.SamsaraTrailerRepository;
 import com.lava.swexpedited.repository.SamsaraVehicleRepository;
 import com.lava.swexpedited.repository.VektorDriverRepository;
 import com.lava.swexpedited.repository.VektorTrailerRepository;
 import com.lava.swexpedited.repository.VektorTruckRepository;
 import com.lava.swexpedited.samsara.SamsaraDriverRow;
+import com.lava.swexpedited.samsara.SamsaraTrailerRow;
 import com.lava.swexpedited.samsara.SamsaraVehicleRow;
 import com.lava.swexpedited.vektor.VektorDriverMapper;
 import com.lava.swexpedited.vektor.VektorDriverMatchStrategy;
 import com.lava.swexpedited.vektor.VektorDriverRow;
 import com.lava.swexpedited.vektor.VektorGrpcWeb;
 import com.lava.swexpedited.vektor.VektorTrailerMapper;
+import com.lava.swexpedited.vektor.VektorTrailerMatchStrategy;
 import com.lava.swexpedited.vektor.VektorTrailerRow;
 import com.lava.swexpedited.vektor.VektorTruckMapper;
 import com.lava.swexpedited.vektor.VektorTruckMatchStrategy;
@@ -62,10 +65,16 @@ class VektorFleetSyncTaskletTest {
     private VektorTruckMatchStrategy vektorTruckMatchStrategy;
 
     @Mock
+    private VektorTrailerMatchStrategy vektorTrailerMatchStrategy;
+
+    @Mock
     private SamsaraDriverRepository samsaraDriverRepository;
 
     @Mock
     private SamsaraVehicleRepository samsaraVehicleRepository;
+
+    @Mock
+    private SamsaraTrailerRepository samsaraTrailerRepository;
 
     @Mock
     private VektorDriverRepository vektorDriverRepository;
@@ -119,8 +128,14 @@ class VektorFleetSyncTaskletTest {
                 VektorGrpcWeb.encodeUnaryResponse(new VektorGrpcWeb.Writer().writeString(1, "trailer-uuid")));
         when(this.vektorTrailerClient.fetchTrailers("test-jwt", "test-company-id"))
                 .thenReturn(List.of(rawTrailer));
-        VektorTrailerRow mappedTrailer = new VektorTrailerRow("trailer-uuid", "T231 - 53' SDL", null, null, "{}", null);
+        VektorTrailerRow mappedTrailer = new VektorTrailerRow(
+                "trailer-uuid", "T231 - 53' SDL", null, null, "5MC125315H5165489", "{}", null, null);
         when(this.vektorTrailerMapper.toRow(rawTrailer)).thenReturn(mappedTrailer);
+        SamsaraTrailerRow samsaraTrailer =
+                new SamsaraTrailerRow("samsara-trailer-1", "5MC125315H5165489", "1704", null, null, "{}", null);
+        when(this.samsaraTrailerRepository.findAll()).thenReturn(List.of(samsaraTrailer));
+        when(this.vektorTrailerMatchStrategy.match("5MC125315H5165489", List.of(samsaraTrailer)))
+                .thenReturn(Optional.of("samsara-trailer-1"));
 
         VektorFleetSyncTasklet tasklet = tasklet();
 
@@ -145,6 +160,8 @@ class VektorFleetSyncTaskletTest {
         assertThat(trailerRowsCaptor.getValue())
                 .extracting(VektorTrailerRow::id)
                 .containsExactly("trailer-uuid");
+        assertThat(trailerRowsCaptor.getValue().getFirst().matchedSamsaraTrailerId())
+                .isEqualTo("samsara-trailer-1");
     }
 
     @Test
@@ -163,6 +180,7 @@ class VektorFleetSyncTaskletTest {
         when(this.samsaraVehicleRepository.findAll()).thenReturn(List.of());
         when(this.vektorTrailerClient.fetchTrailers("test-jwt", "test-company-id"))
                 .thenReturn(List.of());
+        when(this.samsaraTrailerRepository.findAll()).thenReturn(List.of());
 
         VektorFleetSyncTasklet tasklet = tasklet();
 
@@ -210,6 +228,7 @@ class VektorFleetSyncTaskletTest {
 
         when(this.vektorTrailerClient.fetchTrailers("test-jwt", "test-company-id"))
                 .thenReturn(List.of());
+        when(this.samsaraTrailerRepository.findAll()).thenReturn(List.of());
 
         VektorFleetSyncTasklet tasklet = tasklet();
 
@@ -256,6 +275,7 @@ class VektorFleetSyncTaskletTest {
 
         when(this.vektorTrailerClient.fetchTrailers("test-jwt", "test-company-id"))
                 .thenReturn(List.of());
+        when(this.samsaraTrailerRepository.findAll()).thenReturn(List.of());
 
         VektorFleetSyncTasklet tasklet = tasklet();
 
@@ -264,6 +284,42 @@ class VektorFleetSyncTaskletTest {
         ArgumentCaptor<List<VektorTruckRow>> truckRowsCaptor = ArgumentCaptor.captor();
         Mockito.verify(this.vektorTruckRepository).replaceAll(truckRowsCaptor.capture());
         assertThat(truckRowsCaptor.getValue()).extracting(VektorTruckRow::id).containsExactly("truck-assigned");
+    }
+
+    @Test
+    void execute_vektorReturnsSameTrailerVinTwice_collapsesToOneRow() {
+        when(this.vektorAuthenticator.authenticate()).thenReturn("test-jwt");
+        when(this.vektorDriverClient.fetchDrivers("test-jwt", "test-company-id"))
+                .thenReturn(List.of());
+        when(this.samsaraDriverRepository.findAll()).thenReturn(List.of());
+        when(this.vektorTruckClient.fetchTrucks("test-jwt", "test-company-id")).thenReturn(List.of());
+        when(this.samsaraVehicleRepository.findAll()).thenReturn(List.of());
+
+        VektorGrpcWeb.Message rawFirstTrailer = VektorGrpcWeb.decodeUnaryResponse(
+                VektorGrpcWeb.encodeUnaryResponse(new VektorGrpcWeb.Writer().writeString(1, "trailer-first")));
+        VektorGrpcWeb.Message rawSecondTrailer = VektorGrpcWeb.decodeUnaryResponse(
+                VektorGrpcWeb.encodeUnaryResponse(new VektorGrpcWeb.Writer().writeString(1, "trailer-second")));
+        when(this.vektorTrailerClient.fetchTrailers("test-jwt", "test-company-id"))
+                .thenReturn(List.of(rawFirstTrailer, rawSecondTrailer));
+        VektorTrailerRow firstTrailer = new VektorTrailerRow(
+                "trailer-first", "T231 - 53' SDL", null, null, "5MC125315H5165489", "{}", null, null);
+        VektorTrailerRow secondTrailer = new VektorTrailerRow(
+                "trailer-second", "T231 - 53' SDL", null, null, "5MC125315H5165489", "{}", null, null);
+        when(this.vektorTrailerMapper.toRow(rawFirstTrailer)).thenReturn(firstTrailer);
+        when(this.vektorTrailerMapper.toRow(rawSecondTrailer)).thenReturn(secondTrailer);
+        when(this.samsaraTrailerRepository.findAll()).thenReturn(List.of());
+        when(this.vektorTrailerMatchStrategy.match("5MC125315H5165489", List.of()))
+                .thenReturn(Optional.empty());
+
+        VektorFleetSyncTasklet tasklet = tasklet();
+
+        tasklet.execute(null, null);
+
+        ArgumentCaptor<List<VektorTrailerRow>> trailerRowsCaptor = ArgumentCaptor.captor();
+        Mockito.verify(this.vektorTrailerRepository).replaceAll(trailerRowsCaptor.capture());
+        assertThat(trailerRowsCaptor.getValue())
+                .extracting(VektorTrailerRow::id)
+                .containsExactly("trailer-first");
     }
 
     @Test
@@ -276,6 +332,7 @@ class VektorFleetSyncTaskletTest {
         when(this.samsaraVehicleRepository.findAll()).thenReturn(List.of());
         when(this.vektorTrailerClient.fetchTrailers("test-jwt", "test-company-id"))
                 .thenReturn(List.of());
+        when(this.samsaraTrailerRepository.findAll()).thenReturn(List.of());
 
         VektorFleetSyncTasklet tasklet = tasklet();
 
@@ -298,8 +355,10 @@ class VektorFleetSyncTaskletTest {
                 this.vektorTrailerMapper,
                 this.vektorDriverMatchStrategy,
                 this.vektorTruckMatchStrategy,
+                this.vektorTrailerMatchStrategy,
                 this.samsaraDriverRepository,
                 this.samsaraVehicleRepository,
+                this.samsaraTrailerRepository,
                 this.vektorDriverRepository,
                 this.vektorTruckRepository,
                 this.vektorTrailerRepository,
