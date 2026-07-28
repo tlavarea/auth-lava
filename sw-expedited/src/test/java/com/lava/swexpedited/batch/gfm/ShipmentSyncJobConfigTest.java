@@ -73,11 +73,7 @@ class ShipmentSyncJobConfigTest {
     @Test
     void shipmentSyncJob_buildsNonNullJob() {
         Job job = this.shipmentSyncJobConfig.shipmentSyncJob(
-                mock(JobRepository.class),
-                mock(Step.class),
-                mock(Step.class),
-                mock(Step.class),
-                mock(GfmLogoutJobListener.class));
+                mock(JobRepository.class), mock(Step.class), mock(Step.class), mock(GfmLogoutJobListener.class));
 
         assertThat(job).isNotNull();
     }
