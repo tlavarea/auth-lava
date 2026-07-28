@@ -1,12 +1,14 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, DestroyRef, effect, inject, input, InputSignal, Signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { timer } from 'rxjs';
 
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideExternalLink, lucideMapPin, lucideTruck, lucideUser } from '@ng-icons/lucide';
+import { lucideExternalLink, lucideMapPin, lucideTruck, lucideUser, lucideX } from '@ng-icons/lucide';
 import { HlmAccordionImports } from '@spartan-ng/helm/accordion';
 import { HlmBadgeImports } from '@spartan-ng/helm/badge';
+import { HlmButtonImports } from '@spartan-ng/helm/button';
 import { HlmProgressImports } from '@spartan-ng/helm/progress';
 import { HlmSpinnerImports } from '@spartan-ng/helm/spinner';
 
@@ -24,14 +26,22 @@ const REFRESH_INTERVAL_MS = 60_000;
     DecimalPipe,
     HlmAccordionImports,
     HlmBadgeImports,
+    HlmButtonImports,
     HlmProgressImports,
     HlmSpinnerImports,
     NgIcon,
+    RouterLink,
     TruckRouteMap,
   ],
-  viewProviders: [provideIcons({ lucideExternalLink, lucideMapPin, lucideTruck, lucideUser })],
+  viewProviders: [provideIcons({ lucideExternalLink, lucideMapPin, lucideTruck, lucideUser, lucideX })],
   template: `
     <div class="flex h-full flex-col gap-4 rounded-md bg-card p-6">
+      <div class="flex shrink-0 justify-end">
+        <a hlmBtn variant="ghost" size="icon" routerLink=".." aria-label="Back to trucks">
+          <ng-icon name="lucideX" />
+        </a>
+      </div>
+
       @switch (status()) {
         @case ('loading') {
           <div class="flex flex-1 items-center justify-center">

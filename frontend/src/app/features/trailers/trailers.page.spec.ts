@@ -76,6 +76,11 @@ describe('TrailersPage', () => {
       label: "T231 - 53' SDL",
       manufacturer: 'Great Dane',
       year: 2022,
+      vin: '5MC125315H5165489',
+      licensePlate: '34A1W4',
+      assetSerialNumber: '5MC125315H5165489',
+      currentTruckNumber: 'T1000',
+      currentDriverName: 'Jane Trucker',
       syncedAt: '2026-07-14T00:00:00',
     };
 

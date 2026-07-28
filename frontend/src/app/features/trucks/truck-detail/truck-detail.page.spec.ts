@@ -171,6 +171,13 @@ describe('TruckDetailPage', () => {
     expect(mapsLink?.getAttribute('href')).toBe('https://www.google.com/maps?q=35.221,-101.831');
   });
 
+  it('renders a close button that routes back to the truck list', async () => {
+    await flushTruckDetail();
+
+    const closeLink: HTMLAnchorElement | null = fixture.nativeElement.querySelector('a[aria-label="Back to trucks"]');
+    expect(closeLink).not.toBeNull();
+  });
+
   it('shows the license plate in the Details section', async () => {
     await flushTruckDetail();
 
