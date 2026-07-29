@@ -33,8 +33,10 @@ import org.springframework.stereotype.Component;
  * shipment's GFM-quoted pickup window (see {@link PickupWindowMapper}) closes. {@code pickup-match.time-window} is a
  * separate, coarser concern: a cheap in-memory pre-filter on raw {@code eta} vs. the pickup window, used only to decide
  * which pairs are worth spending a route matrix lookup on before driving duration is known - not the final viability
- * check. Chained after {@code shipmentDetailStep} in {@code ShipmentSyncJobConfig} - not just {@code shipmentSyncStep}
- * - since it depends on {@code shipment_detail.raw_response} for the precise pickup window; see
+ * check. Runs as its own {@code pickupMatchJob} (see {@code PickupMatchJobConfig}), on a schedule offset after
+ * {@code shipmentSyncJob} rather than chained onto it - it depends on {@code shipment_detail.raw_response} (populated
+ * by that job's {@code shipmentDetailStep}) for the precise pickup window, so it re-reads that table fresh from
+ * Postgres rather than relying on an in-memory handoff within a single job execution; see
  * 009-add-viable-pickup-to-shipment-listing.yaml for why this writes a plain column rather than a separate derived
  * table.
  *
