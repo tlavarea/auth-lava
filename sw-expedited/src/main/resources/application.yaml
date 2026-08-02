@@ -10,10 +10,10 @@ gfm:
   key-store-password: ${GFM_KEYSTORE_PASSWORD:}
   trust-store: file:${GFM_TRUSTSTORE_PATH:}
   trust-store-password: ${GFM_TRUSTSTORE_PASSWORD:}
-  client-id: ${GFM_CLIENT_ID:jKtlgBlmtxDtjDf6uMwJ08tVU6Za}
-  eta-teams-base-url: ${GFM_ETA_TEAMS_BASE_URL:https://eta-teams.transport.mil}
-  mps-kmis-base-url: ${GFM_MPS_KMIS_BASE_URL:https://mps-kmis.transport.mil}
-  gfm-base-url: ${GFM_GFM_BASE_URL:https://gfm.transport.mil}
+  client-id: ${GFM_CLIENT_ID:}
+  eta-teams-base-url: ${GFM_ETA_TEAMS_BASE_URL:}
+  mps-kmis-base-url: ${GFM_MPS_KMIS_BASE_URL:}
+  gfm-base-url: ${GFM_GFM_BASE_URL:}
   retry-backoff: ${GFM_RETRY_BACKOFF:5s}
   detail-fetch-skip-limit: ${GFM_DETAIL_FETCH_SKIP_LIMIT:1000}
 
