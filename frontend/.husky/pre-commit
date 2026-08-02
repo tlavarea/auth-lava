@@ -2,10 +2,6 @@ if git diff --cached --name-only | grep -q '^backend/'; then
   (cd backend && ./hooks/pre-commit)
 fi
 
-if git diff --cached --name-only | grep -q '^sw-expedited/'; then
-  (cd sw-expedited && ./hooks/pre-commit)
-fi
-
 if git diff --cached --name-only | grep -q '^frontend/'; then
   (cd frontend && npx lint-staged)
 fi

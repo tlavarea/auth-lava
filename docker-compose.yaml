@@ -45,7 +45,7 @@ services:
       - ./docker/tempo/tempo.yaml:/etc/tempo.yaml
       - tempo_data:/var/tempo
 
-  # Log/trace/metric collection point. backend/ and sw-expedited/ run outside Docker (via ./mvnw spring-boot:run),
+  # Log/trace/metric collection point. backend/ and sw-expedited (its own repo) run outside Docker (via ./mvnw spring-boot:run),
   # so they push OTLP directly here over the host-published 4317/4318 ports rather than being collected from
   # container stdout. Fans out to loki (logs), tempo (traces), and prometheus (metrics) - see
   # docker/otel-collector/config.yaml.
