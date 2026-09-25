@@ -26,6 +26,12 @@ For anything specific to one side (testing conventions, schema migrations, Angul
 
 `backend/` (and `sw-expedited`, from its own repo) exports logs, traces, and metrics over OTLP (`spring-boot-starter-opentelemetry`, configured entirely via the service's `management.opentelemetry.*`/`management.otlp.*` properties in `application.yaml` — no custom Logback appender or code) to `docker-compose`'s `otel-collector` service (`localhost:4317`/`4318`), rather than the more common container-log-collection setup — these apps run as host processes (`./mvnw spring-boot:run`), not Docker containers, so there's no container stdout for a log driver or Promtail to pick up. The collector fans out: logs to Loki (`docker/otel-collector/config.yaml`'s `otlphttp/loki` exporter, hitting Loki's native OTLP endpoint), traces to Tempo (native OTLP, no translation), and metrics to Prometheus (scraped from the collector's `prometheus` exporter). Query all three at `localhost:3000` (Grafana, anonymous admin access — this stack is dev-only, not for a shared/production deployment), provisioned as Loki/Tempo/Prometheus datasources with bidirectional trace↔log correlation wired via Tempo's `tracesToLogsV2` and Loki's `derivedFields` (`docker/grafana/provisioning/datasources/datasources.yaml`). If the collector isn't running, the OTel SDK's batch exporters drop data on export failure rather than blocking app startup or requests.
 
+## Container image
+
+`backend/Dockerfile` (multi-stage, `eclipse-temurin:25`) is published to `ghcr.io/tlavarea/auth-lava` by the `publish` job in `backend-build.yml`, on push to `main` only and gated on the tests. See README → Container image for why it exists and which two details in it are load-bearing.
+
+The observability note above still holds for *local* runs, which are host processes. A deployed container logs to stdout as well as exporting OTLP.
+
 ## CI
 
 `.github/workflows/backend-build.yml` and `frontend-build.yml` are path-filtered (`backend/**` / `frontend/**`) so a change to one side doesn't trigger the other's build.

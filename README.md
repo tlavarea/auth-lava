@@ -111,6 +111,19 @@ pnpm lint
 
 ---
 
+## Container image
+
+`backend/Dockerfile` builds auth-lava into an OCI image; `.github/workflows/backend-build.yml` publishes it to **`ghcr.io/tlavarea/auth-lava`** on every push to `main`, after the tests pass. Two tags: `latest`, which deployments pull, and `sha-<short>`, which a rollback pins to.
+
+Until now auth-lava has only ever run as a host process (`./mvnw spring-boot:run`) — the `docker-compose.yaml` here is dev infrastructure, not the app. The image exists because [PlateTune](https://github.com/tlavarea/platetune) deploys a **second, separately-configured instance** of auth-lava: its own database, its own cookie domain, its own OAuth clients, serving families rather than this project's users.
+
+**That instance needs no fork and no code change.** Everything that differs between the two is already an environment variable in `application.yaml` — `COOKIE_DOMAIN`, `CORS_ALLOWED_ORIGINS`, `OAUTH_SUCCESS_REDIRECT_URI`, `SPRING_DATASOURCE_DB_AUTH`, the `JWT_*` and `MFA_*` keys, and the per-provider client IDs. Keep it that way: anything that would have to be different per deployment belongs in the environment, not in the code.
+
+Two details in the Dockerfile are load-bearing and commented there:
+
+- **The dependency layer is a plain `RUN`, not a `--mount=type=cache`.** Cache mounts are faster locally but are not exported by BuildKit's GitHub Actions cache backend, so CI would re-download Maven Central on every push.
+- **`USER 1000:1000` with no `useradd`.** The Ubuntu base already ships uid 1000 as `ubuntu`, so adding one fails with `UID 1000 is not unique`. 1000 is also `$PUID` on the deployment host, where Docker secrets are owned by that uid — a mismatched user cannot read its own JWT keys or database password.
+
 ## Repository layout
 
 ```

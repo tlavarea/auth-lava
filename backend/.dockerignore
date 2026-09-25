@@ -1,0 +1,10 @@
+# Keep the build context small and reproducible: everything the image needs is
+# the wrapper, the pom and src/. A local target/ in particular must not be
+# copied in — it would shadow the jar the build stage produces.
+target/
+*.iml
+.idea/
+.git/
+.gitignore
+Dockerfile
+.dockerignore
