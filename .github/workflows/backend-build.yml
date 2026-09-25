@@ -31,3 +31,55 @@ jobs:
 
       - name: Build and test
         run: ./mvnw -B verify
+
+  publish:
+    # Only on a push to main. A pull request must never be able to move :latest,
+    # and `needs: build` means an image is only ever published from a commit
+    # whose tests passed.
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          # github.repository is `tlavarea/auth-lava`, so this is
+          # ghcr.io/tlavarea/auth-lava.
+          images: ghcr.io/${{ github.repository }}
+          # `latest` is what udms pulls; the sha tag is what a rollback pins to.
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: backend
+          file: backend/Dockerfile
+          # udms is x86_64. Building arm64 as well would mean QEMU-emulating a
+          # Maven build for a platform nothing runs on.
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Carries the dependency layer between runs — see backend/Dockerfile
+          # for why that layer is not a BuildKit cache mount.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
