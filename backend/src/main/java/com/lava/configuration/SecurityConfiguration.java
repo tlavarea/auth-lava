@@ -1,7 +1,9 @@
 package com.lava.configuration;
 
+import com.lava.boot.autoconfigure.app.CookieProperties;
 import com.lava.boot.autoconfigure.app.CorsProperties;
 import com.lava.security.MfaAuthorities;
+import com.lava.security.oauth.CookieOAuth2AuthorizationRequestRepository;
 import com.lava.security.oauth.GithubEmailBackfillOAuth2UserService;
 import com.lava.service.JwtService;
 import com.lava.web.filter.JwtAuthenticationFilter;
@@ -17,12 +19,12 @@ import org.springframework.security.authorization.AuthorizationManagerFactories;
 import org.springframework.security.authorization.AuthorizationManagerFactory;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -51,6 +53,18 @@ public class SecurityConfiguration {
         return source;
     }
 
+    /**
+     * Declared here rather than component-scanned. It is part of this filter chain's configuration and has no
+     * collaborators beyond the cookie domain, so the {@code @WebMvcTest} slices that import this class get the real one
+     * for free - where a scanned {@code @Component} would have to be mocked into five test classes that never touch
+     * OAuth.
+     */
+    @Bean
+    public CookieOAuth2AuthorizationRequestRepository authorizationRequestRepository(
+            CookieProperties cookieProperties) {
+        return new CookieOAuth2AuthorizationRequestRepository(cookieProperties);
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
@@ -58,7 +72,8 @@ public class SecurityConfiguration {
             CorsConfigurationSource corsConfigurationSource,
             GithubEmailBackfillOAuth2UserService githubEmailBackfillOAuth2UserService,
             OAuthAuthenticationSuccessHandler oAuthAuthenticationSuccessHandler,
-            OAuthAuthenticationFailureHandler oAuthAuthenticationFailureHandler)
+            OAuthAuthenticationFailureHandler oAuthAuthenticationFailureHandler,
+            CookieOAuth2AuthorizationRequestRepository authorizationRequestRepository)
             throws Exception {
         http.addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
 
@@ -129,7 +144,19 @@ public class SecurityConfiguration {
         // handler that expects the raw cookie value to be echoed back as-is; a
         // XorCsrfTokenRequestAttributeHandler expects a masked value instead and rejects every
         // raw token as invalid.
-        http.csrf(CsrfConfigurer::spa);
+        http.csrf(csrf -> {
+            csrf.spa();
+            // Apple returns the authorization code as a cross-site form POST, because asking for `scope=name email`
+            // obliges `response_mode=form_post`. A browser arriving from appleid.apple.com carries no XSRF-TOKEN, so
+            // CsrfFilter would reject the callback before Spring Security's OAuth2 filter ever saw it.
+            //
+            // Exempting it is not a hole: this endpoint has its own, older CSRF defence in the `state` parameter, which
+            // CookieOAuth2AuthorizationRequestRepository holds and OAuth2LoginAuthenticationFilter checks. The matcher
+            // is pinned to POST on the apple registration alone, so the GET callbacks Google and GitHub use keep the
+            // standard protection.
+            csrf.ignoringRequestMatchers(
+                    PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/login/oauth2/code/apple"));
+        });
 
         http.exceptionHandling(handling ->
                 handling.authenticationEntryPoint((request, response, authException) -> response.sendError(401)));
@@ -154,10 +181,15 @@ public class SecurityConfiguration {
                         csp -> csp.policyDirectives("default-src 'none'; frame-ancestors 'none'"))
                 .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)));
 
-        http.oauth2Login(
-                oauth2 -> oauth2.userInfoEndpoint(info -> info.userService(githubEmailBackfillOAuth2UserService))
-                        .successHandler(oAuthAuthenticationSuccessHandler)
-                        .failureHandler(oAuthAuthenticationFailureHandler));
+        http.oauth2Login(oauth2 -> oauth2
+                // Cookie-backed rather than the default HttpSession one. Required for Apple's cross-site POST
+                // callback, and it makes the STATELESS policy below true rather than aspirational - see the class
+                // javadoc, which is where the reasoning lives.
+                .authorizationEndpoint(
+                        endpoint -> endpoint.authorizationRequestRepository(authorizationRequestRepository))
+                .userInfoEndpoint(info -> info.userService(githubEmailBackfillOAuth2UserService))
+                .successHandler(oAuthAuthenticationSuccessHandler)
+                .failureHandler(oAuthAuthenticationFailureHandler));
 
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 

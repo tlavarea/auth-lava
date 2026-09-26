@@ -1,0 +1,41 @@
+# Activate with the `oauth-apple` profile. See application.yaml for why providers live in
+# profile files rather than being declared unconditionally.
+#
+# Apple is the one provider that needs more than a registration: the client secret is an
+# ES256 JWT minted per request (AppleClientSecretFactory), so `apple.*` below is the
+# signing key rather than a secret to send. There is deliberately no `client-secret` here.
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          apple:
+            client-id: ${APPLE_CLIENT_ID:}
+            client-name: Apple
+            # `openid` is what puts this on Spring's OIDC path, which matters more than usual:
+            # Apple publishes no userinfo endpoint, so the id_token is the only source of a
+            # subject and an email. `name` and `email` are what force response_mode=form_post.
+            scope: openid,name,email
+            authorization-grant-type: authorization_code
+            # Puts client_id and client_secret in the form body, which is where Apple reads
+            # them - and which is the map AppleClientSecretParametersConverter substitutes into.
+            client-authentication-method: client_secret_post
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          apple:
+            issuer-uri: https://appleid.apple.com
+            # response_mode rides on the authorization URI because Spring offers no property for
+            # arbitrary authorization parameters and UriComponentsBuilder keeps the query string
+            # it is given. Requesting `name` or `email` without it is an Apple-side error, not a
+            # preference: Apple refuses to put a user's details in a URL fragment.
+            authorization-uri: https://appleid.apple.com/auth/authorize?response_mode=form_post
+            token-uri: https://appleid.apple.com/auth/token
+            jwk-set-uri: https://appleid.apple.com/auth/keys
+            user-name-attribute: sub
+
+apple:
+  team-id: ${APPLE_TEAM_ID:}
+  key-id: ${APPLE_KEY_ID:}
+  # Base64 of the PKCS#8 DER, no PEM armour - the same shape as jwt.private-key.
+  # openssl pkcs8 -topk8 -nocrypt -in AuthKey_<keyId>.p8 -outform DER | base64 -w0
+  private-key: ${APPLE_PRIVATE_KEY:}

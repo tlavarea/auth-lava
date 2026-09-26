@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.Optional;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -40,8 +41,11 @@ public final class OAuthIdentityMapper {
         }
 
         boolean emailVerified = Boolean.TRUE.equals(attributes.get("emailVerified"));
-        return Optional.of(
-                new OAuthIdentity(provider, String.valueOf(idAttribute), (String) emailAttribute, emailVerified));
+        // GitHub's "name" is optional and often unset; "login" is the handle and always there. Either beats nothing
+        // for a greeting, and neither is ever used to identify anyone.
+        String displayName = firstNonBlank(attributes.get("name"), attributes.get("login"));
+        return Optional.of(new OAuthIdentity(
+                provider, String.valueOf(idAttribute), (String) emailAttribute, emailVerified, displayName));
     }
 
     /**
@@ -59,6 +63,24 @@ public final class OAuthIdentityMapper {
         }
 
         boolean emailVerified = Boolean.TRUE.equals(oidcUser.getEmailVerified());
-        return Optional.of(new OAuthIdentity(provider, oidcUser.getSubject(), email, emailVerified));
+        // Apple issues an ID token with no name claim at all, so this is null for Apple and the success handler
+        // supplies it from the callback's form body instead.
+        String displayName =
+                firstNonBlank(oidcUser.getFullName(), joined(oidcUser.getGivenName(), oidcUser.getFamilyName()));
+        return Optional.of(new OAuthIdentity(provider, oidcUser.getSubject(), email, emailVerified, displayName));
+    }
+
+    private static String firstNonBlank(Object... candidates) {
+        for (Object candidate : candidates) {
+            if (candidate instanceof String value && StringUtils.isNotBlank(value)) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    private static String joined(String first, String last) {
+        return StringUtils.trimToNull(
+                StringUtils.normalizeSpace(StringUtils.defaultString(first) + " " + StringUtils.defaultString(last)));
     }
 }

@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.lava.boot.autoconfigure.app.CookieProperties;
 import com.lava.boot.autoconfigure.app.CorsProperties;
 import com.lava.configuration.SecurityConfiguration;
 import com.lava.security.oauth.GithubEmailBackfillOAuth2UserService;
@@ -24,7 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(JwksController.class)
 @Import(SecurityConfiguration.class)
-@EnableConfigurationProperties(CorsProperties.class)
+@EnableConfigurationProperties({CookieProperties.class, CorsProperties.class})
 @ActiveProfiles("test")
 class JwksControllerTest {
 

@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
@@ -25,7 +26,7 @@ class OAuthIdentityMapperTest {
 
         Optional<OAuthIdentity> identity = OAuthIdentityMapper.from(token);
 
-        assertThat(identity).contains(new OAuthIdentity("google", "g-123", "user@example.com", true));
+        assertThat(identity).contains(new OAuthIdentity("google", "g-123", "user@example.com", true, null));
     }
 
     @Test
@@ -37,7 +38,7 @@ class OAuthIdentityMapperTest {
 
         Optional<OAuthIdentity> identity = OAuthIdentityMapper.from(token);
 
-        assertThat(identity).contains(new OAuthIdentity("google", "g-123", "user@example.com", false));
+        assertThat(identity).contains(new OAuthIdentity("google", "g-123", "user@example.com", false, null));
     }
 
     @Test
@@ -54,7 +55,7 @@ class OAuthIdentityMapperTest {
 
         Optional<OAuthIdentity> identity = OAuthIdentityMapper.from(token);
 
-        assertThat(identity).contains(new OAuthIdentity("github", "123", "verified@example.com", true));
+        assertThat(identity).contains(new OAuthIdentity("github", "123", "verified@example.com", true, null));
     }
 
     @Test
@@ -66,7 +67,7 @@ class OAuthIdentityMapperTest {
 
         Optional<OAuthIdentity> identity = OAuthIdentityMapper.from(token);
 
-        assertThat(identity).contains(new OAuthIdentity("github", "123", "public@example.com", false));
+        assertThat(identity).contains(new OAuthIdentity("github", "123", "public@example.com", false, null));
     }
 
     @Test
@@ -74,6 +75,50 @@ class OAuthIdentityMapperTest {
         OAuth2AuthenticationToken token = githubToken(Map.of("id", 123));
 
         assertThat(OAuthIdentityMapper.from(token)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("takes OIDC's name claim as the display name")
+    void from_google_nameClaim_becomesDisplayName() {
+        OAuth2AuthenticationToken token = googleToken(
+                Map.of("sub", "g-123", "email", "user@example.com", "email_verified", true, "name", "Ada Lovelace"));
+
+        assertThat(OAuthIdentityMapper.from(token).orElseThrow().displayName()).isEqualTo("Ada Lovelace");
+    }
+
+    @Test
+    @DisplayName("falls back to given and family name when there is no single name claim")
+    void from_google_givenAndFamilyName_areJoined() {
+        OAuth2AuthenticationToken token = googleToken(Map.of(
+                "sub", "g-123",
+                "email", "user@example.com",
+                "email_verified", true,
+                "given_name", "Ada",
+                "family_name", "Lovelace"));
+
+        assertThat(OAuthIdentityMapper.from(token).orElseThrow().displayName()).isEqualTo("Ada Lovelace");
+    }
+
+    @Test
+    @DisplayName("has no name for Apple, whose ID token carries none - the success handler supplies it")
+    void from_apple_hasNoDisplayName() {
+        OAuth2AuthenticationToken token =
+                googleToken(Map.of("sub", "001.abc", "email", "user@privaterelay.appleid.com", "email_verified", true));
+
+        assertThat(OAuthIdentityMapper.from(token).orElseThrow().displayName()).isNull();
+    }
+
+    @Test
+    @DisplayName("prefers GitHub's name but settles for the handle, which is always set")
+    void from_github_nameThenLogin() {
+        OAuth2AuthenticationToken named = githubToken(Map.of(
+                "id", 123, "email", "a@example.com", "emailVerified", true, "name", "Ada Lovelace", "login", "ada"));
+        OAuth2AuthenticationToken unnamed =
+                githubToken(Map.of("id", 123, "email", "a@example.com", "emailVerified", true, "login", "ada"));
+
+        assertThat(OAuthIdentityMapper.from(named).orElseThrow().displayName()).isEqualTo("Ada Lovelace");
+        assertThat(OAuthIdentityMapper.from(unnamed).orElseThrow().displayName())
+                .isEqualTo("ada");
     }
 
     private static OAuth2AuthenticationToken googleToken(Map<String, Object> claims) {

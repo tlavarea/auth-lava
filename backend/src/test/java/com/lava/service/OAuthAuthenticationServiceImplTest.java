@@ -24,6 +24,7 @@ import com.lava.security.oauth.OAuthIdentity;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -61,26 +62,28 @@ class OAuthAuthenticationServiceImplTest {
 
     @Test
     void authenticate_newUserViaGoogle_createsUserAndLinksAccount() {
-        OAuthIdentity identity = new OAuthIdentity("google", "g-123", "new@example.com", true);
+        OAuthIdentity identity = new OAuthIdentity("google", "g-123", "new@example.com", true, null);
 
         when(this.oauthAccountRepository.findByProviderAndProviderUserId("google", "g-123"))
                 .thenReturn(Optional.empty());
         when(this.userRepository.findAuthUserByEmail("new@example.com")).thenReturn(Optional.empty());
-        when(this.userRepository.insertVerifiedFromOAuth("new@example.com")).thenReturn(Optional.of(user(42L)));
+        when(this.userRepository.insertVerifiedFromOAuth("new@example.com", null))
+                .thenReturn(Optional.of(user(42L)));
         when(this.userRepository.findAuthUserById(42L)).thenReturn(Optional.of(authUserView(42L, "active")));
         this.stubTokenIssuance();
 
         TokenPair pair = this.service.authenticate(identity);
 
         assertThat(pair.principal().getUserId()).isEqualTo(42L);
-        verify(this.userRepository).insertVerifiedFromOAuth("new@example.com");
+        verify(this.userRepository).insertVerifiedFromOAuth("new@example.com", null);
+        verify(this.userRepository).backfillDisplayName(42L, null);
         verify(this.oauthAccountRepository).insert(42L, "google", "g-123");
         verify(this.userRepository).recordLogin(42L);
     }
 
     @Test
     void authenticate_verifiedEmailMatchesExistingAccount_linksWithoutCreatingNewUser() {
-        OAuthIdentity identity = new OAuthIdentity("google", "g-999", "existing@example.com", true);
+        OAuthIdentity identity = new OAuthIdentity("google", "g-999", "existing@example.com", true, null);
 
         when(this.oauthAccountRepository.findByProviderAndProviderUserId("google", "g-999"))
                 .thenReturn(Optional.empty());
@@ -92,13 +95,13 @@ class OAuthAuthenticationServiceImplTest {
         TokenPair pair = this.service.authenticate(identity);
 
         assertThat(pair.principal().getUserId()).isEqualTo(7L);
-        verify(this.userRepository, never()).insertVerifiedFromOAuth(anyString());
+        verify(this.userRepository, never()).insertVerifiedFromOAuth(anyString(), any());
         verify(this.oauthAccountRepository).insert(7L, "google", "g-999");
     }
 
     @Test
     void authenticate_alreadyLinkedAccount_skipsLookupsAndIssuesTokens() {
-        OAuthIdentity identity = new OAuthIdentity("github", "gh-1", "someone@example.com", true);
+        OAuthIdentity identity = new OAuthIdentity("github", "gh-1", "someone@example.com", true, null);
 
         when(this.oauthAccountRepository.findByProviderAndProviderUserId("github", "gh-1"))
                 .thenReturn(Optional.of(oauthAccount(3L)));
@@ -109,13 +112,13 @@ class OAuthAuthenticationServiceImplTest {
 
         assertThat(pair.principal().getUserId()).isEqualTo(3L);
         verify(this.userRepository, never()).findAuthUserByEmail(anyString());
-        verify(this.userRepository, never()).insertVerifiedFromOAuth(anyString());
+        verify(this.userRepository, never()).insertVerifiedFromOAuth(anyString(), any());
         verify(this.oauthAccountRepository, never()).insert(any(), anyString(), anyString());
     }
 
     @Test
     void authenticate_mfaEnrolledUser_generatesAccessTokenWithMfaEnrolledFlag() {
-        OAuthIdentity identity = new OAuthIdentity("github", "gh-1", "someone@example.com", true);
+        OAuthIdentity identity = new OAuthIdentity("github", "gh-1", "someone@example.com", true, null);
 
         when(this.oauthAccountRepository.findByProviderAndProviderUserId("github", "gh-1"))
                 .thenReturn(Optional.of(oauthAccount(3L)));
@@ -132,7 +135,7 @@ class OAuthAuthenticationServiceImplTest {
 
     @Test
     void authenticate_suspendedUser_isRejected() {
-        OAuthIdentity identity = new OAuthIdentity("github", "gh-2", "suspended@example.com", true);
+        OAuthIdentity identity = new OAuthIdentity("github", "gh-2", "suspended@example.com", true, null);
 
         when(this.oauthAccountRepository.findByProviderAndProviderUserId("github", "gh-2"))
                 .thenReturn(Optional.of(oauthAccount(9L)));
@@ -146,7 +149,7 @@ class OAuthAuthenticationServiceImplTest {
 
     @Test
     void authenticate_unverifiedEmailWithNoExistingLink_isRejectedWithoutTouchingUserTable() {
-        OAuthIdentity identity = new OAuthIdentity("github", "gh-3", "unverified@example.com", false);
+        OAuthIdentity identity = new OAuthIdentity("github", "gh-3", "unverified@example.com", false, null);
 
         when(this.oauthAccountRepository.findByProviderAndProviderUserId("github", "gh-3"))
                 .thenReturn(Optional.empty());
@@ -154,8 +157,46 @@ class OAuthAuthenticationServiceImplTest {
         assertThatThrownBy(() -> this.service.authenticate(identity)).isInstanceOf(UnverifiedOAuthEmailException.class);
 
         verify(this.userRepository, never()).findAuthUserByEmail(anyString());
-        verify(this.userRepository, never()).insertVerifiedFromOAuth(anyString());
+        verify(this.userRepository, never()).insertVerifiedFromOAuth(anyString(), any());
         verify(this.userRepository, never()).recordLogin(any());
+    }
+
+    @Test
+    @DisplayName("writes the provider's name on the row it creates")
+    void authenticate_newUserWithAName_storesIt() {
+        OAuthIdentity identity = new OAuthIdentity("google", "g-123", "new@example.com", true, "Ada Lovelace");
+
+        when(this.oauthAccountRepository.findByProviderAndProviderUserId("google", "g-123"))
+                .thenReturn(Optional.empty());
+        when(this.userRepository.findAuthUserByEmail("new@example.com")).thenReturn(Optional.empty());
+        when(this.userRepository.insertVerifiedFromOAuth("new@example.com", "Ada Lovelace"))
+                .thenReturn(Optional.of(user(42L)));
+        when(this.userRepository.findAuthUserById(42L)).thenReturn(Optional.of(authUserView(42L, "active")));
+        this.stubTokenIssuance();
+
+        this.service.authenticate(identity);
+
+        verify(this.userRepository).insertVerifiedFromOAuth("new@example.com", "Ada Lovelace");
+    }
+
+    @Test
+    @DisplayName("offers the name to an account that already exists - Apple's one chance may not be an insert")
+    void authenticate_existingAccountWithAName_backfillsIt() {
+        // The case this is for: a coach signed up with Google months ago, then signs in with Apple. Apple sends the
+        // name exactly once, on this authorization, and no row is being created to put it in.
+        OAuthIdentity identity = new OAuthIdentity("apple", "001.abc", "coach@example.com", true, "Tim Lavarea");
+
+        when(this.oauthAccountRepository.findByProviderAndProviderUserId("apple", "001.abc"))
+                .thenReturn(Optional.empty());
+        when(this.userRepository.findAuthUserByEmail("coach@example.com"))
+                .thenReturn(Optional.of(authUserView(7L, "active")));
+        when(this.userRepository.findAuthUserById(7L)).thenReturn(Optional.of(authUserView(7L, "active")));
+        this.stubTokenIssuance();
+
+        this.service.authenticate(identity);
+
+        verify(this.userRepository).backfillDisplayName(7L, "Tim Lavarea");
+        verify(this.userRepository, never()).insertVerifiedFromOAuth(anyString(), any());
     }
 
     private void stubTokenIssuance() {
@@ -166,7 +207,7 @@ class OAuthAuthenticationServiceImplTest {
     }
 
     private static User user(Long id) {
-        return new User(id, "x@example.com", null, true, "active", null, null, null);
+        return new User(id, "x@example.com", null, true, "active", null, null, null, null);
     }
 
     private static OauthAccount oauthAccount(Long userId) {

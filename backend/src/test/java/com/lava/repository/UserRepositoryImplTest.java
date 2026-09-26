@@ -11,6 +11,7 @@ import com.lava.model.database.view.AuthUserView;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.jooq.DSLContext;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
@@ -94,10 +95,65 @@ class UserRepositoryImplTest extends AbstractRepositoryIntegrationTest {
 
     @Test
     void insertVerifiedFromOAuth_setsEmailVerifiedTrue() {
-        User user =
-                this.userRepository.insertVerifiedFromOAuth("oauth@example.com").orElseThrow();
+        User user = this.userRepository
+                .insertVerifiedFromOAuth("oauth@example.com", null)
+                .orElseThrow();
 
         assertThat(user.emailVerified()).isTrue();
+    }
+
+    @Test
+    @DisplayName("stores the provider's name alongside the new OAuth user")
+    void insertVerifiedFromOAuth_storesDisplayName() {
+        User user = this.userRepository
+                .insertVerifiedFromOAuth("named@example.com", "Ada Lovelace")
+                .orElseThrow();
+
+        assertThat(user.displayName()).isEqualTo("Ada Lovelace");
+    }
+
+    @Test
+    @DisplayName("backfills a name onto a user who has none")
+    void backfillDisplayName_fillsAnEmptyName() {
+        User user = this.userRepository
+                .insertVerifiedFromOAuth("empty@example.com", null)
+                .orElseThrow();
+
+        this.userRepository.backfillDisplayName(user.id(), "Tim Lavarea");
+
+        assertThat(displayNameOf(user.id())).isEqualTo("Tim Lavarea");
+    }
+
+    @Test
+    @DisplayName("never overwrites a name that is already there - the guard is in the SQL, not the caller")
+    void backfillDisplayName_leavesAnExistingNameAlone() {
+        User user = this.userRepository
+                .insertVerifiedFromOAuth("set@example.com", "Ada Lovelace")
+                .orElseThrow();
+
+        this.userRepository.backfillDisplayName(user.id(), "Somebody Else");
+
+        assertThat(displayNameOf(user.id())).isEqualTo("Ada Lovelace");
+    }
+
+    @Test
+    @DisplayName("ignores a blank name rather than writing one, so a later real name still lands")
+    void backfillDisplayName_ignoresBlank() {
+        User user = this.userRepository
+                .insertVerifiedFromOAuth("blank@example.com", null)
+                .orElseThrow();
+
+        this.userRepository.backfillDisplayName(user.id(), "   ");
+
+        assertThat(displayNameOf(user.id())).isNull();
+    }
+
+    private String displayNameOf(Long userId) {
+        return this.dsl
+                .select(USER.DISPLAY_NAME)
+                .from(USER)
+                .where(USER.ID.eq(userId))
+                .fetchOne(USER.DISPLAY_NAME);
     }
 
     @Test

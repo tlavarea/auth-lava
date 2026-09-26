@@ -14,6 +14,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Record7;
@@ -76,13 +77,28 @@ public class UserRepositoryImpl extends AbstractSpringDAOImpl<UserRecord, User, 
 
     @Override
     @Transactional
-    public Optional<User> insertVerifiedFromOAuth(String email) {
+    public Optional<User> insertVerifiedFromOAuth(String email, String displayName) {
         return this.dsl
                 .insertInto(USER)
                 .set(USER.EMAIL, normalize(email))
                 .set(USER.EMAIL_VERIFIED, true)
+                .set(USER.DISPLAY_NAME, StringUtils.trimToNull(displayName))
                 .returning()
                 .fetchOptionalInto(User.class);
+    }
+
+    @Override
+    public void backfillDisplayName(Long userId, String displayName) {
+        String name = StringUtils.trimToNull(displayName);
+        if (name == null) {
+            return;
+        }
+
+        this.dsl
+                .update(USER)
+                .set(USER.DISPLAY_NAME, name)
+                .where(USER.ID.eq(userId).and(USER.DISPLAY_NAME.isNull()))
+                .execute();
     }
 
     /**
