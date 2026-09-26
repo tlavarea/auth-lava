@@ -34,6 +34,11 @@ public class OAuthAuthenticationServiceImpl implements OAuthAuthenticationServic
                 .findByProviderAndProviderUserId(identity.provider(), identity.providerUserId())
                 .map(OauthAccount::userId)
                 .orElseGet(() -> this.linkOrCreateUser(identity));
+        // Runs on every login, not only the first, and fills nothing that is already filled. Two cases need it: a
+        // provider that starts reporting a name for an account created before it did, and Apple linking to a user who
+        // already existed under another provider - where Apple's one-and-only chance to give a name coincides with a
+        // row that was not being inserted.
+        this.userRepository.backfillDisplayName(userId, identity.displayName());
         AuthUserView view = this.userRepository
                 .findAuthUserById(userId)
                 .filter(user -> "active".equals(user.status()))
@@ -69,7 +74,7 @@ public class OAuthAuthenticationServiceImpl implements OAuthAuthenticationServic
                 .findAuthUserByEmail(identity.email())
                 .map(AuthUserView::id)
                 .orElseGet(() -> this.userRepository
-                        .insertVerifiedFromOAuth(identity.email())
+                        .insertVerifiedFromOAuth(identity.email(), identity.displayName())
                         .map(User::id)
                         .orElseThrow(() -> new IllegalStateException("insertVerifiedFromOAuth did not return a row")));
 

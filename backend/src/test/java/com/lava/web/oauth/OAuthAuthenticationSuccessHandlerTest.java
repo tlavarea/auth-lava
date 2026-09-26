@@ -2,6 +2,7 @@ package com.lava.web.oauth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.lava.boot.autoconfigure.app.OAuthProperties;
@@ -9,6 +10,7 @@ import com.lava.exception.InvalidOAuthUserStateException;
 import com.lava.model.auth.TokenPair;
 import com.lava.model.auth.TokenPairBuilder;
 import com.lava.security.AuthUserPrincipal;
+import com.lava.security.oauth.OAuthIdentity;
 import com.lava.service.OAuthAuthenticationService;
 import com.lava.web.AuthCookieFactory;
 import java.time.Instant;
@@ -16,8 +18,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -82,6 +86,63 @@ class OAuthAuthenticationSuccessHandlerTest {
 
         assertThat(response.getHeaders("Set-Cookie")).isEmpty();
         assertThat(response.getRedirectedUrl()).isEqualTo("http://localhost:4200/login?error=oauth");
+    }
+
+    @Test
+    @DisplayName("captures the name Apple posts on a first authorization, since there is no second chance")
+    void onAuthenticationSuccess_appleFirstAuthorization_capturesTheName() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setParameter("user", "{\"name\":{\"firstName\":\"Tim\",\"lastName\":\"Lavarea\"}}");
+        stubSuccessfulAuthentication();
+
+        this.handler.onAuthenticationSuccess(request, new MockHttpServletResponse(), appleToken());
+
+        assertThat(capturedIdentity().displayName()).isEqualTo("Tim Lavarea");
+    }
+
+    @Test
+    @DisplayName("carries on without a name on every Apple login after the first")
+    void onAuthenticationSuccess_appleLaterLogin_hasNoName() throws Exception {
+        stubSuccessfulAuthentication();
+
+        this.handler.onAuthenticationSuccess(new MockHttpServletRequest(), new MockHttpServletResponse(), appleToken());
+
+        assertThat(capturedIdentity().displayName()).isNull();
+    }
+
+    @Test
+    @DisplayName("never reads the parameter for another provider, where it would be attacker-supplied")
+    void onAuthenticationSuccess_googleWithAUserParameter_ignoresIt() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setParameter("user", "{\"name\":{\"firstName\":\"Not\",\"lastName\":\"Me\"}}");
+        stubSuccessfulAuthentication();
+
+        this.handler.onAuthenticationSuccess(request, new MockHttpServletResponse(), googleToken(true));
+
+        assertThat(capturedIdentity().displayName()).isNull();
+    }
+
+    private void stubSuccessfulAuthentication() {
+        TokenPair pair = tokenPair();
+        when(this.oAuthAuthenticationService.authenticate(any())).thenReturn(pair);
+        when(this.cookieFactory.accessTokenCookie("access")).thenReturn(cookie("ACCESS_TOKEN", "access"));
+        when(this.cookieFactory.refreshTokenCookie("refresh")).thenReturn(cookie("REFRESH_TOKEN", "refresh"));
+    }
+
+    private OAuthIdentity capturedIdentity() {
+        ArgumentCaptor<OAuthIdentity> captor = ArgumentCaptor.forClass(OAuthIdentity.class);
+        verify(this.oAuthAuthenticationService).authenticate(captor.capture());
+        return captor.getValue();
+    }
+
+    /** Apple's ID token carries no name claim of any kind - only the subject and the email. */
+    private static OAuth2AuthenticationToken appleToken() {
+        Map<String, Object> claims =
+                Map.of("sub", "001234.abc.5678", "email", "user@privaterelay.appleid.com", "email_verified", true);
+        OidcIdToken idToken =
+                new OidcIdToken("token-value", Instant.now(), Instant.now().plusSeconds(3600), claims);
+        DefaultOidcUser oidcUser = new DefaultOidcUser(List.of(new SimpleGrantedAuthority("ROLE_USER")), idToken);
+        return new OAuth2AuthenticationToken(oidcUser, oidcUser.getAuthorities(), "apple");
     }
 
     private static TokenPair tokenPair() {

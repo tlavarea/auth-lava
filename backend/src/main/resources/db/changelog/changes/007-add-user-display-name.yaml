@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: "11"
+      author: tlavarea
+      comment: >
+        USER.DISPLAY_NAME - the human name an identity provider reports,
+        captured because one provider reports it exactly once. Apple sends
+        the user's name in the callback's form body on the FIRST
+        authorization only, never again and never in the ID token; if it is
+        not written down at that moment it is unrecoverable short of the
+        user revoking the app in their Apple ID settings. Google and GitHub
+        resend it on every login, so for them this is merely convenient.
+
+        Nullable, and deliberately never overwritten once set - see
+        UserRepository#backfillDisplayName. A provider's idea of someone's
+        name does not outrank the user's own, and Apple's is whatever was
+        typed into an Apple ID years ago.
+      changes:
+        - addColumn:
+            tableName: user
+            columns:
+              - column:
+                  name: display_name
+                  type: VARCHAR
+      rollback:
+        - dropColumn:
+            tableName: user
+            columnName: display_name
