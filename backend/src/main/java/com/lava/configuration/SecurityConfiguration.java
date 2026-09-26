@@ -25,6 +25,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -32,6 +33,14 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfiguration {
+
+    /**
+     * Apple's authorization callback: a cross-site, top-level form POST from appleid.apple.com, because asking for
+     * {@code scope=name email} obliges {@code response_mode=form_post}. Two defences assume a same-site request and are
+     * lifted for this one endpoint - CSRF and CORS, below - and both rest on the {@code state} parameter instead.
+     */
+    static final RequestMatcher APPLE_CALLBACK =
+            PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/login/oauth2/code/apple");
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource(CorsProperties corsProperties) {
@@ -50,7 +59,14 @@ public class SecurityConfiguration {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
-        return source;
+
+        // A browser sends `Origin: https://appleid.apple.com` on Apple's form_post callback, and CorsFilter treats any
+        // request whose Origin differs from the host as a CORS request - so it checked Apple against allowed-origins
+        // and answered 403 "Invalid CORS request" before the OAuth2 filter saw the code. CORS governs whether a
+        // script may read a response; this is a navigation, and no script reads anything. Returning no configuration
+        // is how CorsFilter is told a request is not its business, which is truer than adding Apple as an allowed
+        // origin with credentials on every endpoint.
+        return request -> APPLE_CALLBACK.matches(request) ? null : source.getCorsConfiguration(request);
     }
 
     /**
@@ -154,8 +170,7 @@ public class SecurityConfiguration {
             // CookieOAuth2AuthorizationRequestRepository holds and OAuth2LoginAuthenticationFilter checks. The matcher
             // is pinned to POST on the apple registration alone, so the GET callbacks Google and GitHub use keep the
             // standard protection.
-            csrf.ignoringRequestMatchers(
-                    PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/login/oauth2/code/apple"));
+            csrf.ignoringRequestMatchers(APPLE_CALLBACK);
         });
 
         http.exceptionHandling(handling ->
