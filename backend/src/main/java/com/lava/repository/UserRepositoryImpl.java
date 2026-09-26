@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
-import org.jooq.Record7;
+import org.jooq.Record8;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -108,13 +108,14 @@ public class UserRepositoryImpl extends AbstractSpringDAOImpl<UserRecord, User, 
      * @return the {@link AuthUserView} object.
      */
     private Optional<AuthUserView> fetchAuthUserView(Condition condition) {
-        List<Record7<Long, String, String, String, Boolean, String, String>> records = this.dsl
+        List<Record8<Long, String, String, String, Boolean, String, String, String>> records = this.dsl
                 .select(
                         USER.ID,
                         USER.EMAIL,
                         USER.PASSWORD_HASH,
                         USER.STATUS,
                         USER.EMAIL_VERIFIED,
+                        USER.DISPLAY_NAME,
                         USER.role().NAME.as("roleName"),
                         USER.role().permission().NAME.as("permissionName"))
                 .from(USER)
@@ -140,6 +141,7 @@ public class UserRepositoryImpl extends AbstractSpringDAOImpl<UserRecord, User, 
                 .id(records.getFirst().get(USER.ID))
                 .email(records.getFirst().get(USER.EMAIL))
                 .emailVerified(records.getFirst().get(USER.EMAIL_VERIFIED))
+                .displayName(records.getFirst().get(USER.DISPLAY_NAME))
                 .passwordHash(records.getFirst().get(USER.PASSWORD_HASH))
                 .permissions(permissions)
                 .roles(roles)

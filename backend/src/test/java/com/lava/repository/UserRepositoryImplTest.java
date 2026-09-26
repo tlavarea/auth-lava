@@ -113,6 +113,17 @@ class UserRepositoryImplTest extends AbstractRepositoryIntegrationTest {
     }
 
     @Test
+    @DisplayName("carries the display name into the auth view, which is what the access token's name claim reads")
+    void findAuthUserById_includesDisplayName() {
+        User user = this.userRepository
+                .insertVerifiedFromOAuth("viewed@example.com", "Ada Lovelace")
+                .orElseThrow();
+
+        assertThat(this.userRepository.findAuthUserById(user.id()).orElseThrow().displayName())
+                .isEqualTo("Ada Lovelace");
+    }
+
+    @Test
     @DisplayName("backfills a name onto a user who has none")
     void backfillDisplayName_fillsAnEmptyName() {
         User user = this.userRepository
