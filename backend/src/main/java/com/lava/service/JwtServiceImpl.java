@@ -4,6 +4,7 @@ import com.lava.boot.autoconfigure.app.JwtProperties;
 import com.lava.security.AuthUserPrincipal;
 import com.lava.security.MfaAuthorities;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import java.security.GeneralSecurityException;
@@ -21,6 +22,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.FactorGrantedAuthority;
 import org.springframework.stereotype.Service;
@@ -89,7 +91,7 @@ public class JwtServiceImpl implements JwtService {
             factors.add(factorClaim(MfaAuthorities.TOTP_FACTOR_AUTHORITY, now));
         }
 
-        return Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .header()
                 .keyId(properties.keyId())
                 .and()
@@ -101,9 +103,16 @@ public class JwtServiceImpl implements JwtService {
                 .claim("factors", factors)
                 .issuer(properties.issuer())
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plus(properties.accessTokenTtl())))
-                .signWith(privateKey, Jwts.SIG.RS256)
-                .compact();
+                .expiration(Date.from(now.plus(properties.accessTokenTtl())));
+
+        // OIDC's standard claim, so a resource server can show who someone is without calling back here - PlateTune's
+        // roster names the guardian who accepted an invite. Absent rather than null when there is no name: many
+        // password accounts have none, and a resource server should treat a missing name as unknown, not as "".
+        if (StringUtils.isNotBlank(principal.getDisplayName())) {
+            builder.claim("name", principal.getDisplayName());
+        }
+
+        return builder.signWith(privateKey, Jwts.SIG.RS256).compact();
     }
 
     /**

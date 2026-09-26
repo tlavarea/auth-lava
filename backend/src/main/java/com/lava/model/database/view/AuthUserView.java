@@ -10,6 +10,7 @@ public record AuthUserView(
         String passwordHash,
         String status,
         boolean emailVerified,
+        String displayName,
         Set<String> roles,
         Set<String> permissions)
         implements AuthUserViewBuilder.With {}

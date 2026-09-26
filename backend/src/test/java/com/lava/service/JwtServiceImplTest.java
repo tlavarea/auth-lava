@@ -164,6 +164,38 @@ class JwtServiceImplTest {
         assertThatThrownBy(() -> serviceB.parseAndValidate(token)).isInstanceOf(SignatureException.class);
     }
 
+    @Test
+    void generateAccessToken_withDisplayName_carriesItAsTheNameClaim() {
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_KEY_PAIR));
+
+        String token = service.generateAccessToken(principal("Thomas Laverriere"), false, false);
+
+        assertThat(service.parseAndValidate(token).get("name", String.class)).isEqualTo("Thomas Laverriere");
+    }
+
+    @Test
+    void generateAccessToken_withoutDisplayName_omitsTheNameClaim() {
+        JwtServiceImpl service = new JwtServiceImpl(properties(VALID_KEY_PAIR));
+
+        Claims nameless = service.parseAndValidate(service.generateAccessToken(principal(), false, false));
+        Claims blank = service.parseAndValidate(service.generateAccessToken(principal("   "), false, false));
+
+        // Absent, not null or "": a resource server should read a missing name as unknown.
+        assertThat(nameless).doesNotContainKey("name");
+        assertThat(blank).doesNotContainKey("name");
+    }
+
+    private static AuthUserPrincipal principal(String displayName) {
+        return AuthUserPrincipal.builder()
+                .userId(42L)
+                .email("user@example.com")
+                .status("active")
+                .emailVerified(true)
+                .displayName(displayName)
+                .authorities(Set.of(new SimpleGrantedAuthority("ROLE_MEMBER")))
+                .build();
+    }
+
     private static AuthUserPrincipal principal() {
         return AuthUserPrincipal.builder()
                 .userId(42L)

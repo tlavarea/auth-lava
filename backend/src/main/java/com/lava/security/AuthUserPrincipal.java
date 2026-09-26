@@ -22,6 +22,9 @@ public class AuthUserPrincipal implements UserDetails {
     private final String passwordHash;
     private final String status;
     private final boolean emailVerified;
+    /** What the user is called, or null. Never an identifier: the id is, and the email is how they sign in. */
+    private final String displayName;
+
     private final Set<GrantedAuthority> authorities;
 
     public static AuthUserPrincipal from(AuthUserView view) {
@@ -39,6 +42,7 @@ public class AuthUserPrincipal implements UserDetails {
                 .authorities(authorities)
                 .email(view.email())
                 .emailVerified(view.emailVerified())
+                .displayName(view.displayName())
                 .passwordHash(view.passwordHash())
                 .status(view.status())
                 .userId(view.id())
