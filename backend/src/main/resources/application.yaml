@@ -115,15 +115,17 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
     enabled: true
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID:}
-            client-secret: ${GOOGLE_CLIENT_SECRET:}
-            scope: openid,email,profile
-          github:
-            client-id: ${GITHUB_CLIENT_ID:}
-            client-secret: ${GITHUB_CLIENT_SECRET:}
-            scope: read:user,user:email
+  # OAuth2 client registrations are NOT declared here. Each provider lives in its own
+  # application-oauth-<id>.yaml and is switched on by activating that profile, e.g.
+  # SPRING_PROFILES_ACTIVE=oauth-google,oauth-apple.
+  #
+  # The reason is that Spring Boot validates every *declared* registration at startup —
+  # OAuth2ClientProperties implements InitializingBean and asserts a non-empty client-id —
+  # so a registration declared with an empty ${...} default is fatal, not ignored. Two
+  # deployments of this service want different provider sets (this one Google + GitHub,
+  # PlateTune's Google + Apple), and neither should have to hold credentials for the
+  # other's.
+  #
+  # This is the one deliberate exception to "no profile-specific YAML"; the choice of
+  # profiles is still made entirely by environment, so a deployment is still configured by
+  # its environment alone. OAuthProviderConfiguration fails startup if none are active.
