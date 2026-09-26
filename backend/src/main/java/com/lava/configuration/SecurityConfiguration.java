@@ -86,6 +86,10 @@ public class SecurityConfiguration {
                         "/api/auth/refresh",
                         "/oauth2/authorization/**",
                         "/login/oauth2/code/**",
+                        // Which OAuth buttons to render. Needed before anyone is authenticated,
+                        // and reveals only which /oauth2/authorization/** endpoints are already
+                        // public.
+                        "/api/auth/providers",
                         // Load balancer / orchestrator health probes hit this unauthenticated -
                         // show-details is "never" (application.yaml) so it only ever reveals UP/DOWN,
                         // never dependency internals, to an anonymous caller.
