@@ -3,10 +3,15 @@ package com.lava.boot.autoconfigure.app;
 import jakarta.validation.constraints.NotBlank;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Profile;
 import org.springframework.validation.annotation.Validated;
 
 /**
  * Sign in with Apple. Bound only when the {@code oauth-apple} profile is active.
+ *
+ * <p>The {@code @Profile} is load-bearing, not documentation. {@code @ConfigurationPropertiesScan} on the application
+ * would otherwise bind this record in every deployment, and {@code @NotBlank} would then fail startup for anyone who
+ * has not configured Apple — which is every deployment that does not want it.
  *
  * <p>Apple issues no static client secret. The secret is an ES256 JWT this service mints per token request, signed with
  * a private key downloaded once from the Apple Developer portal — see {@code AppleClientSecretFactory}.
@@ -20,6 +25,7 @@ import org.springframework.validation.annotation.Validated;
  *     a long-lived one: it is generated per token request, so a short life narrows what a leaked assertion is worth.
  */
 @ConfigurationProperties(prefix = "apple")
+@Profile("oauth-apple")
 @Validated
 public record AppleProperties(
         @NotBlank String teamId,

@@ -10,7 +10,6 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
-import org.springframework.stereotype.Component;
 
 /**
  * Mints the client secret Apple expects: an ES256 JWT, not a static string.
@@ -27,7 +26,6 @@ import org.springframework.stereotype.Component;
  * <p>Minted per request rather than cached. Apple allows up to six months, but a token exchange happens once per login
  * and signing an ES256 JWT costs microseconds — there is nothing to gain by keeping a long-lived credential in memory.
  */
-@Component
 public class AppleClientSecretFactory {
 
     private static final String APPLE_AUDIENCE = "https://appleid.apple.com";
