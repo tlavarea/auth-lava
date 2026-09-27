@@ -115,6 +115,10 @@ public class SecurityConfiguration {
                         "/api/auth/register/verify-code",
                         "/api/auth/register/complete",
                         "/api/auth/refresh",
+                        // The CSRF token for a cross-origin frontend, which must be able to fetch it before it is
+                        // signed in - see CsrfController. It reveals nothing a same-origin frontend cannot read
+                        // from its own cookie.
+                        "/api/auth/csrf",
                         "/oauth2/authorization/**",
                         "/login/oauth2/code/**",
                         // Which OAuth buttons to render. Needed before anyone is authenticated,
