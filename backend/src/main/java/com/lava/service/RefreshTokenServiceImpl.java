@@ -71,6 +71,19 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
                 .findByTokenHash(Hasher.hash(rawToken))
                 .orElseThrow(InvalidRefreshTokenException::new);
 
+        if (row.revokedAt() != null && isLostResponse(row)) {
+            if (row.expiresAt().isBefore(LocalDateTime.now())) {
+                throw new InvalidRefreshTokenException();
+            }
+            // The client never received the replacement; retire it, and let the old token be rotated again.
+            log.info(
+                    "validateForRotation::rotated-away token presented within the reuse grace, replacement unused - "
+                            + "rotating again for user {}",
+                    LogSanitizer.sanitize(row.userId()));
+            this.refreshTokenRepository.revoke(row.replacedById(), LocalDateTime.now());
+            return row;
+        }
+
         if (row.revokedAt() != null) {
             log.warn(
                     "validateForRotation::reuse of revoked token detected, revoking all sessions for user {}",
@@ -84,6 +97,25 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         }
 
         return row;
+    }
+
+    /**
+     * Whether a revoked token being presented again is a lost response rather than reuse: it was rotated away (not
+     * logged out or revoked wholesale), within {@code jwt.refresh-token-reuse-grace}, and its replacement has never
+     * been used - so the client cannot have received it. Anything else is treated as theft, as before.
+     */
+    private boolean isLostResponse(RefreshToken row) {
+        if (row.replacedById() == null) {
+            return false;
+        }
+        LocalDateTime graceEnds = row.revokedAt().plus(this.jwtProperties.refreshTokenReuseGrace());
+        if (!LocalDateTime.now().isBefore(graceEnds)) {
+            return false;
+        }
+        return this.refreshTokenRepository
+                .findOptionalById(row.replacedById())
+                .map(replacement -> replacement.revokedAt() == null)
+                .orElse(false);
     }
 
     /**

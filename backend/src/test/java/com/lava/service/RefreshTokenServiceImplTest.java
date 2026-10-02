@@ -38,7 +38,13 @@ class RefreshTokenServiceImplTest {
     @BeforeEach
     void setUp() {
         JwtProperties properties = new JwtProperties(
-                "private-key", "public-key", "key-id", "issuer", Duration.ofMinutes(15), Duration.ofDays(30));
+                "private-key",
+                "public-key",
+                "key-id",
+                "issuer",
+                Duration.ofMinutes(15),
+                Duration.ofDays(30),
+                Duration.ofSeconds(60));
         this.service = new RefreshTokenServiceImpl(properties, this.refreshTokenRepository, new SecureRandom());
     }
 
@@ -167,6 +173,87 @@ class RefreshTokenServiceImplTest {
                 .isInstanceOf(InvalidRefreshTokenException.class);
 
         verify(this.refreshTokenRepository, never()).revokeAllForUser(anyLong(), any(LocalDateTime.class));
+    }
+
+    // --- The reuse grace: a lost response is not theft -------------------------------------------------------------
+
+    @Test
+    void validateForRotation_rotatedAwayWithinGrace_replacementUnused_retiresReplacementAndRotatesAgain() {
+        RefreshToken rotatedAway = rotatedAway(LocalDateTime.now().minusSeconds(5), 2L);
+        when(this.refreshTokenRepository.findByTokenHash(Hasher.hash("raw"))).thenReturn(Optional.of(rotatedAway));
+        when(this.refreshTokenRepository.findOptionalById(2L)).thenReturn(Optional.of(row(2L, 3L)));
+
+        RefreshToken result = this.service.validateForRotation("raw");
+
+        assertThat(result).isEqualTo(rotatedAway);
+        verify(this.refreshTokenRepository).revoke(eq(2L), any(LocalDateTime.class));
+        verify(this.refreshTokenRepository, never()).revokeAllForUser(anyLong(), any(LocalDateTime.class));
+    }
+
+    /** The client did receive the replacement - it used it - so the old one coming back is someone else. */
+    @Test
+    void validateForRotation_rotatedAwayWithinGrace_replacementUsed_revokesAllSessions() {
+        when(this.refreshTokenRepository.findByTokenHash(Hasher.hash("raw")))
+                .thenReturn(Optional.of(rotatedAway(LocalDateTime.now().minusSeconds(5), 2L)));
+        when(this.refreshTokenRepository.findOptionalById(2L))
+                .thenReturn(Optional.of(rotatedAway(LocalDateTime.now().minusSeconds(2), 4L)));
+
+        assertThatThrownBy(() -> this.service.validateForRotation("raw"))
+                .isInstanceOf(InvalidRefreshTokenException.class);
+
+        verify(this.refreshTokenRepository).revokeAllForUser(eq(3L), any(LocalDateTime.class));
+        verify(this.refreshTokenRepository, never()).revoke(anyLong(), any(LocalDateTime.class));
+    }
+
+    @Test
+    void validateForRotation_rotatedAwayPastTheGrace_revokesAllSessions() {
+        when(this.refreshTokenRepository.findByTokenHash(Hasher.hash("raw")))
+                .thenReturn(Optional.of(rotatedAway(LocalDateTime.now().minusSeconds(61), 2L)));
+
+        assertThatThrownBy(() -> this.service.validateForRotation("raw"))
+                .isInstanceOf(InvalidRefreshTokenException.class);
+
+        verify(this.refreshTokenRepository).revokeAllForUser(eq(3L), any(LocalDateTime.class));
+        verify(this.refreshTokenRepository, never()).findOptionalById(anyLong());
+    }
+
+    /** Logged out, not rotated: there is no lost response to forgive. */
+    @Test
+    void validateForRotation_revokedWithoutAReplacement_revokesAllSessionsEvenWithinTheGrace() {
+        RefreshToken loggedOut = new RefreshToken(
+                1L, 3L, Hasher.hash("raw"), LocalDateTime.now().plusDays(1), LocalDateTime.now(), null, null, null);
+        when(this.refreshTokenRepository.findByTokenHash(Hasher.hash("raw"))).thenReturn(Optional.of(loggedOut));
+
+        assertThatThrownBy(() -> this.service.validateForRotation("raw"))
+                .isInstanceOf(InvalidRefreshTokenException.class);
+
+        verify(this.refreshTokenRepository).revokeAllForUser(eq(3L), any(LocalDateTime.class));
+    }
+
+    @Test
+    void validateForRotation_withinGraceButExpired_throwsWithoutRevokingAnything() {
+        RefreshToken expired = new RefreshToken(
+                1L,
+                3L,
+                Hasher.hash("raw"),
+                LocalDateTime.now().minusSeconds(1),
+                LocalDateTime.now().minusSeconds(5),
+                2L,
+                null,
+                null);
+        when(this.refreshTokenRepository.findByTokenHash(Hasher.hash("raw"))).thenReturn(Optional.of(expired));
+        when(this.refreshTokenRepository.findOptionalById(2L)).thenReturn(Optional.of(row(2L, 3L)));
+
+        assertThatThrownBy(() -> this.service.validateForRotation("raw"))
+                .isInstanceOf(InvalidRefreshTokenException.class);
+
+        verify(this.refreshTokenRepository, never()).revoke(anyLong(), any(LocalDateTime.class));
+        verify(this.refreshTokenRepository, never()).revokeAllForUser(anyLong(), any(LocalDateTime.class));
+    }
+
+    private static RefreshToken rotatedAway(LocalDateTime revokedAt, Long replacedById) {
+        return new RefreshToken(
+                1L, 3L, Hasher.hash("raw"), LocalDateTime.now().plusDays(1), revokedAt, replacedById, null, null);
     }
 
     private static RefreshToken row(Long id, Long userId) {

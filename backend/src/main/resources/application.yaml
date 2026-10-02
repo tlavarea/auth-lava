@@ -26,6 +26,9 @@ jwt:
   issuer: ${JWT_ISSUER:auth-lava}
   access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:15m}
   refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:30d}
+  # A rotated-away refresh token presented again this soon, with its replacement never used, is a lost response, not
+  # theft: it is rotated again instead of revoking every session. See JwtProperties.
+  refresh-token-reuse-grace: ${JWT_REFRESH_TOKEN_REUSE_GRACE:60s}
 
 logging:
   level:

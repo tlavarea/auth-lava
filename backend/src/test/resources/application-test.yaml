@@ -30,6 +30,7 @@ jwt:
   issuer: auth-lava-test
   access-token-ttl: 15m
   refresh-token-ttl: 30d
+  refresh-token-reuse-grace: 60s
 
 mfa:
   encryption-key: test-mfa-encryption-key

@@ -218,7 +218,8 @@ class JwtServiceImplTest {
                 "test-key-1",
                 issuer,
                 Duration.ofMinutes(15),
-                Duration.ofDays(30));
+                Duration.ofDays(30),
+                Duration.ofSeconds(60));
     }
 
     private static KeyPair shortKeyPair() {

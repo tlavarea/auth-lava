@@ -104,6 +104,29 @@ class RefreshTokenRepositoryImplTest extends AbstractRepositoryIntegrationTest {
                 .isNull();
     }
 
+    /** A token rotated again inside the reuse grace keeps its first revocation time, so its grace cannot restart. */
+    @Test
+    void revokeAndReplace_onAnAlreadyRevokedToken_keepsTheFirstRevocationTime() {
+        User user =
+                this.userRepository.insert("refresh-grace@example.com", "hash").orElseThrow();
+        RefreshToken old = this.refreshTokenRepository.insert(
+                user.id(), "hash-grace-old", LocalDateTime.now().plusDays(30), false);
+        RefreshToken first = this.refreshTokenRepository.insert(
+                user.id(), "hash-grace-first", LocalDateTime.now().plusDays(30), false);
+        RefreshToken second = this.refreshTokenRepository.insert(
+                user.id(), "hash-grace-second", LocalDateTime.now().plusDays(30), false);
+        LocalDateTime firstRotation = LocalDateTime.now().minusSeconds(30).withNano(0);
+        this.refreshTokenRepository.revokeAndReplace(old.id(), first.id(), firstRotation);
+
+        this.refreshTokenRepository.revokeAndReplace(old.id(), second.id(), LocalDateTime.now());
+
+        RefreshToken updated =
+                this.refreshTokenRepository.findByTokenHash("hash-grace-old").orElseThrow();
+        assertThat(updated.revokedAt()).isEqualTo(firstRotation);
+        assertThat(updated.replacedById()).isEqualTo(second.id());
+        assertThat(this.refreshTokenRepository.findOptionalById(second.id())).isPresent();
+    }
+
     @Test
     void revokeAndReplace_setsRevokedAtAndReplacedById() {
         User user = this.userRepository.insert("refresh-3@example.com", "hash").orElseThrow();
