@@ -8,6 +8,7 @@ import com.lava.model.database.tables.records.RefreshTokenRecord;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.jooq.DSLContext;
+import org.jooq.impl.DSL;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,15 @@ public class RefreshTokenRepositoryImpl extends AbstractSpringDAOImpl<RefreshTok
                 .selectFrom(REFRESH_TOKEN)
                 .where(REFRESH_TOKEN.TOKEN_HASH.eq(tokenHash))
                 .fetchOptionalInto(RefreshToken.class);
+    }
+
+    /**
+     * Overrides jOOQ's DAO version, which runs on the DAO's own configuration - never set here, so it fails as
+     * detached. Every read in this repository goes through the injected {@link DSLContext} instead.
+     */
+    @Override
+    public Optional<RefreshToken> findOptionalById(Long id) {
+        return this.dsl.selectFrom(REFRESH_TOKEN).where(REFRESH_TOKEN.ID.eq(id)).fetchOptionalInto(RefreshToken.class);
     }
 
     @Override
@@ -91,9 +101,11 @@ public class RefreshTokenRepositoryImpl extends AbstractSpringDAOImpl<RefreshTok
     @Override
     @Transactional
     public void revokeAndReplace(Long oldId, Long newId, LocalDateTime revokedAt) {
+        // The first revocation time stands: a token rotated again inside the reuse grace (a lost response) must not
+        // restart its own grace, or replaying it every minute would keep it alive forever.
         this.dsl
                 .update(REFRESH_TOKEN)
-                .set(REFRESH_TOKEN.REVOKED_AT, revokedAt)
+                .set(REFRESH_TOKEN.REVOKED_AT, DSL.coalesce(REFRESH_TOKEN.REVOKED_AT, DSL.val(revokedAt)))
                 .set(REFRESH_TOKEN.REPLACED_BY_ID, newId)
                 .where(REFRESH_TOKEN.ID.eq(oldId))
                 .execute();

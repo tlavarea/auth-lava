@@ -8,6 +8,9 @@ public interface RefreshTokenRepository {
 
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
+    /** The row by id - here, the replacement a rotated-away token points to. */
+    Optional<RefreshToken> findOptionalById(Long id);
+
     RefreshToken insert(Long userId, String tokenHash, LocalDateTime expiresAt, boolean mfaVerified);
 
     void markMfaVerified(Long id);
